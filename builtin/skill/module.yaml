@@ -3,7 +3,7 @@ version: 0.1.0
 actived: false
 depends: []
 summary: Custom skill catalog — CRUD tenant skills; platform usage skill lives under base
-tags: [platform, skill, catalog]
+tags: [platform]
 
 ui-web:
   kind: app

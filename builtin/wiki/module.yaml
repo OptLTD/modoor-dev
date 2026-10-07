@@ -3,7 +3,7 @@ version: 0.2.0
 actived: false
 depends: []
 summary: Wiki projects with hierarchical pages and block editor
-tags: [content, docs, knowledge]
+tags: [content]
 
 ui-web:
   kind: app

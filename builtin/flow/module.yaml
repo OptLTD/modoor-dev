@@ -3,7 +3,7 @@ version: 0.1.0
 actived: true
 depends: [doc]
 summary: Automation, workflow, and approval control center
-tags: [platform, flow, workflow, approval, automation]
+tags: [platform]
 
 ui-web:
   kind: app

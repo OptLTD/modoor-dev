@@ -3,7 +3,7 @@ version: 0.1.0
 actived: true
 depends: []
 summary: Sales orders — create draft and confirm (Phase 0 vertical chain)
-tags: [business, crm, order]
+tags: [business]
 
 ui-web:
   kind: app

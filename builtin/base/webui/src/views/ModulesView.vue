@@ -1,123 +1,126 @@
 <template>
   <section class="panel modules-page">
     <header class="modules-head">
-      <div>
-        <h1>{{ t('base.modules') }}</h1>
-        <p class="muted">{{ t('base.modulesIntro') }}</p>
+      <div class="modules-head-top">
+        <div class="modules-title-row">
+          <h1>{{ t('base.modules') }}</h1>
+          <p class="muted">{{ t('base.modulesIntro') }}</p>
+        </div>
+        <input
+          v-model="keyword"
+          class="modules-search"
+          type="search"
+          :placeholder="t('base.modulesSearchPh')"
+        />
       </div>
-      <input
-        v-model="keyword"
-        class="modules-search"
-        type="search"
-        :placeholder="t('base.modulesSearchPh')"
-      />
+      <div v-if="allTags.length" class="tag-bar">
+        <button
+          type="button"
+          class="tag-chip"
+          :class="{ active: !activeTags.length }"
+          @click="activeTags = []"
+        >
+          {{ t('common.all') }}
+        </button>
+        <button
+          v-for="tag in allTags"
+          :key="tag"
+          type="button"
+          class="tag-chip"
+          :class="{ active: activeTags.includes(tag) }"
+          @click="toggleTag(tag)"
+        >
+          {{ tag }}
+        </button>
+      </div>
     </header>
 
-    <p v-if="error" class="error">{{ error }}</p>
+    <p v-if="error" class="error modules-error">{{ error }}</p>
 
-    <div v-if="allTags.length" class="tag-bar">
-      <button
-        type="button"
-        class="tag-chip"
-        :class="{ active: !activeTags.length }"
-        @click="activeTags = []"
+    <div class="modules-scroll">
+      <p v-if="!filtered.length && !error" class="muted empty-hint">{{ t('base.modulesEmpty') }}</p>
+
+      <section
+        v-for="group in groups"
+        :key="group.id"
+        class="origin-block"
       >
-        {{ t('common.all') }}
-      </button>
-      <button
-        v-for="tag in allTags"
-        :key="tag"
-        type="button"
-        class="tag-chip"
-        :class="{ active: activeTags.includes(tag) }"
-        @click="toggleTag(tag)"
-      >
-        {{ tag }}
-      </button>
+        <header class="origin-head">
+          <h2>{{ group.title }}</h2>
+          <span class="origin-count">{{ group.items.length }}</span>
+        </header>
+        <p v-if="!group.items.length" class="muted empty-hint">{{ group.empty }}</p>
+        <div v-else class="module-grid">
+          <article
+            v-for="m in group.items"
+            :key="m.id"
+            class="module-card"
+            :class="{ off: !m.enabled }"
+          >
+            <div class="card-top">
+              <div class="card-title">
+                <h2>{{ m.label || m.id }}</h2>
+              </div>
+              <div class="card-pills">
+                <span class="state-pill" :class="m.enabled ? 'on' : 'off'">
+                  {{ m.enabled ? 'enabled' : 'disabled' }}
+                </span>
+                <span v-if="m.kind === 'external'" class="state-pill" :class="m.online ? 'on' : 'off'">
+                  {{ m.online ? 'online' : 'offline' }}
+                </span>
+              </div>
+            </div>
+
+            <p class="summary">{{ m.summary || '—' }}</p>
+
+            <div v-if="displayTags(m).length" class="card-tags">
+              <button
+                v-for="tag in displayTags(m)"
+                :key="tag"
+                type="button"
+                class="mini-tag"
+                @click="toggleTag(tag)"
+              >
+                {{ tag }}
+              </button>
+            </div>
+
+            <div class="card-foot">
+              <div class="meta-row">
+                <span v-if="m.kind === 'external'" class="meta">external</span>
+                <span v-if="m.version" class="meta">v{{ m.version }}</span>
+                <span class="layout-switch" role="group" :aria-label="t('base.menuLayout')">
+                  <button
+                    type="button"
+                    class="layout-btn"
+                    :class="{ on: menuOf(m.id) === 'top' }"
+                    @click="onMenuLayout(m.id, 'top')"
+                  >
+                    {{ t('base.menuTop') }}
+                  </button>
+                  <button
+                    type="button"
+                    class="layout-btn"
+                    :class="{ on: menuOf(m.id) === 'side' }"
+                    @click="onMenuLayout(m.id, 'side')"
+                  >
+                    {{ t('base.menuSide') }}
+                  </button>
+                </span>
+              </div>
+
+              <button
+                class="btn"
+                type="button"
+                @click="onToggle(m.id, !m.enabled)"
+              >
+                {{ m.enabled ? t('base.disable') : t('base.enable') }}
+              </button>
+            </div>
+          </article>
+        </div>
+      </section>
     </div>
-
-    <p v-if="!filtered.length && !error" class="muted empty-hint">{{ t('base.modulesEmpty') }}</p>
-
-    <section
-      v-for="group in groups"
-      :key="group.id"
-      class="origin-block"
-    >
-      <header class="origin-head">
-        <h2>{{ group.title }}</h2>
-        <span class="origin-count">{{ group.items.length }}</span>
-      </header>
-      <p v-if="!group.items.length" class="muted empty-hint">{{ group.empty }}</p>
-      <div v-else class="module-grid">
-        <article
-          v-for="m in group.items"
-          :key="m.id"
-          class="module-card"
-          :class="{ off: !m.enabled }"
-        >
-          <div class="card-top">
-            <div class="card-title">
-              <h2>{{ m.label || m.id }}</h2>
-            </div>
-            <div class="card-pills">
-              <span class="state-pill" :class="m.enabled ? 'on' : 'off'">
-                {{ m.enabled ? 'enabled' : 'disabled' }}
-              </span>
-              <span v-if="m.kind === 'external'" class="state-pill" :class="m.online ? 'on' : 'off'">
-                {{ m.online ? 'online' : 'offline' }}
-              </span>
-            </div>
-          </div>
-
-          <p class="summary">{{ m.summary || '—' }}</p>
-
-          <div v-if="displayTags(m).length" class="card-tags">
-            <button
-              v-for="tag in displayTags(m)"
-              :key="tag"
-              type="button"
-              class="mini-tag"
-              @click="toggleTag(tag)"
-            >
-              {{ tag }}
-            </button>
-          </div>
-
-          <div class="card-foot">
-            <div class="meta-row">
-              <span v-if="m.kind === 'external'" class="meta">external</span>
-              <span v-if="m.version" class="meta">v{{ m.version }}</span>
-              <span class="layout-switch" role="group" :aria-label="t('base.menuLayout')">
-                <button
-                  type="button"
-                  class="layout-btn"
-                  :class="{ on: menuOf(m.id) === 'top' }"
-                  @click="onMenuLayout(m.id, 'top')"
-                >
-                  {{ t('base.menuTop') }}
-                </button>
-                <button
-                  type="button"
-                  class="layout-btn"
-                  :class="{ on: menuOf(m.id) === 'side' }"
-                  @click="onMenuLayout(m.id, 'side')"
-                >
-                  {{ t('base.menuSide') }}
-                </button>
-              </span>
-            </div>
-
-            <button
-              class="btn"
-              type="button"
-              @click="onToggle(m.id, !m.enabled)"
-            >
-              {{ m.enabled ? t('base.disable') : t('base.enable') }}
-            </button>
-          </div>
-        </article>
-      </div>
-    </section>
   </section>
 </template>
 
@@ -141,6 +144,7 @@ const keyword = ref('')
 const modules = ref<ModuleItem[]>([])
 const activeTags = ref<string[]>([])
 
+/** Status / origin / risk noise — not useful as filter chips (page already groups by origin). */
 const HIDDEN_TAGS = new Set([
   'enabled',
   'disabled',
@@ -150,6 +154,10 @@ const HIDDEN_TAGS = new Set([
   'addon',
   'external',
   'lightapp',
+  'app',
+  'low',
+  'medium',
+  'high',
 ])
 
 type OriginId = 'lightapp' | 'builtin' | 'addon'
@@ -164,7 +172,14 @@ function moduleOrigin(m: ModuleItem): OriginId {
 }
 
 function displayTags(m: ModuleItem) {
-  return (m.tags || []).filter((t) => !HIDDEN_TAGS.has(t))
+  const mid = (m.id || '').toLowerCase()
+  return (m.tags || []).filter((tag) => {
+    const t = tag.toLowerCase()
+    if (HIDDEN_TAGS.has(t)) return false
+    // Module id as tag is redundant with the card title
+    if (t === mid) return false
+    return true
+  })
 }
 
 const allTags = computed(() => {
@@ -266,27 +281,71 @@ onMounted(reload)
 
 <style scoped>
 .modules-page {
+  flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  min-height: 0;
+  gap: 0;
+  overflow: hidden;
 }
 
 .modules-head {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-bottom: 12px;
+  margin: -4px 0 0;
+  background: var(--panel);
+  border-bottom: 1px solid var(--line);
+}
+
+.modules-head-top {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
+  align-items: center;
   gap: 16px;
   flex-wrap: wrap;
 }
 
+.modules-title-row {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+  min-width: 0;
+  flex: 1;
+}
+
+.modules-error {
+  flex-shrink: 0;
+  margin: 10px 0 0;
+}
+
+.modules-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding-top: 14px;
+}
+
 .modules-head h1 {
-  margin-bottom: 4px;
+  margin: 0;
+  flex-shrink: 0;
 }
 
 .modules-head .muted {
   margin: 0;
-  max-width: 36rem;
+  flex: 1;
+  min-width: 12rem;
+  font-size: 0.88rem;
+  line-height: 1.4;
 }
 
 .modules-search {
@@ -296,6 +355,7 @@ onMounted(reload)
   padding: 8px 10px;
   font: inherit;
   background: #fff;
+  flex-shrink: 0;
 }
 
 .tag-bar {

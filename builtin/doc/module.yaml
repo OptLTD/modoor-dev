@@ -3,7 +3,7 @@ version: 0.1.0
 actived: true
 depends: []
 summary: Unstructured asset warehouse — upload, tag, search, preview for AI and humans
-tags: [content, docs, assets, knowledge]
+tags: [content]
 
 ui-web:
   kind: app

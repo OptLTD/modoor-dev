@@ -92,10 +92,8 @@ def discover_manifests(settings: Settings | None = None) -> list[dict[str, Any]]
             tags: list[str] = []
             if isinstance(raw_tags, list):
                 tags = [str(t).strip() for t in raw_tags if str(t).strip()]
-            derived = [kind, str(data.get("risk_default") or "").strip(), pkg]
-            for t in derived:
-                if t and t not in tags:
-                    tags.append(t)
+            # Do not auto-append kind / risk_default / pkg — they clutter filter chips;
+            # origin is exposed separately as builtin|addon|lightapp.
             actived = _manifest_actived(data)
             items.append(
                 {

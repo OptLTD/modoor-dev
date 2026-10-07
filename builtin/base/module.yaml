@@ -3,7 +3,7 @@ version: 0.1.0
 actived: true
 depends: []
 summary: Base RBAC — apps, users, roles, and role assignment
-tags: [platform, rbac, core]
+tags: [platform]
 
 ui-web:
   label: Base Data
