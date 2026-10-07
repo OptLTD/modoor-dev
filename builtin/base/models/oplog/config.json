@@ -1,0 +1,91 @@
+{
+  "model": {
+    "uukey": "base.oplog",
+    "title": "操作日志",
+    "brief": "审计操作日志：模型创建/修改/删除的字段 diff（对齐 duolali sys.oplog）",
+    "source": "base_oplog",
+    "search": "base_oplog",
+    "extra": {}
+  },
+  "groups": {
+    "basic": {
+      "uukey": "basic",
+      "title": "基础信息",
+      "gtype": "FLATTEN",
+      "model": "base.oplog",
+      "seqno": 0,
+      "extra": {}
+    }
+  },
+  "fields": {
+    "basic.model": {
+      "field": "model",
+      "ftype": "STRINGS",
+      "group": "basic",
+      "index": "basic.model",
+      "label": "模型",
+      "seqno": 0,
+      "extra": {
+        "editable": "NEVER"
+      }
+    },
+    "basic.code": {
+      "field": "code",
+      "ftype": "STRINGS",
+      "group": "basic",
+      "index": "basic.code",
+      "label": "关联编号",
+      "seqno": 1,
+      "extra": {
+        "editable": "NEVER"
+      }
+    },
+    "basic.utime": {
+      "field": "utime",
+      "ftype": "DATETIME",
+      "group": "basic",
+      "index": "basic.utime",
+      "label": "时间",
+      "seqno": 2,
+      "extra": {
+        "editable": "NEVER"
+      }
+    },
+    "basic.action": {
+      "field": "action",
+      "ftype": "STRINGS",
+      "group": "basic",
+      "index": "basic.action",
+      "label": "动作",
+      "seqno": 3,
+      "extra": {
+        "editable": "NEVER"
+      }
+    },
+    "basic.values": {
+      "field": "values",
+      "ftype": "STRINGS",
+      "group": "basic",
+      "index": "basic.values",
+      "label": "数据",
+      "seqno": 4,
+      "extra": {
+        "editable": "NEVER",
+        "dataType": "LONGTEXT"
+      }
+    },
+    "basic.state": {
+      "field": "state",
+      "ftype": "OPTIONAL",
+      "group": "basic",
+      "index": "basic.state",
+      "label": "存活",
+      "seqno": 90,
+      "extra": {
+        "editable": "NEVER",
+        "implicit": true
+      }
+    }
+  },
+  "clicks": {}
+}

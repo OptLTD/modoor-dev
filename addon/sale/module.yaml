@@ -1,0 +1,41 @@
+id: sale
+version: 0.1.0
+actived: true
+depends: []
+summary: Sales orders — create draft and confirm (Phase 0 vertical chain)
+tags: [business, crm, order]
+
+ui-web:
+  kind: app
+  label: Sale
+  seqno: 200
+  base: /sale
+  entry: /sale
+
+exports:
+  tools:
+    - sale.create_order
+    - sale.confirm_order
+    - sale.get_order
+  skills:
+    - sale.create_and_confirm_order
+  menus:
+    - id: sale.orders
+      label: Orders
+      path: /sale
+      seqno: 10
+
+ability:
+  - sale.order.read
+  - sale.order.write
+  - sale.order.confirm
+
+risk_default: medium
+
+i18n:
+  zh-CN:
+    app.label: 销售管理
+    sale.orders: 订单管理
+    sale.order.read: 读取订单
+    sale.order.write: 管理订单
+    sale.order.confirm: 确认订单

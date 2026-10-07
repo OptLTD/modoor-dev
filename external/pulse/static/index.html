@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Pulse</title>
+  <script src="https://unpkg.com/vue@3.5.13/dist/vue.global.prod.js"></script>
+  <style>
+    :root { --ink:#1c1917; --muted:#78716c; --line:#e7e5e4; --accent:#0f766e; --bg:#f4f7f6; }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family:"IBM Plex Sans", "Segoe UI", sans-serif; background:var(--bg); color:var(--ink); }
+    header {
+      display:flex; align-items:center; justify-content:space-between; gap:1rem;
+      padding:0.75rem 1.25rem; background:#fff; border-bottom:1px solid var(--line);
+    }
+    .brand { font-weight:700; }
+    .hint { color:var(--muted); font-size:0.8rem; margin-left:0.5rem; }
+    .actions { display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap; }
+    select, a.btn {
+      font:inherit; padding:0.4rem 0.65rem; border:1px solid var(--line); background:#fff; color:var(--ink); cursor:pointer;
+    }
+    a.btn { background:var(--accent); color:#fff; border:none; text-decoration:none; }
+    main { max-width:880px; margin:1.5rem auto; padding:0 1rem; }
+    .card { background:#fff; border:1px solid var(--line); padding:1.25rem; }
+    .meta { color:var(--muted); font-size:0.9rem; }
+    .who { font-size:0.85rem; color:var(--muted); }
+    .status { font-size:0.8rem; color:var(--muted); margin-bottom:0.75rem; }
+    .status.ok { color:var(--accent); }
+    .status.bad { color:#b91c1c; }
+    .metrics { display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:0.75rem; margin-top:1rem; }
+    .metric { border:1px solid var(--line); padding:0.85rem; }
+    .metric .v { font-size:1.6rem; font-weight:700; }
+    .metric .k { color:var(--muted); font-size:0.8rem; margin-top:0.2rem; }
+    [v-cloak] { display:none; }
+  </style>
+</head>
+<body>
+  <div id="app" v-cloak>
+    <header>
+      <div>
+        <span class="brand">Pulse</span>
+        <span class="hint">external · Vue CSR · Modoor registry</span>
+      </div>
+      <div class="actions">
+        <span class="who">{{ whoText }}</span>
+        <label class="meta">Module
+          <select :value="currentHref" @change="onSwitch($event)">
+            <option v-for="m in modules" :key="m.id" :value="m.href">
+              {{ m.label }}{{ m.online === false ? ' (offline)' : '' }}
+            </option>
+          </select>
+        </label>
+        <a class="btn" :href="logoutUrl">Log out</a>
+      </div>
+    </header>
+    <main>
+      <p class="status" :class="registryOk ? 'ok' : 'bad'">{{ registryMsg }}</p>
+      <div class="card">
+        <h1 style="margin-top:0">Pulse</h1>
+        <p class="meta">浏览器端 Vue 渲染；catalog 含 tenant / profile / modules。</p>
+        <div class="metrics">
+          <div class="metric">
+            <div class="v">{{ pulse.uptime_sec ?? '—' }}</div>
+            <div class="k">uptime (s)</div>
+          </div>
+          <div class="metric">
+            <div class="v">{{ pulse.ticks ?? '—' }}</div>
+            <div class="k">ticks</div>
+          </div>
+          <div class="metric">
+            <div class="v">{{ tenant.id || '—' }}</div>
+            <div class="k">tenant</div>
+          </div>
+          <div class="metric">
+            <div class="v">{{ profile ? (profile.login || '—') : '—' }}</div>
+            <div class="k">profile</div>
+          </div>
+        </div>
+        <p class="meta" style="margin-top:1rem">Modoor: {{ pulse.modoor || '—' }}</p>
+      </div>
+    </main>
+  </div>
+  <script>
+    const { createApp, ref, computed, onMounted, onUnmounted } = Vue;
+    const TICKET_KEY = "modoor_ticket";
+
+    function captureTicket() {
+      const params = new URLSearchParams(location.search);
+      const t = params.get("modoor_ticket");
+      if (t) {
+        sessionStorage.setItem(TICKET_KEY, t);
+        params.delete("modoor_ticket");
+        const q = params.toString();
+        history.replaceState(null, "", location.pathname + (q ? "?" + q : "") + location.hash);
+      }
+    }
+
+    createApp({
+      setup() {
+        const modules = ref([]);
+        const tenant = ref({});
+        const profile = ref(null);
+        const logoutUrl = ref("#");
+        const registryMsg = ref("Connecting to Modoor…");
+        const registryOk = ref(false);
+        const pulse = ref({});
+        const currentHref = ref(location.href);
+        const selfId = "pulse";
+        let catalogTimer = null;
+        let pulseTimer = null;
+
+        const whoText = computed(() => {
+          const t = tenant.value || {};
+          const p = profile.value;
+          if (p) return (p.display_name || p.login) + " · " + (t.id || "");
+          return t.id ? ("tenant " + t.id + " · no profile") : "…";
+        });
+
+        async function refreshCatalog() {
+          try {
+            const ticket = sessionStorage.getItem(TICKET_KEY) || "";
+            const res = await fetch("/proxy/catalog", {
+              headers: ticket ? { "X-Modoor-Ticket": ticket } : {},
+            });
+            if (!res.ok) throw new Error("catalog " + res.status);
+            const data = await res.json();
+            modules.value = data.modules || [];
+            tenant.value = data.tenant || {};
+            profile.value = data.profile || null;
+            logoutUrl.value = data.logout_url || "#";
+            registryMsg.value = "Registry ok · tenant=" + (tenant.value.id || "?");
+            registryOk.value = true;
+            const mine = modules.value.find((m) => m.id === selfId);
+            if (mine) currentHref.value = mine.href;
+          } catch (e) {
+            registryMsg.value = "Registry unavailable — is Modoor running?";
+            registryOk.value = false;
+          }
+        }
+
+        async function refreshPulse() {
+          try {
+            const res = await fetch("/api/pulse");
+            if (!res.ok) return;
+            pulse.value = await res.json();
+          } catch (e) {}
+        }
+
+        function onSwitch(e) {
+          const href = e.target.value;
+          if (href) location.href = href;
+        }
+
+        onMounted(() => {
+          captureTicket();
+          refreshCatalog();
+          refreshPulse();
+          catalogTimer = setInterval(refreshCatalog, 10000);
+          pulseTimer = setInterval(refreshPulse, 2000);
+        });
+        onUnmounted(() => {
+          clearInterval(catalogTimer);
+          clearInterval(pulseTimer);
+        });
+
+        return {
+          modules, tenant, profile, logoutUrl, registryMsg, registryOk,
+          pulse, currentHref, whoText, onSwitch,
+        };
+      },
+    }).mount("#app");
+  </script>
+</body>
+</html>

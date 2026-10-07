@@ -1,0 +1,250 @@
+{
+  "model": {
+    "uukey": "base.user",
+    "title": "员工",
+    "brief": "Tenant employees",
+    "source": "base_user",
+    "search": "base_user",
+    "extra": {}
+  },
+  "groups": {
+    "basic": {
+      "uukey": "basic",
+      "title": "基础信息",
+      "gtype": "FLATTEN",
+      "model": "base.user",
+      "seqno": 0,
+      "extra": {}
+    }
+  },
+  "fields": {
+    "basic.code": {
+      "field": "code",
+      "ftype": "SERIALNO",
+      "group": "basic",
+      "index": "basic.code",
+      "label": "员工编号",
+      "seqno": 1,
+      "width": 96,
+      "extra": {
+        "editable": "NEVER",
+        "constant": "USER",
+        "counting": 5,
+        "readonly": true
+      }
+    },
+    "basic.utime": {
+      "field": "utime",
+      "ftype": "DATETIME",
+      "group": "basic",
+      "index": "basic.utime",
+      "label": "录入时间",
+      "seqno": 2,
+      "width": 160,
+      "extra": {
+        "editable": "ALWAYS"
+      }
+    },
+    "basic.state": {
+      "field": "state",
+      "ftype": "OPTIONAL",
+      "group": "basic",
+      "index": "basic.state",
+      "label": "存活",
+      "seqno": 3,
+      "width": 88,
+      "extra": {
+        "editable": "NEVER",
+        "implicit": true,
+        "options": [
+          {
+            "uukey": "1",
+            "label": "正常"
+          },
+          {
+            "uukey": "0",
+            "label": "已删除"
+          }
+        ]
+      }
+    },
+    "basic.name": {
+      "field": "name",
+      "ftype": "STRING",
+      "group": "basic",
+      "index": "basic.name",
+      "label": "员工姓名",
+      "seqno": 6,
+      "width": 140,
+      "extra": {
+        "required": true,
+        "editable": "ALWAYS"
+      }
+    },
+    "basic.phone": {
+      "field": "phone",
+      "ftype": "STRING",
+      "group": "basic",
+      "index": "basic.phone",
+      "label": "手机号码",
+      "seqno": 7,
+      "width": 140,
+      "extra": {
+        "required": true,
+        "editable": "INSERT"
+      }
+    },
+    "basic.email": {
+      "field": "email",
+      "ftype": "STRING",
+      "group": "basic",
+      "index": "basic.email",
+      "label": "电子邮箱",
+      "seqno": 8,
+      "width": 180,
+      "extra": {
+        "editable": "ALWAYS"
+      }
+    },
+    "basic.remark": {
+      "field": "remark",
+      "ftype": "STRINGS",
+      "group": "basic",
+      "index": "basic.remark",
+      "label": "员工备注",
+      "seqno": 9,
+      "width": 200,
+      "extra": {
+        "editable": "ALWAYS"
+      }
+    },
+    "basic.model": {
+      "field": "model",
+      "ftype": "STRINGS",
+      "group": "basic",
+      "index": "basic.model",
+      "label": "档案模型",
+      "seqno": 15,
+      "extra": {
+        "editable": "NEVER"
+      }
+    },
+    "basic.refer": {
+      "field": "refer",
+      "ftype": "STRINGS",
+      "group": "basic",
+      "index": "basic.refer",
+      "label": "档案编号",
+      "seqno": 16,
+      "extra": {
+        "editable": "NEVER"
+      }
+    },
+    "basic.active": {
+      "field": "enable",
+      "ftype": "OPTIONAL",
+      "group": "basic",
+      "index": "basic.active",
+      "label": "启用",
+      "seqno": 10,
+      "width": 88,
+      "extra": {
+        "editable": "NEVER",
+        "options": [
+          {
+            "uukey": "true",
+            "label": "启用"
+          },
+          {
+            "uukey": "false",
+            "label": "停用"
+          }
+        ]
+      }
+    },
+    "basic.enable": {
+      "field": "enable",
+      "ftype": "OPTIONAL",
+      "group": "basic",
+      "index": "basic.enable",
+      "label": "启用状态",
+      "seqno": 11,
+      "width": 88,
+      "extra": {
+        "editable": "NEVER",
+        "implicit": true,
+        "options": [
+          {
+            "uukey": "1",
+            "label": "启用"
+          },
+          {
+            "uukey": "0",
+            "label": "停用"
+          }
+        ]
+      }
+    },
+    "basic.team_id": {
+      "field": "team_id",
+      "ftype": "OPTIONAL",
+      "group": "basic",
+      "index": "basic.team_id",
+      "label": "所属团队",
+      "seqno": 2,
+      "width": 160,
+      "extra": {
+        "required": true,
+        "editable": "INSERT"
+      }
+    }
+  },
+  "clicks": {
+    "create": {
+      "uukey": "create",
+      "label": "新建",
+      "action": "record.create",
+      "seqno": 1,
+      "ctype": "button"
+    },
+    "set_role": {
+      "uukey": "set_role",
+      "label": "设置角色",
+      "action": "user.set_role",
+      "group": "account",
+      "seqno": 2,
+      "ctype": "button"
+    },
+    "set_pswd": {
+      "uukey": "set_pswd",
+      "label": "设置密码",
+      "action": "user.set_pswd",
+      "group": "account",
+      "seqno": 3,
+      "ctype": "button"
+    },
+    "enable": {
+      "uukey": "enable",
+      "label": "启用账号",
+      "action": "user.enable",
+      "group": "account",
+      "seqno": 4,
+      "ctype": "button"
+    },
+    "disable": {
+      "uukey": "disable",
+      "label": "停用账号",
+      "action": "user.disable",
+      "group": "account",
+      "seqno": 5,
+      "ctype": "button"
+    },
+    "modify": {
+      "uukey": "modify",
+      "label": "编辑",
+      "ctype": "action",
+      "action": "record.modify",
+      "seqno": 90
+    }
+  }
+}

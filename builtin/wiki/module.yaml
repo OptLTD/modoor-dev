@@ -1,0 +1,47 @@
+id: wiki
+version: 0.2.0
+actived: false
+depends: []
+summary: Wiki projects with hierarchical pages and block editor
+tags: [content, docs, knowledge]
+
+ui-web:
+  kind: app
+  label: Wiki
+  seqno: 20
+  base: /wiki
+  entry: /wiki
+
+exports:
+  tools:
+    - wiki.query
+    - wiki.read
+    - wiki.write
+  skills: []
+  menus:
+    - id: wiki.home
+      label: Projects
+      path: /wiki
+      seqno: 10
+
+ability:
+  - wiki.project.read
+  - wiki.project.write
+  - wiki.page.read
+  - wiki.page.write
+  - wiki.page.delete
+
+risk_default: medium
+
+i18n:
+  zh-CN:
+    app.label: 知识库
+    wiki.home: 项目
+    wiki.project.read: 读取项目
+    wiki.project.write: 管理项目
+    wiki.page.read: 读取页面
+    wiki.page.write: 管理页面
+    wiki.page.delete: 删除页面
+  en-US:
+    app.label: Wiki
+    wiki.home: Projects

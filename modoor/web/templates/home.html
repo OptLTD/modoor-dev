@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}工作台 · Modoor{% endblock %}
+{% block body_class %}page-workbench{% endblock %}
+{% block content %}
+  <section class="workbench">
+    <header class="workbench-head">
+      <div>
+        <h1 data-i18n="workbench">工作台</h1>
+        <p class="workbench-lead meta" data-i18n="workbenchHint">选择模块开始工作</p>
+      </div>
+      <div class="workbench-who">
+        <span class="avatar workbench-avatar">{{ user_initials }}</span>
+        <div class="workbench-who-text">
+          <strong class="workbench-who-name">{{ current_user.display_name or current_user.realname or current_user.username }}</strong>
+          <p class="workbench-who-meta meta">
+            {% if current_user.username and (current_user.username|lower) != ((current_user.display_name or current_user.realname or '')|lower) %}
+            {{ current_user.username }} ·
+            {% endif %}
+            {{ tenant }}
+          </p>
+        </div>
+      </div>
+    </header>
+
+    {% if apps %}
+    {% for group in groups %}
+    {% if group.cards or group.id != 'lightapp' %}
+    <section class="workbench-group">
+      <header class="workbench-group-head">
+        {% if group.id == 'lightapp' %}
+        <h2 data-i18n="originLightapp">轻应用</h2>
+        {% elif group.id == 'builtin' %}
+        <h2 data-i18n="originBuiltin">内置</h2>
+        {% else %}
+        <h2 data-i18n="originAddon">业务插件</h2>
+        {% endif %}
+        <span class="workbench-count">{{ group.cards|length }}</span>
+      </header>
+      {% if group.cards %}
+      <div class="workbench-grid">
+        {% for m in group.cards %}
+        <a
+          class="workbench-card tone-{{ m.tone }}{% if m.online == False %} off{% endif %}"
+          href="{{ m.href }}"
+        >
+          <span
+            class="workbench-mark"
+            data-i18n-label
+            data-zh="{{ m.mark_zh }}"
+            data-en="{{ m.mark_en }}"
+          >{{ m.mark_zh }}</span>
+          <span class="workbench-card-body">
+            <strong
+              data-i18n-label
+              data-zh="{{ m.title_zh }}"
+              data-en="{{ m.title_en }}"
+            >{{ m.title_zh }}</strong>
+            <span class="workbench-id">{{ m.id }}</span>
+          </span>
+          {% if m.online == False %}
+          <span class="workbench-offline" data-i18n="workbenchOffline">离线</span>
+          {% endif %}
+        </a>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="workbench-group-empty meta" data-i18n="originEmpty">本组暂无模块</p>
+      {% endif %}
+    </section>
+    {% endif %}
+    {% endfor %}
+    {% else %}
+    <p class="workbench-empty meta" data-i18n="workbenchEmpty">
+      暂无可用模块。请联系管理员分配权限。
+    </p>
+    {% endif %}
+  </section>
+{% endblock %}

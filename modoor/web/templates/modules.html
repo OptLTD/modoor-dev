@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Modules · Modoor{% endblock %}
+{% block content %}
+  <h1>Modules</h1>
+  <p class="meta">启停影响 Web 导航、schema 初始化与 MCP tools（MCP 需重启后生效）。关闭的模块视为不存在。</p>
+  <table>
+    <thead>
+      <tr><th>Module</th><th>Version</th><th>Summary</th><th>State</th><th></th></tr>
+    </thead>
+    <tbody>
+      {% for m in modules %}
+      <tr>
+        <td><strong>{{ m.id }}</strong></td>
+        <td>{{ m.version }}</td>
+        <td class="meta">{{ m.summary }}</td>
+        <td><span class="pill">{{ "enabled" if m.enabled else "disabled" }}</span></td>
+        <td>
+          <form method="post" action="/base/modules/{{ m.id }}/toggle" class="inline">
+            {% if m.enabled %}
+              <input type="hidden" name="enabled" value="off" />
+              <button type="submit" class="secondary">Disable</button>
+            {% else %}
+              <input type="hidden" name="enabled" value="on" />
+              <button type="submit">Enable</button>
+            {% endif %}
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% endblock %}

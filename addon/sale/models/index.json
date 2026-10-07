@@ -1,0 +1,6 @@
+{
+  "sale.order": {
+    "path": "order",
+    "level": "business"
+  }
+}

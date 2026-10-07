@@ -1,0 +1,19 @@
+---
+description: 模型字段在分组内用短名，不重复分组语义
+globs: addon/**/models/**/*.json
+alwaysApply: false
+---
+
+# 模型字段短名
+
+字段键是 `{group}.{field}`。`field` 在该分组里已经能看懂，就不要再重复分组语义。完整说明见 `docs/SCHEMA_CONTRACT.md` §2.3。
+
+- `label` 用完整中文。短名只用于 `field`、字段键和 sample 键。
+- 去掉分组已经表达的词：`audits.type`、`audits.status`、`audits.expire`、`audits.name`、`audits.file`、`audits.reason`。不要 `cert_type`、`audit_status`、`expire_date`、`holder_name`、`file_url`、`reject_reason`。
+- 一个词已经完整就保持，如 `vehicle`、`remark`。
+- 字段名里的长角色词缩写：`driver` → `dr`，如 `photos.dr_license`。
+- 分组键按明细在记什么命名：审核记录用 `audits`，证件日期用 `dates`，证件图片用 `photos`。证件号码和行驶证正文放在 `basic`。某一份证件自己成套时单独分组，如道路运输证用 `permit`，组内去掉 `permit` 前缀。
+- `basic.uukey`、`basic.utime`、`basic.status` 保持固定键。选项 `uukey` 保持可读，不跟着字段短名缩。
+- `basic.utime` 的 label 跟模型走（开单时间、下单时间、登记时间），可修改。不要标成「创建时间」。
+- 引擎字段不写进 config。创建时间是引擎写入的 `basic.created_at`，不要在模型配置里声明。
+- 由动作迁移改写的状态设 `implicit: true`（审核状态、证照状态、核对状态、启用停用）。原因不设 implicit，只放在动作弹出的表单里。

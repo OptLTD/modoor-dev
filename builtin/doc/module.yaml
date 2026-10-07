@@ -1,0 +1,48 @@
+id: doc
+version: 0.1.0
+actived: true
+depends: []
+summary: Unstructured asset warehouse — upload, tag, search, preview for AI and humans
+tags: [content, docs, assets, knowledge]
+
+ui-web:
+  kind: app
+  label: Document
+  seqno: 30
+  base: /doc
+  entry: /doc
+
+exports:
+  tools:
+    - doc.query
+    - doc.read
+    - doc.upload
+  skills: []
+  menus: []
+    # - id: doc.assets
+    #   label: Document
+    #   path: /doc
+    #   seqno: 10
+
+ability:
+  - doc.asset.read
+  - doc.asset.write
+
+risk_default: medium
+
+i18n:
+  zh-CN:
+    app.label: 文档库
+    doc.assets: 文档库
+    doc.asset.read: 读取文档
+    doc.asset.write: 写入文档
+  en-US:
+    app.label: Document
+    doc.assets: Document
+    doc.asset.read: Read documents
+    doc.asset.write: Write documents
+  ja-JP:
+    app.label: ドキュメント
+    doc.assets: ドキュメント
+    doc.asset.read: ドキュメントの閲覧
+    doc.asset.write: ドキュメントの編集

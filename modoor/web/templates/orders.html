@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Modoor · Orders{% endblock %}
+{% block content %}
+  <h1>Sales Orders</h1>
+  <table>
+    <thead>
+      <tr><th>Partner</th><th>State</th><th>Total</th><th>Created</th><th>Id</th></tr>
+    </thead>
+    <tbody>
+      {% for o in orders %}
+      <tr>
+        <td>{{ o.partner }}</td>
+        <td><span class="pill">{{ o.state }}</span></td>
+        <td>{{ o.amount_total }}</td>
+        <td class="meta">{{ o.created_at }}</td>
+        <td><code>{{ o.id }}</code></td>
+      </tr>
+      {% else %}
+      <tr><td colspan="5">暂无订单。可用 MCP <code>sale.create_order</code> 创建。</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% endblock %}

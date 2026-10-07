@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}Roles · Modoor{% endblock %}
+{% block content %}
+  <h1>Roles</h1>
+
+  <h2>新建角色</h2>
+  <form method="post" action="/base/roles/create" class="form-grid">
+    <label>Code <input name="code" required placeholder="admin" /></label>
+    <label>Name <input name="name" required /></label>
+    <label>App
+      <select name="app_id">
+        <option value="">(tenant-wide)</option>
+        {% for a in apps %}
+        <option value="{{ a.id }}">{{ a.code }} — {{ a.name }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Description <input name="description" /></label>
+    <button type="submit">Create role</button>
+  </form>
+
+  <h2>角色列表</h2>
+  <table>
+    <thead><tr><th>Code</th><th>Name</th><th>Scope</th><th></th></tr></thead>
+    <tbody>
+      {% for r in roles %}
+      <tr>
+        <td><code>{{ r.code }}</code></td>
+        <td>{{ r.name }}</td>
+        <td class="meta">{{ r.app_id or 'tenant-wide' }}</td>
+        <td>
+          <form method="post" action="/base/roles/{{ r.id }}/delete" class="inline" onsubmit="return confirm('Delete role {{ r.code }}?');">
+            <button type="submit" class="danger">Delete</button>
+          </form>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="4">暂无角色</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <h2>分配角色</h2>
+  <form method="post" action="/base/roles/assign" class="form-grid">
+    <label>User
+      <select name="user_id" required>
+        {% for u in users %}<option value="{{ u.id }}">{{ u.login }}</option>{% endfor %}
+      </select>
+    </label>
+    <label>Role
+      <select name="role_id" required>
+        {% for r in roles %}<option value="{{ r.id }}">{{ r.code }}</option>{% endfor %}
+      </select>
+    </label>
+    <button type="submit">Assign</button>
+  </form>
+
+  <h2>当前授权</h2>
+  <table>
+    <thead><tr><th>User</th><th>Roles</th></tr></thead>
+    <tbody>
+      {% for u in users %}
+      <tr>
+        <td><code>{{ u.login }}</code></td>
+        <td>
+          {% for r in assignments.get(u.id, []) %}
+            <span class="pill">{{ r.code }}</span>
+            <form method="post" action="/base/roles/revoke" class="inline">
+              <input type="hidden" name="user_id" value="{{ u.id }}" />
+              <input type="hidden" name="role_id" value="{{ r.id }}" />
+              <button type="submit" class="secondary">revoke</button>
+            </form>
+          {% else %}
+            <span class="meta">—</span>
+          {% endfor %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% endblock %}

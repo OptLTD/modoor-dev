@@ -1,0 +1,80 @@
+id: base
+version: 0.1.0
+actived: true
+depends: []
+summary: Base RBAC — apps, users, roles, and role assignment
+tags: [platform, rbac, core]
+
+ui-web:
+  label: Base Data
+  kind: app
+  seqno: 10
+  base: /base
+  entry: /base/users
+
+exports:
+  tools:
+    - base.get_user
+    - base.list_users
+    - base.get_role
+    - base.list_roles
+    - base.list_apps
+    - base.read_app
+    - base.schema
+    - base.search
+  skills:
+    - base.use_modoor
+    - base.use_model
+  menus:
+    - id: base.system
+      label: System
+      seqno: 10
+      items:
+      - id: base.users
+        label: Users
+        path: /base/users
+        seqno: 10
+      - id: base.roles
+        label: Roles
+        path: /base/roles
+        seqno: 20
+      - id: base.modules
+        label: Modules
+        path: /base/modules
+        seqno: 30
+
+ability:
+  - base.app.read
+  - base.app.write
+  - base.user.read
+  - base.user.write
+  - base.role.read
+  - base.role.write
+
+risk_default: medium
+
+i18n:
+  zh-CN:
+    app.label: 基础数据
+    base.users: 用户管理
+    base.roles: 角色管理
+    base.system: 系统管理
+    base.modules: 模块管理
+    base.app.read: 读取应用
+    base.app.write: 管理应用
+    base.user.read: 读取用户
+    base.user.write: 管理用户
+    base.role.read: 读取角色
+    base.role.write: 管理角色
+  en-US:
+    app.label: Base Data
+    base.users: User Management
+    base.roles: Role Management
+    base.system: System Management
+    base.modules: Module Management
+    base.app.read: Read Application
+    base.app.write: Manage Application
+    base.user.read: Read User
+    base.user.write: Manage User
+    base.role.read: Read Role
+    base.role.write: Manage Role

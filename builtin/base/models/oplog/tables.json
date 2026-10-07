@@ -1,0 +1,22 @@
+{
+  "default": {
+    "uukey": "default",
+    "title": "操作日志",
+    "fields": ["basic.model", "basic.code", "basic.utime", "basic.action"],
+    "sticky": ["basic.model", "basic.code"],
+    "clicks": [],
+    "filters": ["basic.model", "basic.utime"],
+    "query": {},
+    "extra": {}
+  },
+  "table": {
+    "uukey": "table",
+    "title": "操作日志",
+    "fields": ["basic.model", "basic.code", "basic.utime", "basic.action", "basic.values"],
+    "sticky": ["basic.model", "basic.code"],
+    "clicks": [],
+    "filters": ["basic.model", "basic.utime"],
+    "query": {},
+    "extra": {}
+  }
+}

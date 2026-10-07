@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Users · Modoor{% endblock %}
+{% block content %}
+  <h1>Users</h1>
+
+  <h2>新建用户</h2>
+  <form method="post" action="/base/users/create" class="form-grid">
+    <label>Login <input name="login" required /></label>
+    <label>Display name <input name="display_name" required /></label>
+    <label>Email <input name="email" type="email" /></label>
+    <label>Password <input name="password" type="password" required /></label>
+    <button type="submit">Create</button>
+  </form>
+
+  <h2>用户列表</h2>
+  <table>
+    <thead>
+      <tr><th>Login</th><th>Edit</th></tr>
+    </thead>
+    <tbody>
+      {% for u in users %}
+      <tr>
+        <td><code>{{ u.login }}</code><div class="meta">{{ u.id }}</div></td>
+        <td>
+          <form method="post" action="/base/users/{{ u.id }}/update" class="form-grid" style="margin:0;">
+            <label>Name <input name="display_name" value="{{ u.display_name }}" /></label>
+            <label>Email <input name="email" value="{{ u.email or '' }}" /></label>
+            <label>New password <input name="password" type="password" placeholder="(unchanged)" /></label>
+            <label style="flex-direction:row;align-items:center;gap:0.4rem;">
+              <input type="checkbox" name="active" value="on" {% if u.active %}checked{% endif %} /> Active
+            </label>
+            <button type="submit">Save</button>
+          </form>
+          {% if u.id != current_user.id %}
+          <form method="post" action="/base/users/{{ u.id }}/delete" class="inline" onsubmit="return confirm('Delete {{ u.login }}?');">
+            <button type="submit" class="danger">Delete</button>
+          </form>
+          {% endif %}
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="2">暂无用户</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% endblock %}

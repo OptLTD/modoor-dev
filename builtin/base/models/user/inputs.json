@@ -1,0 +1,22 @@
+{
+  "default": {
+    "uukey": "default",
+    "title": "员工信息",
+    "preset": {},
+    "groups": ["basic"],
+    "fields": [
+      "basic.code",
+      "basic.team_id",
+      "basic.name",
+      "basic.utime",
+      "basic.phone",
+      "basic.email",
+      "basic.remark"
+    ],
+    "hidden": [
+      "basic.state"
+    ],
+    "clicks": [],
+    "extra": {}
+  }
+}

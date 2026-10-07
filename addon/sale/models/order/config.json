@@ -1,0 +1,150 @@
+{
+  "model": {
+    "uukey": "sale.order",
+    "title": "销售订单",
+    "brief": "Sale order (domain + schema dual-write)",
+    "source": "sale_order",
+    "search": "sale_order",
+    "extra": {
+      "constant": "SO",
+      "counting": 5
+    }
+  },
+  "groups": {
+    "basic": {
+      "uukey": "basic",
+      "title": "基础信息",
+      "gtype": "FLATTEN",
+      "model": "sale.order",
+      "seqno": 0,
+      "extra": {}
+    },
+    "amount": {
+      "uukey": "amount",
+      "title": "金额",
+      "gtype": "FLATTEN",
+      "model": "sale.order",
+      "seqno": 1,
+      "extra": {}
+    }
+  },
+  "fields": {
+    "basic.uukey": {
+      "field": "uukey",
+      "ftype": "SERIALNO",
+      "group": "basic",
+      "index": "basic.uukey",
+      "label": "订单编号",
+      "seqno": 1,
+      "extra": {
+        "required": true,
+        "implicit": true,
+        "editable": "INSERT",
+        "constant": "SO",
+        "counting": 5
+      }
+    },
+    "basic.utime": {
+      "field": "utime",
+      "ftype": "DATETIME",
+      "group": "basic",
+      "index": "basic.utime",
+      "label": "下单时间",
+      "seqno": 2,
+      "extra": {
+        "editable": "NEVER",
+        "dataType": "DATETIME"
+      }
+    },
+    "basic.status": {
+      "field": "status",
+      "ftype": "OPTIONAL",
+      "group": "basic",
+      "index": "basic.status",
+      "label": "状态",
+      "seqno": 3,
+      "extra": {
+        "required": true,
+        "editable": "ALWAYS",
+        "options": [
+          {
+            "uukey": "draft",
+            "label": "草稿"
+          },
+          {
+            "uukey": "confirmed",
+            "label": "已确认"
+          }
+        ]
+      }
+    },
+    "basic.partner": {
+      "field": "partner",
+      "ftype": "SUBJECT",
+      "group": "basic",
+      "index": "basic.partner",
+      "label": "客户",
+      "seqno": 4,
+      "extra": {
+        "required": true,
+        "editable": "ALWAYS"
+      }
+    },
+    "basic.note": {
+      "field": "note",
+      "ftype": "STRINGS",
+      "group": "basic",
+      "index": "basic.note",
+      "label": "备注",
+      "seqno": 5,
+      "extra": {
+        "editable": "ALWAYS",
+        "dataType": "LONGTEXT"
+      }
+    },
+    "amount.total": {
+      "field": "total",
+      "ftype": "NUMERIC",
+      "group": "amount",
+      "index": "amount.total",
+      "label": "合计",
+      "seqno": 6,
+      "extra": {
+        "editable": "NEVER",
+        "precision": 2,
+        "implicit": true
+      }
+    }
+  },
+  "clicks": {
+    "create": {
+      "uukey": "create",
+      "label": "新建",
+      "ctype": "button",
+      "action": "record.create",
+      "seqno": 1
+    },
+    "delete": {
+      "uukey": "delete",
+      "label": "删除",
+      "ctype": "button",
+      "action": "record.delete",
+      "seqno": 2
+    },
+    "modify": {
+      "uukey": "modify",
+      "label": "编辑",
+      "ctype": "action",
+      "action": "record.modify",
+      "seqno": 90
+    },
+    "export": {
+      "uukey": "export",
+      "label": "导出",
+      "action": "record.export",
+      "seqno": 80,
+      "group": "more",
+      "ctype": "button"
+    }
+  }
+}

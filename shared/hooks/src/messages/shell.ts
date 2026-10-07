@@ -1,0 +1,88 @@
+import { registerMessages } from '../i18n'
+
+registerMessages('shell', {
+  'en-US': {
+    inbox: 'Inbox',
+    inboxEmpty: 'No messages',
+    tenant: 'Tenant',
+    tenantSub: 'Current workspace',
+    logout: 'Log out',
+    login: 'Log in',
+    language: 'Language',
+    userSettings: 'Settings',
+    settingsTitle: 'User settings',
+    menuLayout: 'Menu layout',
+    menuLayoutHint: 'Applies to the current module only. Default is top.',
+    menuLayoutTop: 'Top',
+    menuLayoutSide: 'Left sidebar',
+    theme: 'Theme',
+    themeSystem: 'System (coming soon)',
+    themeHint: 'Theme switching is not available yet.',
+    saveSettings: 'Done',
+    agentGuide: 'Agent guide',
+    agentGuideIntro:
+      'Copy this into Codex / WorkBuddy / Cursor. The agent should auto install skills and MCP.',
+    copyGuide: 'Copy for agent',
+    connectAgentGuide: 'Connect to Agent',
+    connectAgentConfig: 'MCP config',
+    connectAgentIntro:
+      'Expose this workspace’s Skills and MCP tools so external agents can call Modoor on your behalf.',
+    connectAgentClients:
+      'Works with Doubao, WorkBuddy, Cursor, Claude Desktop, and other MCP-capable clients.',
+    connectAgentMcpHint:
+      'Prefer the config below (URL + agent_key). OAuth may still be incomplete on some clients—static Bearer avoids install failures.',
+    agentReadonly: 'Agent read-only (recommended)',
+    agentReadonlyHint:
+      'Applies to the static agent_key. When on, MCP may only call query tools.',
+    mcpUrl: 'MCP URL',
+    agentKey: 'agent_key',
+    rotateKey: 'Rotate key',
+    loading: 'Loading…',
+    copyConfig: 'Copy config',
+    copied: 'Copied',
+    gotIt: 'Got it',
+    close: 'Close',
+  },
+  'zh-CN': {
+    inbox: '消息',
+    inboxEmpty: '暂无消息',
+    tenant: '租户',
+    tenantSub: '当前工作区',
+    logout: '退出登录',
+    login: '登录',
+    language: '界面语言',
+    userSettings: '用户设置',
+    settingsTitle: '用户设置',
+    menuLayout: '菜单样式',
+    menuLayoutHint: '只改当前模块；未设置时默认顶部导航。',
+    menuLayoutTop: '顶部导航',
+    menuLayoutSide: '左侧导航',
+    theme: '主题',
+    themeSystem: '跟随系统（即将支持）',
+    themeHint: '主题切换暂未开放。',
+    saveSettings: '完成',
+    agentGuide: 'Agent 引导',
+    agentGuideIntro:
+      '复制以下给 Codex / WorkBuddy / Cursor。Agent 应自动安装 Skill、MCP。',
+    copyGuide: '复制给 Agent',
+    connectAgentGuide: '接入到 Agent',
+    connectAgentConfig: 'MCP 配置',
+    connectAgentIntro:
+      '把本系统的 Skill 与 MCP Tools 提供给外部 Agent，由其代为调用 Modoor 能力。',
+    connectAgentClients:
+      '可用于豆包、WorkBuddy、Cursor、Claude Desktop 等支持 MCP 的客户端。',
+    connectAgentMcpHint:
+      '优先使用下方带 token 的配置。部分客户端 OAuth 尚不完善，静态 Bearer 可避免安装失败。',
+    agentReadonly: 'Agent 只读（推荐）',
+    agentReadonlyHint:
+      '作用于静态 agent_key；勾选后 MCP 仅可调用查询类工具。',
+    mcpUrl: 'MCP 地址',
+    agentKey: 'agent_key',
+    rotateKey: '轮换密钥',
+    loading: '加载中…',
+    copyConfig: '复制配置',
+    copied: '已复制',
+    gotIt: '知道了',
+    close: '关闭',
+  },
+})

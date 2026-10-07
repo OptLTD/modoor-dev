@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Wiki · Modoor{% endblock %}
+{% block content %}
+  <h1>Wiki</h1>
+  <p class="meta">{{ count }} pages · <a class="btn" href="/wiki/new">New page</a></p>
+  <table>
+    <thead>
+      <tr><th>Slug</th><th>Title</th><th>Updated</th><th></th></tr>
+    </thead>
+    <tbody>
+      {% for p in pages %}
+      <tr>
+        <td><a href="/wiki/{{ p.slug }}"><code>{{ p.slug }}</code></a></td>
+        <td>{{ p.title }}</td>
+        <td class="meta">{{ p.updated_at }}</td>
+        <td>
+          <a href="/wiki/{{ p.slug }}/edit">Edit</a>
+          <form method="post" action="/wiki/{{ p.slug }}/delete" class="inline" onsubmit="return confirm('Delete {{ p.slug }}?');">
+            <button type="submit" class="danger">Delete</button>
+          </form>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="4">暂无页面</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% endblock %}

@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}登录 · Modoor{% endblock %}
+{% block body_class %}page-login{% endblock %}
+{% block shell %}{% endblock %}
+{% block content %}
+<div class="login-wrap">
+  <div class="login-brand">
+    <img src="/logo.png?v=1" alt="" width="40" height="40" />
+    <h1>Modoor</h1>
+  </div>
+  {% if error %}<div class="error">{{ error }}</div>{% endif %}
+  <form method="post" action="/login" class="login-form">
+    {% if next %}<input type="hidden" name="next" value="{{ next }}" />{% endif %}
+    <label>用户名
+      <input name="username" value="{{ username or 'admin' }}" required autocomplete="username" />
+    </label>
+    <label>密码
+      <input type="password" name="password" required autocomplete="current-password" />
+    </label>
+    <button type="submit">登录</button>
+  </form>
+  <p class="meta login-hint">默认账号 admin / admin123</p>
+</div>
+{% endblock %}

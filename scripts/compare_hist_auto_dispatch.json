@@ -1,0 +1,1493 @@
+{
+  "batch_id": "BAT00005",
+  "dates": [
+    "20260911"
+  ],
+  "order_count": 125,
+  "skipped": [],
+  "missing_geo": [],
+  "hist": {
+    "trips": 42,
+    "vehicles": 25,
+    "orders": 125,
+    "km": 8556.33,
+    "empty_km": 3280.11,
+    "empty_rate": 0.3834,
+    "liters": 1171631.8,
+    "avg_stops": 2.98,
+    "max_stops": 4,
+    "trips_1stop": 0,
+    "trips_2stop": 5,
+    "trips_3plus": 37,
+    "unique_stops_avg": 2.19,
+    "trips_4stop": 4
+  },
+  "shortest": {
+    "trips": 48,
+    "vehicles": 24,
+    "orders": 125,
+    "km": 8332.52,
+    "empty_km": 2298.51,
+    "empty_rate": 0.2758,
+    "liters": 1171631.9,
+    "avg_stops": 2.6,
+    "max_stops": 3,
+    "trips_1stop": 8,
+    "trips_2stop": 3,
+    "trips_3plus": 37,
+    "unique_stops_avg": 1.98,
+    "same_plate_orders": 3
+  },
+  "fill": {
+    "trips": 48,
+    "vehicles": 24,
+    "orders": 125,
+    "km": 8344.98,
+    "empty_km": 2360.04,
+    "empty_rate": 0.2828,
+    "liters": 1171631.8,
+    "avg_stops": 2.6,
+    "max_stops": 3,
+    "trips_1stop": 8,
+    "trips_2stop": 3,
+    "trips_3plus": 37
+  },
+  "manual": {
+    "trips": 125,
+    "vehicles": 30,
+    "orders": 125,
+    "km": 15513.2,
+    "empty_km": 6063.5,
+    "empty_rate": 0.3909,
+    "liters": 1171631.7,
+    "avg_stops": 1.0,
+    "max_stops": 1,
+    "trips_1stop": 125,
+    "trips_2stop": 0,
+    "trips_3plus": 0
+  },
+  "assignment": {
+    "same_plate": 3,
+    "changed_plate": 122,
+    "changed_group": 98,
+    "only_hist": 0,
+    "only_auto": 0,
+    "match_rate": 0.024
+  },
+  "changed_plate_rows": [
+    {
+      "order_id": "FL-SDL-20260911-苏GXE02挂-1-1",
+      "station": "东海中华北路加油站",
+      "hist_plate": "苏GB1895",
+      "auto_plate": "苏GB2875",
+      "hist_depot": "盛虹石化地付库",
+      "auto_depot": "盛虹石化地付库"
+    },
+    {
+      "order_id": "FL-SDL-20260911-苏GXE02挂-1-2",
+      "station": "东海城南加油站",
+      "hist_plate": "苏GB1895",
+      "auto_plate": "苏GM7692",
+      "hist_depot": "盛虹石化地付库",
+      "auto_depot": "盛虹石化地付库"
+    },
+    {
+      "order_id": "FL-SDL-20260911-苏GXE02挂-1-3",
+      "station": "东海西双湖加油站",
+      "hist_plate": "苏GB1895",
+      "auto_plate": "苏GM7692",
+      "hist_depot": "盛虹石化地付库",
+      "auto_depot": "盛虹石化地付库"
+    },
+    {
+      "order_id": "FL-SDL-20260911-苏GXE02挂-2-1",
+      "station": "环球站",
+      "hist_plate": "苏GB1895",
+      "auto_plate": "苏GM8581",
+      "hist_depot": "盛虹石化地付库",
+      "auto_depot": "盛虹石化地付库"
+    },
+    {
+      "order_id": "FL-SDL-20260911-苏GXE02挂-2-3",
+      "station": "东辛一站",
+      "hist_plate": "苏GB1895",
+      "auto_plate": "苏GT5562",
+      "hist_depot": "盛虹石化地付库",
+      "auto_depot": "盛虹石化地付库"
+    },
+    {
+      "order_id": "FL-SDL-20260911-苏GYR59挂-1-1",
+      "station": "灌云加油站（母站）",
+      "hist_plate": "苏GB2875",
+      "auto_plate": "苏GK7853",
+      "hist_depot": "江苏上冈油库",
+      "auto_depot": "江苏上冈油库"
+    },
+    {
+      "order_id": "FL-SDL-20260911-苏GYR59挂-1-2",
+      "station": "灌云加油站（母站）",
+      "hist_plate": "苏GB2875",
+      "auto_plate": "苏GK7853",
+      "hist_depot": "江苏上冈油库",
+      "auto_depot": "江苏上冈油库"
+    },
+    {
+      "order_id": "FL-SDL-20260911-苏GYR59挂-1-3",
+      "station": "灌云加油站（母站）",
+      "hist_plate": "苏GB2875",
+      "auto_plate": "苏GJ2825",
+      "hist_depot": "江苏上冈油库",
+      "auto_depot": "江苏上冈油库"
+    },
+    {
+      "order_id": "FL-SDL-20260911-苏GYR59挂-2-1",
+      "station": "连云港灌云孟陬路加油站",
+      "hist_plate": "苏GB2875",
+      "auto_plate": "苏GT5562",
+      "hist_depot": "盛虹石化地付库",
+      "auto_depot": "盛虹石化地付库"
+    },
+    {
+      "order_id": "FL-SDL-20260911-苏GYR59挂-2-2",
+      "station": "灌云燕北加油站",
+      "hist_plate": "苏GB2875",
+      "auto_plate": "苏GT5562",
+      "hist_depot": "盛虹石化地付库",
+      "auto_depot": "盛虹石化地付库"
+    },
+    {
+      "order_id": "FL-SDL-20260911-苏GYR59挂-2-3",
+      "station": "灌云燕北加油站",
+      "hist_plate": "苏GB2875",
+      "auto_plate": "苏GT5562",
+      "hist_depot": "盛虹石化地付库",
+      "auto_depot": "盛虹石化地付库"
+    },
+    {
+      "order_id": "FL-SDL-20260911-苏GCM30挂-1-1",
+      "station": "浦南加油站（子站）",
+      "hist_plate": "苏GG3192",
+      "auto_plate": "苏GK5837",
+      "hist_depot": "江苏齐湖油库",
+      "auto_depot": "江苏齐湖油库"
+    },
+    {
+      "order_id": "FL-SDL-20260911-苏GCM30挂-1-2",
+      "station": "浦南加油站（母站）",
+      "hist_plate": "苏GG3192",
+      "auto_plate": "苏GK5837",
+      "hist_depot": "江苏齐湖油库",
+      "auto_depot": "江苏齐湖油库"
+    },
+    {
+      "order_id": "FL-SDL-20260911-苏GCM30挂-1-3",
+      "station": "浦南加油站（母站）",
+      "hist_plate": "苏GG3192",
+      "auto_plate": "苏GK5837",
+      "hist_depot": "江苏齐湖油库",
+      "auto_depot": "江苏齐湖油库"
+    },
+    {
+      "order_id": "FL-SDL-20260911-苏GSA75挂-1-1",
+      "station": "东海中华北路加油站",
+      "hist_plate": "苏GH6065",
+      "auto_plate": "苏GW1222",
+      "hist_depot": "江苏新海地付库",
+      "auto_depot": "江苏新海地付库"
+    },
+    {
+      "order_id": "FL-SDL-20260911-苏GSA75挂-2-1",
+      "station": "盐河南路",
+      "hist_plate": "苏GH6065",
+      "auto_plate": "苏GG3192",
+      "hist_depot": "盛虹石化地付库",
+      "auto_depot": "盛虹石化地付库"
+    },
+    {
+      "order_id": "FL-SDL-20260911-苏GSA75挂-2-2",
+      "station": "盐河南路",
+      "hist_plate": "苏GH6065",
+      "auto_plate": "苏GT5281",
+      "hist_depot": "盛虹石化地付库",
+      "auto_depot": "盛虹石化地付库"
+    },
+    {
+      "order_id": "FL-SDL-20260911-苏GSA75挂-2-3",
+      "station": "连云港杏坛加油站",
+      "hist_plate": "苏GH6065",
+      "auto_plate": "苏GM8581",
+      "hist_depot": "盛虹石化地付库",
+      "auto_depot": "盛虹石化地付库"
+    },
+    {
+      "order_id": "FL-SDL-20260911-苏GKU92挂-1-1",
+      "station": "市区港口中云加油站",
+      "hist_plate": "苏GJ2825",
+      "auto_plate": "苏GB1895",
+      "hist_depot": "盛虹石化地付库",
+      "auto_depot": "盛虹石化地付库"
+    },
+    {
+      "order_id": "FL-SDL-20260911-苏GKU92挂-1-2",
+      "station": "市区港口宿城加油站",
+      "hist_plate": "苏GJ2825",
+      "auto_plate": "苏GB1895",
+      "hist_depot": "盛虹石化地付库",
+      "auto_depot": "盛虹石化地付库"
+    },
+    {
+      "order_id": "FL-SDL-20260911-苏GKU92挂-1-3",
+      "station": "市区港口花果山北路加油站",
+      "hist_plate": "苏GJ2825",
+      "auto_plate": "苏GM8581",
+      "hist_depot": "盛虹石化地付库",
+      "auto_depot": "盛虹石化地付库"
+    },
+    {
+      "order_id": "FL-SDL-20260911-苏GKU92挂-2-1",
+      "station": "东海城北加油站",
+      "hist_plate": "苏GJ2825",
+      "auto_plate": "苏GX2680",
+      "hist_depot": "盛虹石化地付库",
+      "auto_depot": "盛虹石化地付库"
+    },
+    {
+      "order_id": "FL-SDL-20260911-苏GKU92挂-2-2",
+      "station": "东海城南加油站",
+      "hist_plate": "苏GJ2825",
+      "auto_plate": "苏GM7692",
+      "hist_depot": "盛虹石化地付库",
+      "auto_depot": "盛虹石化地付库"
+    },
+    {
+      "order_id": "FL-SDL-20260911-苏GKU92挂-2-3",
+      "station": "东海西双湖加油站",
+      "hist_plate": "苏GJ2825",
+      "auto_plate": "苏GB2875",
+      "hist_depot": "盛虹石化地付库",
+      "auto_depot": "盛虹石化地付库"
+    },
+    {
+      "order_id": "FL-SDL-20260911-苏GAV77挂-1-1",
+      "station": "浦南加油站（母站）",
+      "hist_plate": "苏GK5837",
+      "auto_plate": "苏GL2955",
+      "hist_depot": "江苏上冈油库",
+      "auto_depot": "江苏上冈油库"
+    },
+    {
+      "order_id": "FL-SDL-20260911-苏GAV77挂-1-2",
+      "station": "浦南加油站（母站）",
+      "hist_plate": "苏GK5837",
+      "auto_plate": "苏GL2955",
+      "hist_depot": "江苏上冈油库",
+      "auto_depot": "江苏上冈油库"
+    },
+    {
+      "order_id": "FL-SDL-20260911-苏GAV77挂-1-3",
+      "station": "浦南加油站（母站）",
+      "hist_plate": "苏GK5837",
+      "auto_plate": "苏GL2955",
+      "hist_depot": "江苏上冈油库",
+      "auto_depot": "江苏上冈油库"
+    },
+    {
+      "order_id": "FL-SDL-20260911-苏GAV77挂-2-1",
+      "station": "浦南加油站（子站）",
+      "hist_plate": "苏GK5837",
+      "auto_plate": "苏GX2680",
+      "hist_depot": "盛虹石化地付库",
+      "auto_depot": "盛虹石化地付库"
+    },
+    {
+      "order_id": "FL-SDL-20260911-苏GAV77挂-2-2",
+      "station": "浦南加油站（子站）",
+      "hist_plate": "苏GK5837",
+      "auto_plate": "苏GX2680",
+      "hist_depot": "盛虹石化地付库",
+      "auto_depot": "盛虹石化地付库"
+    },
+    {
+      "order_id": "FL-SDL-20260911-苏GAV77挂-2-3",
+      "station": "浦南加油站（子站）",
+      "hist_plate": "苏GK5837",
+      "auto_plate": "苏GX2680",
+      "hist_depot": "盛虹石化地付库",
+      "auto_depot": "盛虹石化地付库"
+    },
+    {
+      "order_id": "FL-SDL-20260911-苏GGN76挂-1-1",
+      "station": "环球站",
+      "hist_plate": "苏GK7853",
+      "auto_plate": "苏GY5386",
+      "hist_depot": "盛虹石化地付库",
+      "auto_depot": "盛虹石化地付库"
+    },
+    {
+      "order_id": "FL-SDL-20260911-苏GGN76挂-1-2",
+      "station": "苍梧站",
+      "hist_plate": "苏GK7853",
+      "auto_plate": "苏GG3192",
+      "hist_depot": "盛虹石化地付库",
+      "auto_depot": "盛虹石化地付库"
+    },
+    {
+      "order_id": "FL-SDL-20260911-苏GGN76挂-1-3",
+      "station": "连海站",
+      "hist_plate": "苏GK7853",
+      "auto_plate": "苏GG3192",
+      "hist_depot": "盛虹石化地付库",
+      "auto_depot": "盛虹石化地付库"
+    },
+    {
+      "order_id": "FL-SDL-20260911-苏GGN76挂-2-1",
+      "station": "许庄站",
+      "hist_plate": "苏GK7853",
+      "auto_plate": "苏GT5281",
+      "hist_depot": "盛虹石化地付库",
+      "auto_depot": "盛虹石化地付库"
+    },
+    {
+      "order_id": "FL-SDL-20260911-苏GGN76挂-2-2",
+      "station": "华侨站",
+      "hist_plate": "苏GK7853",
+      "auto_plate": "苏GY5386",
+      "hist_depot": "盛虹石化地付库",
+      "auto_depot": "盛虹石化地付库"
+    },
+    {
+      "order_id": "FL-SDL-20260911-苏GGN76挂-2-3",
+      "station": "苍梧站",
+      "hist_plate": "苏GK7853",
+      "auto_plate": "苏GN5555",
+      "hist_depot": "盛虹石化地付库",
+      "auto_depot": "盛虹石化地付库"
+    },
+    {
+      "order_id": "FL-SDL-20260911-苏GQT18挂-1-1",
+      "station": "赣马加油站（子站）",
+      "hist_plate": "苏GK8885",
+      "auto_plate": "苏GR7268",
+      "hist_depot": "江苏齐湖油库",
+      "auto_depot": "江苏齐湖油库"
+    },
+    {
+      "order_id": "FL-SDL-20260911-苏GQT18挂-1-2",
+      "station": "赣马加油站（母站）",
+      "hist_plate": "苏GK8885",
+      "auto_plate": "苏GR7268",
+      "hist_depot": "江苏齐湖油库",
+      "auto_depot": "江苏齐湖油库"
+    },
+    {
+      "order_id": "FL-SDL-20260911-苏GQT18挂-1-3",
+      "station": "赣马加油站（母站）",
+      "hist_plate": "苏GK8885",
+      "auto_plate": "苏GR7268",
+      "hist_depot": "江苏齐湖油库",
+      "auto_depot": "江苏齐湖油库"
+    },
+    {
+      "order_id": "FL-SDL-20260911-苏GL1893-1-1",
+      "station": "华侨站",
+      "hist_plate": "苏GL1893",
+      "auto_plate": "苏GL2955",
+      "hist_depot": "江苏上冈油库",
+      "auto_depot": "江苏上冈油库"
+    }
+  ],
+  "plate_rows": [
+    {
+      "plate": "苏GB1895",
+      "hist_trips": 2,
+      "auto_trips": 2,
+      "hist_stops": 6,
+      "auto_stops": 6,
+      "hist_km": 349.4,
+      "auto_km": 157.0,
+      "hist_route": "东海中华北路加油站 / 东海城南加油站 / 东海西双湖加油站 | 环球站 / 市区港口开发区加油站 / 东辛一站",
+      "auto_route": "市区港口宿城加油站 / 市区港口连福加油站 / 市区港口连福加油站 | 市区港口中云加油站 / 市区港口开发区加油站 / 市区港口金球加油站"
+    },
+    {
+      "plate": "苏GB2875",
+      "hist_trips": 2,
+      "auto_trips": 2,
+      "hist_stops": 6,
+      "auto_stops": 6,
+      "hist_km": 437.7,
+      "auto_km": 331.8,
+      "hist_route": "灌云加油站（母站） / 灌云加油站（母站） / 灌云加油站（母站） | 连云港灌云孟陬路加油站 / 灌云燕北加油站 / 灌云燕北加油站",
+      "auto_route": "东海房南加油站 / 曹林加油站（子站） / 曹林加油站（子站） | 东海城北加油站 / 东海中华北路加油站 / 东海西双湖加油站"
+    },
+    {
+      "plate": "苏GG3192",
+      "hist_trips": 1,
+      "auto_trips": 2,
+      "hist_stops": 3,
+      "auto_stops": 6,
+      "hist_km": 274.3,
+      "auto_km": 173.6,
+      "hist_route": "浦南加油站（子站） / 浦南加油站（母站） / 浦南加油站（母站）",
+      "auto_route": "连云港杏坛加油站 / 连海站 / 盐河南路 | 苍梧站 / 连海站 / 华侨站"
+    },
+    {
+      "plate": "苏GH6065",
+      "hist_trips": 2,
+      "auto_trips": 2,
+      "hist_stops": 6,
+      "auto_stops": 3,
+      "hist_km": 339.6,
+      "auto_km": 385.0,
+      "hist_route": "东海中华北路加油站 / 东海洪庄加油站 / 东海石湖加油站 | 盐河南路 / 盐河南路 / 连云港杏坛加油站",
+      "auto_route": "东海石湖加油站 / 东海洪庄加油站 | 东海洪庄加油站"
+    },
+    {
+      "plate": "苏GJ2825",
+      "hist_trips": 2,
+      "auto_trips": 2,
+      "hist_stops": 6,
+      "auto_stops": 4,
+      "hist_km": 298.4,
+      "auto_km": 422.4,
+      "hist_route": "市区港口中云加油站 / 市区港口宿城加油站 / 市区港口花果山北路加油站 | 东海城北加油站 / 东海城南加油站 / 东海西双湖加油站",
+      "auto_route": "灌南五队加油站 | 灌云加油站（母站） / 连云港鲁河加油站 / 连云港鲁河加油站"
+    },
+    {
+      "plate": "苏GK5837",
+      "hist_trips": 2,
+      "auto_trips": 2,
+      "hist_stops": 6,
+      "auto_stops": 6,
+      "hist_km": 482.4,
+      "auto_km": 559.0,
+      "hist_route": "浦南加油站（母站） / 浦南加油站（母站） / 浦南加油站（母站） | 浦南加油站（子站） / 浦南加油站（子站） / 浦南加油站（子站）",
+      "auto_route": "浦南加油站（子站） / 浦南加油站（母站） / 浦南加油站（母站） | 沙河加油站（母站) / 沙河加油站（母站) / 沙河加油站（子站)"
+    },
+    {
+      "plate": "苏GK7853",
+      "hist_trips": 2,
+      "auto_trips": 2,
+      "hist_stops": 6,
+      "auto_stops": 4,
+      "hist_km": 231.3,
+      "auto_km": 423.8,
+      "hist_route": "环球站 / 苍梧站 / 连海站 | 许庄站 / 华侨站 / 苍梧站",
+      "auto_route": "灌南华连加油站 / 灌云加油站（母站） / 灌云加油站（母站） | 灌南五队加油站"
+    },
+    {
+      "plate": "苏GK8885",
+      "hist_trips": 1,
+      "auto_trips": 2,
+      "hist_stops": 3,
+      "auto_stops": 6,
+      "hist_km": 326.4,
+      "auto_km": 321.0,
+      "hist_route": "赣马加油站（子站） / 赣马加油站（母站） / 赣马加油站（母站）",
+      "auto_route": "连云港灌南服务区西站 / 连云港灌南服务区东站 / 连云港灌南服务区西站 | 连云港灌南服务区西站 / 连云港灌南服务区西站 / 连云港灌南服务区西站"
+    },
+    {
+      "plate": "苏GL1893",
+      "hist_trips": 1,
+      "auto_trips": 0,
+      "hist_stops": 2,
+      "auto_stops": 0,
+      "hist_km": 302.1,
+      "auto_km": 0,
+      "hist_route": "华侨站 / 东辛一站",
+      "auto_route": ""
+    },
+    {
+      "plate": "苏GL2955",
+      "hist_trips": 2,
+      "auto_trips": 2,
+      "hist_stops": 6,
+      "auto_stops": 5,
+      "hist_km": 317.6,
+      "auto_km": 603.9,
+      "hist_route": "东海晶城加油站 / 东海机场路加油站 / 东海海陵加油站 | 苍梧站 / 连海站 / 连云港厚德加油站",
+      "auto_route": "东辛一站 / 华侨站 / 浦南加油站（母站） | 浦南加油站（母站） / 浦南加油站（母站）"
+    },
+    {
+      "plate": "苏GL6586",
+      "hist_trips": 1,
+      "auto_trips": 2,
+      "hist_stops": 4,
+      "auto_stops": 6,
+      "hist_km": 300.3,
+      "auto_km": 431.0,
+      "hist_route": "连云港灌云孟陬路加油站 / 灌南五队加油站 / 灌云圩丰加油站 / 灌南五队加油站",
+      "auto_route": "赣马加油站（子站） / 赣马加油站（子站） / 赣马加油站（子站） | 赣榆金海湾加油站 / 赣榆金海湾加油站 / 赣榆金海湾加油站"
+    },
+    {
+      "plate": "苏GM5899",
+      "hist_trips": 2,
+      "auto_trips": 0,
+      "hist_stops": 4,
+      "auto_stops": 0,
+      "hist_km": 232.2,
+      "auto_km": 0,
+      "hist_route": "环球站 / 市区港口连福加油站 | 市区港口金球加油站 / 连云港学院路便利加油站",
+      "auto_route": ""
+    },
+    {
+      "plate": "苏GM7692",
+      "hist_trips": 2,
+      "auto_trips": 2,
+      "hist_stops": 6,
+      "auto_stops": 5,
+      "hist_km": 389.8,
+      "auto_km": 318.9,
+      "hist_route": "沙河加油站（母站) / 沙河加油站（母站) / 沙河加油站（母站) | 赣榆班庄加油站 / 赣榆班庄加油站 / 赣榆班庄加油站",
+      "auto_route": "东海城南加油站 / 东海城南加油站 / 东海城南加油站 | 曹林加油站（母站） / 东海西双湖加油站"
+    },
+    {
+      "plate": "苏GM8581",
+      "hist_trips": 0,
+      "auto_trips": 2,
+      "hist_stops": 0,
+      "auto_stops": 6,
+      "hist_km": 0,
+      "auto_km": 188.1,
+      "hist_route": "",
+      "auto_route": "市区港口金球加油站 / 连云港杏坛加油站 / 连云港厚德加油站 | 市区港口临港加油站 / 市区港口花果山北路加油站 / 环球站"
+    },
+    {
+      "plate": "苏GN5555",
+      "hist_trips": 0,
+      "auto_trips": 2,
+      "hist_stops": 0,
+      "auto_stops": 6,
+      "hist_km": 0,
+      "auto_km": 176.7,
+      "hist_route": "",
+      "auto_route": "市区港口临港加油站 / 苍梧站 / 苍梧站 | 南城站 / 许庄站 / 许庄站"
+    },
+    {
+      "plate": "苏GN6251",
+      "hist_trips": 2,
+      "auto_trips": 2,
+      "hist_stops": 6,
+      "auto_stops": 6,
+      "hist_km": 401.0,
+      "auto_km": 460.9,
+      "hist_route": "市区港口临港加油站 / 市区港口临港加油站 / 东海房南加油站 | 东海双东站代库点 / 东海房南加油站 / 东海房南加油站",
+      "auto_route": "灌云胜利路加油站 / 连云港振兴北路加油站(代库点) / 连云港振兴北路加油站(代库点) | 连云港灌云孟陬路加油站 / 连云港灌南公兴加油站 / 连云港灌南公兴加油站"
+    },
+    {
+      "plate": "苏GQ0105",
+      "hist_trips": 1,
+      "auto_trips": 2,
+      "hist_stops": 3,
+      "auto_stops": 6,
+      "hist_km": 241.2,
+      "auto_km": 398.8,
+      "hist_route": "赣榆金海湾加油站 / 赣榆金海湾加油站 / 赣榆金海湾加油站",
+      "auto_route": "灌南东郊加油站 / 灌南东郊加油站 / 灌云新世纪加油站 | 灌云城南加油站 / 灌云城南加油站 / 灌云胜利路加油站"
+    },
+    {
+      "plate": "苏GQ1381",
+      "hist_trips": 1,
+      "auto_trips": 2,
+      "hist_stops": 3,
+      "auto_stops": 2,
+      "hist_km": 93.0,
+      "auto_km": 312.7,
+      "hist_route": "连云港港口云湖加油加气站 / 环球站 / 华侨站",
+      "auto_route": "灌南人民路站 | 灌南人民路站"
+    },
+    {
+      "plate": "苏GR7268",
+      "hist_trips": 2,
+      "auto_trips": 2,
+      "hist_stops": 6,
+      "auto_stops": 4,
+      "hist_km": 565.2,
+      "auto_km": 644.0,
+      "hist_route": "连云港振兴北路加油站(代库点) / 连云港振兴北路加油站(代库点) / 连云港灌云孟陬路加油站 | 连云港鲁河加油站 / 连云港鲁河加油站 / 灌南华连加油站",
+      "auto_route": "灌云城北加油站 / 赣马加油站（子站） / 赣马加油站（母站） | 赣马加油站（母站）"
+    },
+    {
+      "plate": "苏GT5281",
+      "hist_trips": 2,
+      "auto_trips": 2,
+      "hist_stops": 6,
+      "auto_stops": 6,
+      "hist_km": 291.5,
+      "auto_km": 170.2,
+      "hist_route": "连云港杏坛加油站 / 南城站 / 许庄站 | 东海城北加油站 / 东海城南加油站 / 东海羽山加油站",
+      "auto_route": "连云港学院路便利加油站 / 许庄站 / 盐河南路 | 连云港学院路便利加油站 / 连云港学院路便利加油站 / 盐河南路"
+    },
+    {
+      "plate": "苏GT5562",
+      "hist_trips": 2,
+      "auto_trips": 2,
+      "hist_stops": 6,
+      "auto_stops": 6,
+      "hist_km": 612.9,
+      "auto_km": 156.0,
+      "hist_route": "灌云城北加油站 / 灌云城南加油站 / 灌云城南加油站 | 灌云胜利路加油站 / 灌云新世纪加油站 / 灌云胜利路加油站",
+      "auto_route": "灌云燕北加油站 / 灌云燕北加油站 / 连云港灌云孟陬路加油站 | 连云港港口云湖加油加气站 / 东辛一站 / 连云港板浦加油站"
+    },
+    {
+      "plate": "苏GU5991",
+      "hist_trips": 1,
+      "auto_trips": 2,
+      "hist_stops": 4,
+      "auto_stops": 6,
+      "hist_km": 348.8,
+      "auto_km": 301.4,
+      "hist_route": "连云港灌南公兴加油站 / 连云港灌南服务区西站 / 连云港灌南公兴加油站 / 连云港灌南服务区东站",
+      "auto_route": "东海双东站代库点 / 东海房南加油站 / 东海房南加油站 | 沙河加油站（母站) / 沙河加油站（母站) / 沙河加油站（母站)"
+    },
+    {
+      "plate": "苏GW1222",
+      "hist_trips": 2,
+      "auto_trips": 2,
+      "hist_stops": 8,
+      "auto_stops": 6,
+      "hist_km": 413.4,
+      "auto_km": 332.9,
+      "hist_route": "灌南东郊加油站 / 灌南人民路站 / 灌南东郊加油站 / 灌南人民路站 | 连云港灌南服务区西站 / 连云港灌南服务区西站 / 连云港灌南服务区西站 / 连云港灌南服务区西站",
+      "auto_route": "东海机场路加油站 / 东海晶城加油站 / 东海海陵加油站 | 东海中华北路加油站 / 曹林加油站（母站） / 曹林加油站（子站）"
+    },
+    {
+      "plate": "苏GX2680",
+      "hist_trips": 2,
+      "auto_trips": 2,
+      "hist_stops": 6,
+      "auto_stops": 6,
+      "hist_km": 433.5,
+      "auto_km": 289.2,
+      "hist_route": "赣马加油站（子站） / 赣马加油站（子站） / 赣马加油站（子站） | 曹林加油站（子站） / 曹林加油站（子站） / 曹林加油站（母站）",
+      "auto_route": "环球站 / 赣榆班庄加油站 / 东海城北加油站 | 浦南加油站（子站） / 浦南加油站（子站） / 浦南加油站（子站）"
+    },
+    {
+      "plate": "苏GY3628",
+      "hist_trips": 2,
+      "auto_trips": 2,
+      "hist_stops": 6,
+      "auto_stops": 2,
+      "hist_km": 349.4,
+      "auto_km": 456.0,
+      "hist_route": "东海洪庄加油站 / 曹林加油站（子站） / 曹林加油站（母站） | 许庄站 / 连云港板浦加油站 / 盐河南路",
+      "auto_route": "连云港灌云孟陬路加油站 | 灌云圩丰加油站"
+    },
+    {
+      "plate": "苏GY5386",
+      "hist_trips": 1,
+      "auto_trips": 2,
+      "hist_stops": 3,
+      "auto_stops": 6,
+      "hist_km": 297.6,
+      "auto_km": 318.1,
+      "hist_route": "沙河加油站（子站) / 沙河加油站（母站) / 沙河加油站（母站)",
+      "auto_route": "环球站 / 华侨站 / 东海羽山加油站 | 环球站 / 赣榆班庄加油站 / 赣榆班庄加油站"
+    },
+    {
+      "plate": "苏GZ7811",
+      "hist_trips": 2,
+      "auto_trips": 0,
+      "hist_stops": 4,
+      "auto_stops": 0,
+      "hist_km": 227.4,
+      "auto_km": 0,
+      "hist_route": "连云港学院路便利加油站 / 市区港口连福加油站 | 市区港口金球加油站 / 连云港学院路便利加油站",
+      "auto_route": ""
+    }
+  ],
+  "hist_depots": {
+    "盛虹石化地付库": 21,
+    "江苏齐湖油库": 9,
+    "江苏上冈油库": 5,
+    "江苏新安油库": 4,
+    "江苏新海地付库": 3
+  },
+  "auto_depots": {
+    "盛虹石化地付库": 20,
+    "江苏齐湖油库": 12,
+    "江苏上冈油库": 8,
+    "江苏新安油库": 4,
+    "江苏新海地付库": 4
+  },
+  "hist_samples": [
+    {
+      "plate": "苏GB1895",
+      "trip_no": 1,
+      "depot": "盛虹石化地付库",
+      "stations": [
+        "东海中华北路加油站",
+        "东海城南加油站",
+        "东海西双湖加油站"
+      ],
+      "order_ids": [
+        "FL-SDL-20260911-苏GXE02挂-1-1",
+        "FL-SDL-20260911-苏GXE02挂-1-2",
+        "FL-SDL-20260911-苏GXE02挂-1-3"
+      ],
+      "stops": 3,
+      "liters": 29769.0,
+      "km": 209.28,
+      "empty_km": 42.58,
+      "empty_rate": 0.2035,
+      "route": "和海停车场 → 盛虹石化地付库 → 东海中华北路加油站 → 东海城南加油站 → 东海西双湖加油站 → 盛虹石化地付库",
+      "trailer": "苏GXE02挂"
+    },
+    {
+      "plate": "苏GB1895",
+      "trip_no": 2,
+      "depot": "盛虹石化地付库",
+      "stations": [
+        "环球站",
+        "市区港口开发区加油站",
+        "东辛一站"
+      ],
+      "order_ids": [
+        "FL-SDL-20260911-苏GXE02挂-2-1",
+        "FL-SDL-20260911-苏GXE02挂-2-2",
+        "FL-SDL-20260911-苏GXE02挂-2-3"
+      ],
+      "stops": 3,
+      "liters": 0.0,
+      "km": 140.07,
+      "empty_km": 64.81,
+      "empty_rate": 0.4627,
+      "route": "和海停车场 → 盛虹石化地付库 → 环球站 → 市区港口开发区加油站 → 东辛一站 → 和海停车场",
+      "trailer": "苏GXE02挂"
+    },
+    {
+      "plate": "苏GB2875",
+      "trip_no": 1,
+      "depot": "江苏上冈油库",
+      "stations": [
+        "灌云加油站（母站）",
+        "灌云加油站（母站）",
+        "灌云加油站（母站）"
+      ],
+      "order_ids": [
+        "FL-SDL-20260911-苏GYR59挂-1-1",
+        "FL-SDL-20260911-苏GYR59挂-1-2",
+        "FL-SDL-20260911-苏GYR59挂-1-3"
+      ],
+      "stops": 3,
+      "liters": 38103.0,
+      "km": 295.34,
+      "empty_km": 86.25,
+      "empty_rate": 0.292,
+      "route": "沿海停车场 → 江苏上冈油库 → 灌云加油站（母站） → 灌云加油站（母站） → 灌云加油站（母站） → 江苏上冈油库",
+      "trailer": "苏GYR59挂"
+    },
+    {
+      "plate": "苏GB2875",
+      "trip_no": 2,
+      "depot": "盛虹石化地付库",
+      "stations": [
+        "连云港灌云孟陬路加油站",
+        "灌云燕北加油站",
+        "灌云燕北加油站"
+      ],
+      "order_ids": [
+        "FL-SDL-20260911-苏GYR59挂-2-1",
+        "FL-SDL-20260911-苏GYR59挂-2-2",
+        "FL-SDL-20260911-苏GYR59挂-2-3"
+      ],
+      "stops": 3,
+      "liters": 38692.0,
+      "km": 142.37,
+      "empty_km": 98.34,
+      "empty_rate": 0.6908,
+      "route": "和海停车场 → 盛虹石化地付库 → 连云港灌云孟陬路加油站 → 灌云燕北加油站 → 灌云燕北加油站 → 和海停车场",
+      "trailer": "苏GYR59挂"
+    },
+    {
+      "plate": "苏GG3192",
+      "trip_no": 1,
+      "depot": "江苏齐湖油库",
+      "stations": [
+        "浦南加油站（子站）",
+        "浦南加油站（母站）",
+        "浦南加油站（母站）"
+      ],
+      "order_ids": [
+        "FL-SDL-20260911-苏GCM30挂-1-1",
+        "FL-SDL-20260911-苏GCM30挂-1-2",
+        "FL-SDL-20260911-苏GCM30挂-1-3"
+      ],
+      "stops": 3,
+      "liters": 38774.7,
+      "km": 274.26,
+      "empty_km": 143.53,
+      "empty_rate": 0.5233,
+      "route": "沿海停车场 → 江苏齐湖油库 → 浦南加油站（子站） → 浦南加油站（母站） → 浦南加油站（母站） → 沿海停车场",
+      "trailer": "苏GCM30挂"
+    },
+    {
+      "plate": "苏GH6065",
+      "trip_no": 1,
+      "depot": "江苏新海地付库",
+      "stations": [
+        "东海中华北路加油站",
+        "东海洪庄加油站",
+        "东海石湖加油站"
+      ],
+      "order_ids": [
+        "FL-SDL-20260911-苏GSA75挂-1-1",
+        "FL-SDL-20260911-苏GSA75挂-1-2",
+        "FL-SDL-20260911-苏GSA75挂-1-3"
+      ],
+      "stops": 3,
+      "liters": 40226.0,
+      "km": 242.1,
+      "empty_km": 55.76,
+      "empty_rate": 0.2303,
+      "route": "和海停车场 → 江苏新海地付库 → 东海中华北路加油站 → 东海洪庄加油站 → 东海石湖加油站 → 江苏新海地付库",
+      "trailer": "苏GSA75挂"
+    },
+    {
+      "plate": "苏GH6065",
+      "trip_no": 2,
+      "depot": "盛虹石化地付库",
+      "stations": [
+        "盐河南路",
+        "盐河南路",
+        "连云港杏坛加油站"
+      ],
+      "order_ids": [
+        "FL-SDL-20260911-苏GSA75挂-2-1",
+        "FL-SDL-20260911-苏GSA75挂-2-2",
+        "FL-SDL-20260911-苏GSA75挂-2-3"
+      ],
+      "stops": 3,
+      "liters": 0.0,
+      "km": 97.54,
+      "empty_km": 50.01,
+      "empty_rate": 0.5128,
+      "route": "和海停车场 → 盛虹石化地付库 → 盐河南路 → 盐河南路 → 连云港杏坛加油站 → 和海停车场",
+      "trailer": "苏GSA75挂"
+    },
+    {
+      "plate": "苏GJ2825",
+      "trip_no": 1,
+      "depot": "盛虹石化地付库",
+      "stations": [
+        "市区港口中云加油站",
+        "市区港口宿城加油站",
+        "市区港口花果山北路加油站"
+      ],
+      "order_ids": [
+        "FL-SDL-20260911-苏GKU92挂-1-1",
+        "FL-SDL-20260911-苏GKU92挂-1-2",
+        "FL-SDL-20260911-苏GKU92挂-1-3"
+      ],
+      "stops": 3,
+      "liters": 34728.0,
+      "km": 134.09,
+      "empty_km": 42.58,
+      "empty_rate": 0.3175,
+      "route": "和海停车场 → 盛虹石化地付库 → 市区港口中云加油站 → 市区港口宿城加油站 → 市区港口花果山北路加油站 → 盛虹石化地付库",
+      "trailer": "苏GKU92挂"
+    },
+    {
+      "plate": "苏GJ2825",
+      "trip_no": 2,
+      "depot": "盛虹石化地付库",
+      "stations": [
+        "东海城北加油站",
+        "东海城南加油站",
+        "东海西双湖加油站"
+      ],
+      "order_ids": [
+        "FL-SDL-20260911-苏GKU92挂-2-1",
+        "FL-SDL-20260911-苏GKU92挂-2-2",
+        "FL-SDL-20260911-苏GKU92挂-2-3"
+      ],
+      "stops": 3,
+      "liters": 0.0,
+      "km": 164.3,
+      "empty_km": 81.08,
+      "empty_rate": 0.4935,
+      "route": "和海停车场 → 盛虹石化地付库 → 东海城北加油站 → 东海城南加油站 → 东海西双湖加油站 → 和海停车场",
+      "trailer": "苏GKU92挂"
+    },
+    {
+      "plate": "苏GK5837",
+      "trip_no": 1,
+      "depot": "江苏上冈油库",
+      "stations": [
+        "浦南加油站（母站）",
+        "浦南加油站（母站）",
+        "浦南加油站（母站）"
+      ],
+      "order_ids": [
+        "FL-SDL-20260911-苏GAV77挂-1-1",
+        "FL-SDL-20260911-苏GAV77挂-1-2",
+        "FL-SDL-20260911-苏GAV77挂-1-3"
+      ],
+      "stops": 3,
+      "liters": 36001.0,
+      "km": 383.29,
+      "empty_km": 86.25,
+      "empty_rate": 0.225,
+      "route": "沿海停车场 → 江苏上冈油库 → 浦南加油站（母站） → 浦南加油站（母站） → 浦南加油站（母站） → 江苏上冈油库",
+      "trailer": "苏GAV77挂"
+    },
+    {
+      "plate": "苏GK5837",
+      "trip_no": 2,
+      "depot": "盛虹石化地付库",
+      "stations": [
+        "浦南加油站（子站）",
+        "浦南加油站（子站）",
+        "浦南加油站（子站）"
+      ],
+      "order_ids": [
+        "FL-SDL-20260911-苏GAV77挂-2-1",
+        "FL-SDL-20260911-苏GAV77挂-2-2",
+        "FL-SDL-20260911-苏GAV77挂-2-3"
+      ],
+      "stops": 3,
+      "liters": 35679.0,
+      "km": 99.14,
+      "empty_km": 49.89,
+      "empty_rate": 0.5032,
+      "route": "和海停车场 → 盛虹石化地付库 → 浦南加油站（子站） → 浦南加油站（子站） → 浦南加油站（子站） → 和海停车场",
+      "trailer": "苏GAV77挂"
+    },
+    {
+      "plate": "苏GK7853",
+      "trip_no": 1,
+      "depot": "盛虹石化地付库",
+      "stations": [
+        "环球站",
+        "苍梧站",
+        "连海站"
+      ],
+      "order_ids": [
+        "FL-SDL-20260911-苏GGN76挂-1-1",
+        "FL-SDL-20260911-苏GGN76挂-1-2",
+        "FL-SDL-20260911-苏GGN76挂-1-3"
+      ],
+      "stops": 3,
+      "liters": 34656.0,
+      "km": 133.52,
+      "empty_km": 42.58,
+      "empty_rate": 0.3189,
+      "route": "和海停车场 → 盛虹石化地付库 → 环球站 → 苍梧站 → 连海站 → 盛虹石化地付库",
+      "trailer": "苏GGN76挂"
+    },
+    {
+      "plate": "苏GK7853",
+      "trip_no": 2,
+      "depot": "盛虹石化地付库",
+      "stations": [
+        "许庄站",
+        "华侨站",
+        "苍梧站"
+      ],
+      "order_ids": [
+        "FL-SDL-20260911-苏GGN76挂-2-1",
+        "FL-SDL-20260911-苏GGN76挂-2-2",
+        "FL-SDL-20260911-苏GGN76挂-2-3"
+      ],
+      "stops": 3,
+      "liters": 0.0,
+      "km": 97.82,
+      "empty_km": 47.26,
+      "empty_rate": 0.4831,
+      "route": "和海停车场 → 盛虹石化地付库 → 许庄站 → 华侨站 → 苍梧站 → 和海停车场",
+      "trailer": "苏GGN76挂"
+    },
+    {
+      "plate": "苏GK8885",
+      "trip_no": 1,
+      "depot": "江苏齐湖油库",
+      "stations": [
+        "赣马加油站（子站）",
+        "赣马加油站（母站）",
+        "赣马加油站（母站）"
+      ],
+      "order_ids": [
+        "FL-SDL-20260911-苏GQT18挂-1-1",
+        "FL-SDL-20260911-苏GQT18挂-1-2",
+        "FL-SDL-20260911-苏GQT18挂-1-3"
+      ],
+      "stops": 3,
+      "liters": 35568.8,
+      "km": 326.37,
+      "empty_km": 168.71,
+      "empty_rate": 0.5169,
+      "route": "沿海停车场 → 江苏齐湖油库 → 赣马加油站（子站） → 赣马加油站（母站） → 赣马加油站（母站） → 沿海停车场",
+      "trailer": "苏GQT18挂"
+    },
+    {
+      "plate": "苏GL1893",
+      "trip_no": 1,
+      "depot": "江苏上冈油库",
+      "stations": [
+        "华侨站",
+        "东辛一站"
+      ],
+      "order_ids": [
+        "FL-SDL-20260911-苏GL1893-1-1",
+        "FL-SDL-20260911-苏GL1893-1-2"
+      ],
+      "stops": 2,
+      "liters": 22702.9,
+      "km": 302.11,
+      "empty_km": 136.24,
+      "empty_rate": 0.451,
+      "route": "沿海停车场 → 江苏上冈油库 → 华侨站 → 东辛一站 → 沿海停车场",
+      "trailer": "苏GL1893"
+    },
+    {
+      "plate": "苏GL2955",
+      "trip_no": 1,
+      "depot": "江苏新海地付库",
+      "stations": [
+        "东海晶城加油站",
+        "东海机场路加油站",
+        "东海海陵加油站"
+      ],
+      "order_ids": [
+        "FL-SDL-20260911-苏GDW59挂-1-1",
+        "FL-SDL-20260911-苏GDW59挂-1-2",
+        "FL-SDL-20260911-苏GDW59挂-1-3"
+      ],
+      "stops": 3,
+      "liters": 34917.0,
+      "km": 225.53,
+      "empty_km": 55.76,
+      "empty_rate": 0.2472,
+      "route": "和海停车场 → 江苏新海地付库 → 东海晶城加油站 → 东海机场路加油站 → 东海海陵加油站 → 江苏新海地付库",
+      "trailer": "苏GDW59挂"
+    },
+    {
+      "plate": "苏GL2955",
+      "trip_no": 2,
+      "depot": "盛虹石化地付库",
+      "stations": [
+        "苍梧站",
+        "连海站",
+        "连云港厚德加油站"
+      ],
+      "order_ids": [
+        "FL-SDL-20260911-苏GDW59挂-2-1",
+        "FL-SDL-20260911-苏GDW59挂-2-2",
+        "FL-SDL-20260911-苏GDW59挂-2-3"
+      ],
+      "stops": 3,
+      "liters": 0.0,
+      "km": 92.09,
+      "empty_km": 46.96,
+      "empty_rate": 0.51,
+      "route": "和海停车场 → 盛虹石化地付库 → 苍梧站 → 连海站 → 连云港厚德加油站 → 和海停车场",
+      "trailer": "苏GDW59挂"
+    },
+    {
+      "plate": "苏GL6586",
+      "trip_no": 1,
+      "depot": "江苏上冈油库",
+      "stations": [
+        "连云港灌云孟陬路加油站",
+        "灌南五队加油站",
+        "灌云圩丰加油站",
+        "灌南五队加油站"
+      ],
+      "order_ids": [
+        "FL-SDL-20260911-苏GTB22挂-1-1",
+        "FL-SDL-20260911-苏GTB22挂-1-2",
+        "FL-SDL-20260911-苏GTB22挂-1-3",
+        "FL-SDL-20260911-苏GTB22挂-1-4"
+      ],
+      "stops": 4,
+      "liters": 39556.2,
+      "km": 300.31,
+      "empty_km": 125.36,
+      "empty_rate": 0.4174,
+      "route": "沿海停车场 → 江苏上冈油库 → 连云港灌云孟陬路加油站 → 灌南五队加油站 → 灌云圩丰加油站 → 灌南五队加油站 → 沿海停车场",
+      "trailer": "苏GTB22挂"
+    }
+  ],
+  "auto_samples": [
+    {
+      "plate": "苏GU5991",
+      "vehicle_id": "VHC00010",
+      "depot": "江苏新安油库",
+      "stations": [
+        "东海双东站代库点",
+        "东海房南加油站",
+        "东海房南加油站"
+      ],
+      "order_ids": [
+        "FL-SDL-20260911-苏GAR07挂-2-1",
+        "FL-SDL-20260911-苏GAR07挂-2-2",
+        "FL-SDL-20260911-苏GAR07挂-2-3"
+      ],
+      "stops": 3,
+      "liters": 36000.0,
+      "packed_l": 8100.0,
+      "km": 204.73,
+      "empty_km": 84.82,
+      "empty_rate": 0.4143,
+      "route": "和海停车场 → 江苏新安油库 → 东海双东站代库点 → 东海房南加油站 → 东海房南加油站 → 江苏新安油库"
+    },
+    {
+      "plate": "苏GU5991",
+      "vehicle_id": "VHC00010",
+      "depot": "江苏新安油库",
+      "stations": [
+        "沙河加油站（母站)",
+        "沙河加油站（母站)",
+        "沙河加油站（母站)"
+      ],
+      "order_ids": [
+        "FL-SDL-20260911-苏GTJ52挂-1-2",
+        "FL-SDL-20260911-苏GTJ52挂-1-3",
+        "FL-SDL-20260911-苏GTJ52挂-1-1"
+      ],
+      "stops": 3,
+      "liters": 38107.4,
+      "packed_l": 8100.0,
+      "km": 96.68,
+      "empty_km": 23.48,
+      "empty_rate": 0.2428,
+      "route": "江苏新安油库 → 沙河加油站（母站) → 沙河加油站（母站) → 沙河加油站（母站) → 和海停车场"
+    },
+    {
+      "plate": "苏GL6586",
+      "vehicle_id": "VHC00055",
+      "depot": "江苏新安油库",
+      "stations": [
+        "赣马加油站（子站）",
+        "赣马加油站（子站）",
+        "赣马加油站（子站）"
+      ],
+      "order_ids": [
+        "FL-SDL-20260911-苏GMR53挂-1-1",
+        "FL-SDL-20260911-苏GMR53挂-1-2",
+        "FL-SDL-20260911-苏GMR53挂-1-3"
+      ],
+      "stops": 3,
+      "liters": 38101.8,
+      "packed_l": 7500.0,
+      "km": 274.62,
+      "empty_km": 84.82,
+      "empty_rate": 0.3089,
+      "route": "和海停车场 → 江苏新安油库 → 赣马加油站（子站） → 赣马加油站（子站） → 赣马加油站（子站） → 江苏新安油库"
+    },
+    {
+      "plate": "苏GL6586",
+      "vehicle_id": "VHC00055",
+      "depot": "江苏新安油库",
+      "stations": [
+        "赣榆金海湾加油站",
+        "赣榆金海湾加油站",
+        "赣榆金海湾加油站"
+      ],
+      "order_ids": [
+        "FL-SDL-20260911-苏GAC27挂-1-1",
+        "FL-SDL-20260911-苏GAC27挂-1-2",
+        "FL-SDL-20260911-苏GAC27挂-1-3"
+      ],
+      "stops": 3,
+      "liters": 35999.8,
+      "packed_l": 7500.0,
+      "km": 156.36,
+      "empty_km": 45.45,
+      "empty_rate": 0.2907,
+      "route": "江苏新安油库 → 赣榆金海湾加油站 → 赣榆金海湾加油站 → 赣榆金海湾加油站 → 和海停车场"
+    },
+    {
+      "plate": "苏GW1222",
+      "vehicle_id": "VHC00036",
+      "depot": "江苏新海地付库",
+      "stations": [
+        "东海机场路加油站",
+        "东海晶城加油站",
+        "东海海陵加油站"
+      ],
+      "order_ids": [
+        "FL-SDL-20260911-苏GDW59挂-1-2",
+        "FL-SDL-20260911-苏GDW59挂-1-1",
+        "FL-SDL-20260911-苏GDW59挂-1-3"
+      ],
+      "stops": 3,
+      "liters": 34917.0,
+      "packed_l": 7500.0,
+      "km": 212.04,
+      "empty_km": 55.76,
+      "empty_rate": 0.263,
+      "route": "和海停车场 → 江苏新海地付库 → 东海机场路加油站 → 东海晶城加油站 → 东海海陵加油站 → 江苏新海地付库"
+    },
+    {
+      "plate": "苏GW1222",
+      "vehicle_id": "VHC00036",
+      "depot": "江苏新海地付库",
+      "stations": [
+        "东海中华北路加油站",
+        "曹林加油站（母站）",
+        "曹林加油站（子站）"
+      ],
+      "order_ids": [
+        "FL-SDL-20260911-苏GSA75挂-1-1",
+        "FL-SDL-20260911-苏GKH93挂-1-3",
+        "FL-SDL-20260911-苏GKH93挂-1-2"
+      ],
+      "stops": 3,
+      "liters": 37562.0,
+      "packed_l": 7500.0,
+      "km": 120.89,
+      "empty_km": 37.73,
+      "empty_rate": 0.3121,
+      "route": "江苏新海地付库 → 东海中华北路加油站 → 曹林加油站（母站） → 曹林加油站（子站） → 和海停车场"
+    },
+    {
+      "plate": "苏GH6065",
+      "vehicle_id": "VHC00014",
+      "depot": "江苏新海地付库",
+      "stations": [
+        "东海石湖加油站",
+        "东海洪庄加油站"
+      ],
+      "order_ids": [
+        "FL-SDL-20260911-苏GSA75挂-1-3",
+        "FL-SDL-20260911-苏GSA75挂-1-2"
+      ],
+      "stops": 2,
+      "liters": 26636.0,
+      "packed_l": 9333.3,
+      "km": 240.62,
+      "empty_km": 55.76,
+      "empty_rate": 0.2317,
+      "route": "和海停车场 → 江苏新海地付库 → 东海石湖加油站 → 东海洪庄加油站 → 江苏新海地付库"
+    },
+    {
+      "plate": "苏GH6065",
+      "vehicle_id": "VHC00014",
+      "depot": "江苏新海地付库",
+      "stations": [
+        "东海洪庄加油站"
+      ],
+      "order_ids": [
+        "FL-SDL-20260911-苏GKH93挂-1-1"
+      ],
+      "stops": 1,
+      "liters": 11184.0,
+      "packed_l": 11184.0,
+      "km": 144.39,
+      "empty_km": 53.11,
+      "empty_rate": 0.3678,
+      "route": "江苏新海地付库 → 东海洪庄加油站 → 和海停车场"
+    },
+    {
+      "plate": "苏GK7853",
+      "vehicle_id": "VHC00031",
+      "depot": "江苏上冈油库",
+      "stations": [
+        "灌南华连加油站",
+        "灌云加油站（母站）",
+        "灌云加油站（母站）"
+      ],
+      "order_ids": [
+        "FL-SDL-20260911-苏GAU38挂-2-3",
+        "FL-SDL-20260911-苏GYR59挂-1-2",
+        "FL-SDL-20260911-苏GYR59挂-1-1"
+      ],
+      "stops": 3,
+      "liters": 37203.6,
+      "packed_l": 13500.0,
+      "km": 295.61,
+      "empty_km": 86.25,
+      "empty_rate": 0.2918,
+      "route": "沿海停车场 → 江苏上冈油库 → 灌南华连加油站 → 灌云加油站（母站） → 灌云加油站（母站） → 江苏上冈油库"
+    },
+    {
+      "plate": "苏GK7853",
+      "vehicle_id": "VHC00031",
+      "depot": "江苏上冈油库",
+      "stations": [
+        "灌南五队加油站"
+      ],
+      "order_ids": [
+        "FL-SDL-20260911-苏GTB22挂-1-4"
+      ],
+      "stops": 1,
+      "liters": 9979.1,
+      "packed_l": 9979.1,
+      "km": 128.21,
+      "empty_km": 39.11,
+      "empty_rate": 0.305,
+      "route": "江苏上冈油库 → 灌南五队加油站 → 沿海停车场"
+    },
+    {
+      "plate": "苏GJ2825",
+      "vehicle_id": "VHC00008",
+      "depot": "江苏上冈油库",
+      "stations": [
+        "灌南五队加油站"
+      ],
+      "order_ids": [
+        "FL-SDL-20260911-苏GTB22挂-1-2"
+      ],
+      "stops": 1,
+      "liters": 9800.0,
+      "packed_l": 9800.0,
+      "km": 264.45,
+      "empty_km": 86.25,
+      "empty_rate": 0.3261,
+      "route": "沿海停车场 → 江苏上冈油库 → 灌南五队加油站 → 江苏上冈油库"
+    },
+    {
+      "plate": "苏GJ2825",
+      "vehicle_id": "VHC00008",
+      "depot": "江苏上冈油库",
+      "stations": [
+        "灌云加油站（母站）",
+        "连云港鲁河加油站",
+        "连云港鲁河加油站"
+      ],
+      "order_ids": [
+        "FL-SDL-20260911-苏GYR59挂-1-3",
+        "FL-SDL-20260911-苏GAU38挂-2-1",
+        "FL-SDL-20260911-苏GAU38挂-2-2"
+      ],
+      "stops": 3,
+      "liters": 36304.8,
+      "packed_l": 13500.0,
+      "km": 158.0,
+      "empty_km": 41.34,
+      "empty_rate": 0.2617,
+      "route": "江苏上冈油库 → 灌云加油站（母站） → 连云港鲁河加油站 → 连云港鲁河加油站 → 沿海停车场"
+    },
+    {
+      "plate": "苏GY3628",
+      "vehicle_id": "VHC00032",
+      "depot": "江苏上冈油库",
+      "stations": [
+        "连云港灌云孟陬路加油站"
+      ],
+      "order_ids": [
+        "FL-SDL-20260911-苏GTB22挂-1-1"
+      ],
+      "stops": 1,
+      "liters": 9801.1,
+      "packed_l": 9801.1,
+      "km": 302.46,
+      "empty_km": 86.25,
+      "empty_rate": 0.2852,
+      "route": "沿海停车场 → 江苏上冈油库 → 连云港灌云孟陬路加油站 → 江苏上冈油库"
+    },
+    {
+      "plate": "苏GY3628",
+      "vehicle_id": "VHC00032",
+      "depot": "江苏上冈油库",
+      "stations": [
+        "灌云圩丰加油站"
+      ],
+      "order_ids": [
+        "FL-SDL-20260911-苏GTB22挂-1-3"
+      ],
+      "stops": 1,
+      "liters": 9975.9,
+      "packed_l": 9975.9,
+      "km": 153.53,
+      "empty_km": 43.53,
+      "empty_rate": 0.2835,
+      "route": "江苏上冈油库 → 灌云圩丰加油站 → 沿海停车场"
+    },
+    {
+      "plate": "苏GL2955",
+      "vehicle_id": "VHC00003",
+      "depot": "江苏上冈油库",
+      "stations": [
+        "东辛一站",
+        "华侨站",
+        "浦南加油站（母站）"
+      ],
+      "order_ids": [
+        "FL-SDL-20260911-苏GL1893-1-2",
+        "FL-SDL-20260911-苏GL1893-1-1",
+        "FL-SDL-20260911-苏GAV77挂-1-1"
+      ],
+      "stops": 3,
+      "liters": 34702.9,
+      "packed_l": 13500.0,
+      "km": 390.43,
+      "empty_km": 86.25,
+      "empty_rate": 0.2209,
+      "route": "沿海停车场 → 江苏上冈油库 → 东辛一站 → 华侨站 → 浦南加油站（母站） → 江苏上冈油库"
+    },
+    {
+      "plate": "苏GL2955",
+      "vehicle_id": "VHC00003",
+      "depot": "江苏上冈油库",
+      "stations": [
+        "浦南加油站（母站）",
+        "浦南加油站（母站）"
+      ],
+      "order_ids": [
+        "FL-SDL-20260911-苏GAV77挂-1-2",
+        "FL-SDL-20260911-苏GAV77挂-1-3"
+      ],
+      "stops": 2,
+      "liters": 24001.0,
+      "packed_l": 9000.0,
+      "km": 213.42,
+      "empty_km": 64.9,
+      "empty_rate": 0.3041,
+      "route": "江苏上冈油库 → 浦南加油站（母站） → 浦南加油站（母站） → 沿海停车场"
+    },
+    {
+      "plate": "苏GT5562",
+      "vehicle_id": "VHC00019",
+      "depot": "盛虹石化地付库",
+      "stations": [
+        "灌云燕北加油站",
+        "灌云燕北加油站",
+        "连云港灌云孟陬路加油站"
+      ],
+      "order_ids": [
+        "FL-SDL-20260911-苏GYR59挂-2-2",
+        "FL-SDL-20260911-苏GYR59挂-2-3",
+        "FL-SDL-20260911-苏GYR59挂-2-1"
+      ],
+      "stops": 3,
+      "liters": 38692.0,
+      "packed_l": 13200.0,
+      "km": 100.11,
+      "empty_km": 42.58,
+      "empty_rate": 0.4253,
+      "route": "和海停车场 → 盛虹石化地付库 → 灌云燕北加油站 → 灌云燕北加油站 → 连云港灌云孟陬路加油站 → 盛虹石化地付库"
+    },
+    {
+      "plate": "苏GT5562",
+      "vehicle_id": "VHC00019",
+      "depot": "盛虹石化地付库",
+      "stations": [
+        "连云港港口云湖加油加气站",
+        "东辛一站",
+        "连云港板浦加油站"
+      ],
+      "order_ids": [
+        "FL-SDL-20260911-苏GHH00挂-1-1",
+        "FL-SDL-20260911-苏GXE02挂-2-3",
+        "FL-SDL-20260911-苏GKH93挂-2-2"
+      ],
+      "stops": 3,
+      "liters": 9783.0,
+      "packed_l": 9783.0,
+      "km": 55.91,
+      "empty_km": 15.93,
+      "empty_rate": 0.2849,
+      "route": "盛虹石化地付库 → 连云港港口云湖加油加气站 → 东辛一站 → 连云港板浦加油站 → 和海停车场"
+    }
+  ],
+  "uukey_example": "FL-SDL-20260911-苏GAC27挂-1-1",
+  "trailer_map_hit": 125,
+  "trailer_map_size": 93,
+  "deltas": {
+    "km": -223.81,
+    "empty_km": -981.6,
+    "trips": 6,
+    "vehicles": -1
+  }
+}

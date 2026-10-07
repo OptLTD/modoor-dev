@@ -1,0 +1,19 @@
+{
+  "default": {
+    "uukey": "default",
+    "title": "订单表单",
+    "preset": { "basic.status": "draft" },
+    "groups": ["basic", "amount"],
+    "fields": [
+      "basic.uukey",
+      "basic.utime",
+      "basic.status",
+      "basic.partner",
+      "basic.note",
+      "amount.total"
+    ],
+    "hidden": [],
+    "clicks": [],
+    "extra": {}
+  }
+}

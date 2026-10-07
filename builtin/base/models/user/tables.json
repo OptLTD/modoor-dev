@@ -1,0 +1,30 @@
+{
+  "default": {
+    "uukey": "default",
+    "title": "员工列表",
+    "fields": [
+      "basic.code",
+      "basic.name",
+      "basic.team_id",
+      "basic.utime",
+      "basic.phone",
+      "basic.email",
+      "basic.remark",
+      "basic.state"
+    ],
+    "sticky": [
+      "basic.code",
+      "basic.name"
+    ],
+    "clicks": [
+      "create",
+      "set_role",
+      "set_pswd",
+      "enable",
+      "disable",
+      "modify"
+    ],
+    "query": {},
+    "extra": {}
+  }
+}

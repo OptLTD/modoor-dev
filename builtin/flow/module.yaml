@@ -1,0 +1,63 @@
+id: flow
+version: 0.1.0
+actived: true
+depends: [doc]
+summary: Automation, workflow, and approval control center
+tags: [platform, flow, workflow, approval, automation]
+
+ui-web:
+  kind: app
+  label: Flow
+  seqno: 15
+  base: /flow
+  entry: /flow/inbox
+
+exports:
+  tools:
+    - flow.emit
+    - flow.task.query
+    - flow.task.decide
+    - flow.instance.query
+  skills: []
+  jobs:
+    - kind: flow.schedule.tick
+      every: 60
+  menus:
+    - id: flow.inbox
+      label: Approval Center
+      path: /flow/inbox
+      seqno: 10
+    - id: flow.config
+      label: Flow Setup
+      path: /flow/definitions
+      seqno: 20
+
+ability:
+  - flow.read
+  - flow.write
+  - flow.approve
+
+risk_default: medium
+
+i18n:
+  zh-CN:
+    app.label: 流程中心
+    flow.inbox: 审批中心
+    flow.config: 流程配置
+    flow.definitions: 流程设计
+    flow.instances: 运行记录
+    flow.schedules: 定时触发
+    flow.read: 读取流程
+    flow.write: 管理流程
+    flow.approve: 审批待办
+  en-US:
+    app.label: Flow
+    flow.inbox: Approval Center
+    flow.config: Flow Setup
+    flow.definitions: Flow Design
+    flow.instances: Run History
+    flow.schedules: Schedules
+    flow.read: Read flows
+    flow.write: Manage flows
+    flow.approve: Approve tasks
+    flow.task.decide: Decide task

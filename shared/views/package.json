@@ -1,0 +1,25 @@
+{
+  "name": "@modoor/views",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./SchemaView": "./src/SchemaView/index.ts",
+    "./RecordDialog": "./src/RecordDialog/index.ts",
+    "./RecordDrawer": "./src/RecordDrawer/index.ts",
+    "./RecordEntity": "./src/RecordEntity/index.ts",
+    "./TableDrawer": "./src/TableDrawer/index.ts",
+    "./ChartView": "./src/ChartView/index.ts",
+    "./ShellFrame": "./src/ShellFrame/index.ts"
+  },
+  "peerDependencies": {
+    "vue": "^3.5.0"
+  },
+  "dependencies": {
+    "@modoor/hooks": "0.1.0",
+    "@modoor/widget": "0.1.0"
+  }
+}

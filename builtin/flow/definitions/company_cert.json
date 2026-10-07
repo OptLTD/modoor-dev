@@ -1,0 +1,80 @@
+{
+  "key": "capacity.company_cert",
+  "title": "公司资料认证",
+  "trigger": {
+    "event": "capacity.company.materials_uploaded"
+  },
+  "graph": {
+    "nodes": [
+      {"id": "start", "type": "start", "label": "开始"},
+      {
+        "id": "extract",
+        "type": "extract",
+        "label": "文档解析",
+        "config": {}
+      },
+      {
+        "id": "score",
+        "type": "score",
+        "label": "资料评分",
+        "config": {
+          "required_doc_types": ["license", "id_card", "bank"],
+          "keywords": ["营业执照", "公司", "统一社会信用", "法人"],
+          "threshold": 60,
+          "min_text_chars": 20
+        }
+      },
+      {"id": "gate", "type": "condition", "label": "分数门槛"},
+      {
+        "id": "approval",
+        "type": "approval",
+        "label": "人工审批",
+        "config": {
+          "title": "公司资料认证审批",
+          "levels": [{"role": "admin"}, {"role": "admin"}]
+        }
+      },
+      {
+        "id": "approve_action",
+        "type": "action",
+        "label": "认证通过",
+        "config": {
+          "action": "capacity.set_document_audit",
+          "audit_status": "approved"
+        }
+      },
+      {
+        "id": "cert_company",
+        "type": "action",
+        "label": "更新公司认证",
+        "config": {
+          "action": "capacity.set_company_cert",
+          "certified": true
+        }
+      },
+      {
+        "id": "reject_action",
+        "type": "action",
+        "label": "认证拒绝",
+        "config": {
+          "action": "capacity.set_document_audit",
+          "audit_status": "rejected"
+        }
+      },
+      {"id": "end_ok", "type": "end", "label": "结束-通过"},
+      {"id": "end_reject", "type": "end", "label": "结束-拒绝"}
+    ],
+    "edges": [
+      {"from": "start", "to": "extract"},
+      {"from": "extract", "to": "score"},
+      {"from": "score", "to": "gate"},
+      {"from": "gate", "to": "approval", "when": "score_ok == true"},
+      {"from": "gate", "to": "reject_action", "when": "score_ok == false"},
+      {"from": "approval", "to": "approve_action", "when": "approval_decision == approve"},
+      {"from": "approval", "to": "reject_action", "when": "approval_decision == reject"},
+      {"from": "approve_action", "to": "cert_company"},
+      {"from": "cert_company", "to": "end_ok"},
+      {"from": "reject_action", "to": "end_reject"}
+    ]
+  }
+}

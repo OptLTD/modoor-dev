@@ -1,0 +1,10 @@
+{
+  "base.user": {
+    "path": "user",
+    "level": "platform"
+  },
+  "base.oplog": {
+    "path": "oplog",
+    "level": "platform"
+  }
+}

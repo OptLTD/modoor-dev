@@ -1,0 +1,43 @@
+id: skill
+version: 0.1.0
+actived: false
+depends: []
+summary: Custom skill catalog — CRUD tenant skills; platform usage skill lives under base
+tags: [platform, skill, catalog]
+
+ui-web:
+  kind: app
+  label: Skills
+  seqno: 40
+  base: /skill
+  entry: /skill
+
+exports:
+  tools:
+    - skill.query
+    - skill.read
+    - skill.write
+  skills: []
+  menus: []
+  # - id: skill.catalog
+  #   label: Catalog
+  #   path: /skill
+  #   seqno: 10
+
+ability:
+  - skill.read
+  - skill.write
+
+risk_default: medium
+
+i18n:
+  zh-CN:
+    app.label: 技能库
+    skill.catalog: 目录
+    skill.read: 读取技能
+    skill.write: 管理技能
+  en-US:
+    app.label: Skills
+    skill.catalog: Catalog
+    skill.read: Read skill
+    skill.write: Manage skill
