@@ -74,9 +74,24 @@ source .env
 set +a
 modoor_load_webui_url
 
+# Same root as modoor.core.settings.modoor_modules_root (MODOOR_ADDON_ROOT).
+addon_root() {
+  local root="${MODOOR_ADDON_ROOT:-${ROOT}/addon}"
+  if [[ "${root}" != /* ]]; then
+    root="${ROOT}/${root}"
+  fi
+  if [[ -d "${root}" ]]; then
+    (cd "${root}" && pwd)
+  else
+    echo "${root}"
+  fi
+}
+
+ADDON_ROOT="$(addon_root)"
+
 start_webui() {
   local name="$1"
-  local dir="${ROOT}/addon/${name}/webui"
+  local dir="${ADDON_ROOT}/${name}/webui"
   if [[ ! -d "${dir}" ]]; then
     dir="${ROOT}/builtin/${name}/webui"
   fi
@@ -94,13 +109,28 @@ start_webui() {
   PROXY_PARTS+=("${name}=http://127.0.0.1:${p}")
   (
     cd "${dir}"
-    if [[ ! -d node_modules ]]; then
-      echo ">> npm install (${name})"
-      npm install
-    fi
     export MODOOR_PUBLIC_HOST="${HOST}"
     export MODOOR_PUBLIC_PORT="${PORT}"
-    npm run dev
+    # Prefer pnpm workspace when addon root lives in a pro-style repo.
+    local pkg_root=""
+    if [[ -f "${ADDON_ROOT}/../pnpm-workspace.yaml" ]]; then
+      pkg_root="$(cd "${ADDON_ROOT}/.." && pwd)"
+    elif [[ -f "${ROOT}/pnpm-workspace.yaml" && "${dir}" == "${ROOT}"/* ]]; then
+      pkg_root="${ROOT}"
+    fi
+    if [[ -n "${pkg_root}" ]] && command -v pnpm >/dev/null 2>&1; then
+      if [[ ! -d "${pkg_root}/node_modules" || ! -f "${pkg_root}/pnpm-lock.yaml" ]]; then
+        echo ">> pnpm install (${pkg_root})"
+        (cd "${pkg_root}" && pnpm install)
+      fi
+      pnpm run dev
+    else
+      if [[ ! -d node_modules ]]; then
+        echo ">> npm install (${name})"
+        npm install
+      fi
+      npm run dev
+    fi
   ) &
   PIDS+=($!)
 }
@@ -111,9 +141,15 @@ for mid in "${MODULES[@]:-}"; do
 done
 
 # Join proxies: base=http://127.0.0.1:5175,wiki=... → mounted as /mod/base, /mod/wiki
-MODOOR_WEBUI_PROXIES="$(IFS=,; echo "${PROXY_PARTS[*]}")"
+# Empty array + set -u → unbound; guard before expanding.
+if [[ ${#PROXY_PARTS[@]} -gt 0 ]]; then
+  MODOOR_WEBUI_PROXIES="$(IFS=,; echo "${PROXY_PARTS[*]}")"
+else
+  MODOOR_WEBUI_PROXIES=""
+fi
 export MODOOR_WEBUI_PROXIES
 export MODOOR_WEBUI_URL
+export MODOOR_ADDON_ROOT="${ADDON_ROOT}"
 
 echo ""
 echo "API / login  ${MODOOR_WEBUI_URL}/login"
