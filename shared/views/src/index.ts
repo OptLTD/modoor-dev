@@ -4,6 +4,13 @@
  */
 export { SchemaView } from './SchemaView'
 export type { SchemaViewTab, SchemaViewHandlers } from './SchemaView'
+export {
+  SkmTblWithPrefs,
+  TablePrefs,
+  TableFilterDrawer,
+  useTablePrefs,
+} from './SkmTblPrefs'
+export type { TableLayoutHost, TablePrefsApi, PrefsPanelItem } from './SkmTblPrefs'
 export { default as RecordDialog, useRecordDialog } from './RecordDialog'
 export { default as RecordDrawer } from './RecordDrawer'
 export {

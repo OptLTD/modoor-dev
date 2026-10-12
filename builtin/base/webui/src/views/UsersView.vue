@@ -41,26 +41,31 @@
       </aside>
 
       <main class="users-right panel">
-        <header class="pane-head">
-          <div>
-            <h1>{{ t('base.users') }}</h1>
-            <p class="muted">{{ teamTitle }}</p>
+        <div class="ws-head">
+          <div class="ws-title-row">
+            <div class="ws-title-block">
+              <h1>{{ t('base.users') }}</h1>
+              <nav
+                v-if="loginTabs.length > 1"
+                class="ws-tabs"
+                role="tablist"
+                aria-label="views"
+              >
+                <button
+                  v-for="tab in loginTabs"
+                  :key="tab.using"
+                  type="button"
+                  class="ws-tab"
+                  :class="{ active: loginUsing === tab.using }"
+                  role="tab"
+                  :aria-selected="loginUsing === tab.using"
+                  @click="selectLogin(tab.using)"
+                >
+                  {{ tab.label }}
+                </button>
+              </nav>
+            </div>
           </div>
-        </header>
-
-        <div v-if="loginTabs.length" class="login-tabs" role="tablist">
-          <button
-            v-for="tab in loginTabs"
-            :key="tab.using"
-            type="button"
-            class="login-tab"
-            :class="{ active: loginUsing === tab.using }"
-            role="tab"
-            :aria-selected="loginUsing === tab.using"
-            @click="selectLogin(tab.using)"
-          >
-            {{ tab.label }}
-          </button>
         </div>
 
         <p v-if="bootError" class="error">{{ bootError }}</p>
@@ -171,7 +176,7 @@ import {
   type SchemaClick,
   type SchemaTable as SchemaTableData,
 } from '@modoor/hooks'
-import { SchemaTable } from '@modoor/widget/SchemaTable'
+import { SkmTblWithPrefs as SchemaTable } from '@modoor/views/SkmTblPrefs'
 import RecordDialog from '@modoor/views/RecordDialog/RecordDialog.vue'
 import RecordDrawer from '@modoor/views/RecordDrawer/RecordDrawer.vue'
 import RecordFlatDetail from '@modoor/views/RecordDrawer/RecordFlatDetail.vue'
@@ -226,11 +231,6 @@ const savedRoleIds = ref<string[]>([])
 
 const rootTeamId = computed(() => teamTree.value[0]?.id ?? null)
 
-const teamTitle = computed(() => {
-  if (selectedTeamId.value === null) return t('base.allTeams')
-  return findTeamName(teamTree.value, selectedTeamId.value) || t('base.team')
-})
-
 const loginUsing = ref('default')
 const loginTabs = ref<{ using: string; label: string }[]>([])
 
@@ -254,15 +254,6 @@ const userTable = computed((): SchemaTableData | null => {
   }
   return { ...cur, clicks }
 })
-
-function findTeamName(nodes: TeamNode[], id: number): string | null {
-  for (const n of nodes) {
-    if (n.id === id) return n.name
-    const child = findTeamName(n.children || [], id)
-    if (child) return child
-  }
-  return null
-}
 
 function collectTeamIds(node: TeamNode): number[] {
   return [node.id, ...(node.children || []).flatMap(collectTeamIds)]
@@ -647,13 +638,20 @@ onMounted(async () => {
   gap: 12px;
 }
 
-.users-left,
-.users-right {
+.users-left {
   min-height: 0;
   display: flex;
   flex-direction: column;
   overflow: hidden;
   padding: 14px 16px;
+}
+
+.users-right {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 0;
 }
 
 .pane-head {
@@ -665,43 +663,80 @@ onMounted(async () => {
   margin-bottom: 12px;
 }
 
-.login-tabs {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  gap: 0;
-  flex-shrink: 0;
-  margin: -4px 0 10px;
-  border-bottom: 1px solid var(--line, #e4ddd2);
+.pane-head h1 {
+  margin: 0;
+  font-size: 1.2rem;
 }
 
-.login-tab {
+.users-right .ws-head {
+  flex-shrink: 0;
+  padding: 14px 16px 0;
+  border-bottom: 1px solid var(--line, #e2e6eb);
+}
+
+.users-right .ws-title-row {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.users-right .ws-title-block {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-end;
+  gap: 0.75rem;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.users-right .ws-title-block h1 {
+  margin: 0;
+  padding-bottom: 0.5rem;
+  font-size: 1.25rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.users-right .ws-tabs {
+  display: flex;
+  gap: 0;
+  flex-wrap: wrap;
+  align-items: flex-end;
+}
+
+.users-right .ws-tab {
   font: inherit;
   font-size: 0.9rem;
   line-height: 1.2;
-  padding: 0.45rem 0.9rem;
+  padding: 0.5rem 1rem;
   margin-bottom: -1px;
   border: none;
   border-bottom: 2px solid transparent;
   background: transparent;
   color: var(--muted, #6b6458);
   cursor: pointer;
+  transition: color 0.12s ease, border-color 0.12s ease;
 }
 
-.login-tab.active {
+.users-right .ws-tab:hover {
+  color: var(--ink, #1c1914);
+}
+
+.users-right .ws-tab.active {
   color: var(--accent, #0f6a5a);
   font-weight: 600;
   border-bottom-color: var(--accent, #0f6a5a);
 }
 
-.pane-head h1 {
-  margin: 0;
-  font-size: 1.2rem;
+.users-right .ws-tab:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent, #0f6a5a) 40%, transparent);
+  outline-offset: 2px;
 }
 
-.pane-head .muted {
-  margin: 4px 0 0;
-  font-size: 0.85rem;
+.users-right > .error {
+  margin: 8px 16px 0;
 }
 
 .org-tree {
@@ -753,10 +788,6 @@ onMounted(async () => {
   min-height: 0;
   display: flex;
   flex-direction: column;
-}
-
-.users-right :deep(.toolbar) {
-  padding: 10px 0px;
 }
 
 .pwd-modal {

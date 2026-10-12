@@ -454,6 +454,7 @@ body,
 }
 
 .systray-menu-header {
+  margin-bottom: 0.5rem;
   padding: 0.65rem 0.9rem 0.55rem;
   border-bottom: 1px solid var(--line);
 }

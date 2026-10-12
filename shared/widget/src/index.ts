@@ -4,6 +4,7 @@
  *   import { SchemaSheet } from '@modoor/widget/SchemaSheet'  // pulls jspreadsheet-ce
  *
  * SchemaSheet is intentionally not re-exported from the package root.
+ * 列设置 / 条件筛选抽屉在 @modoor/views/SkmTblPrefs。
  */
 export { default as SchemaTable, useSchemaTable } from './SchemaTable'
 export { default as SchemaForm } from './SchemaForm'
@@ -14,6 +15,7 @@ export { default as Dropdown } from './Dropdown'
 export { default as SvgIcon } from './SvgIcon'
 export type { IconName } from './SvgIcon'
 export { default as FilterPanel } from './FilterPanel'
-export { default as ColumnPanel } from './ColumnPanel'
+export { default as FieldPanel } from './FieldPanel'
+export { default as SideDrawer } from './SideDrawer'
 export { default as ChartGrid } from './ChartGrid'
 export type { ChartGridCard, ChartGridTab } from './ChartGrid'

@@ -1,6 +1,6 @@
 """List column settings (`base_tbl`).
 
-One row is the column order and hidden fields for a model view.
+One row is the column order, hidden fields, and quick-filter layout for a model view.
 ``level`` is ``global`` for now; personal rows are not written yet.
 ``using`` is the tables.json view key (default, unsigned, signed).
 """
@@ -23,7 +23,7 @@ TBL_LEVEL_GLOBAL = "global"
 
 
 class BaseTbl(Base):
-    """Tenant-wide column layout for one model view."""
+    """Tenant-wide column and quick-filter layout for one model view."""
 
     __tablename__ = "base_tbl"
     __table_args__ = (
@@ -64,14 +64,20 @@ def _keys(raw: Any) -> list[str]:
 
 
 def normalize_tbl_data(raw: Any) -> dict[str, list[str]] | None:
-    """``{ order, hidden }``. Empty means the view should fall back to tables.json."""
+    """``{ order, hidden, filterOrder?, filterHidden? }``. Empty falls back to tables.json."""
     if not isinstance(raw, dict):
         return None
     order = _keys(raw.get("order"))
     hidden = _keys(raw.get("hidden"))
-    if not order and not hidden:
+    filter_order = _keys(raw.get("filterOrder"))
+    filter_hidden = _keys(raw.get("filterHidden"))
+    if not order and not hidden and not filter_order and not filter_hidden:
         return None
-    return {"order": order, "hidden": hidden}
+    out: dict[str, list[str]] = {"order": order, "hidden": hidden}
+    if filter_order or filter_hidden:
+        out["filterOrder"] = filter_order
+        out["filterHidden"] = filter_hidden
+    return out
 
 
 def _view(using: str | None) -> str:

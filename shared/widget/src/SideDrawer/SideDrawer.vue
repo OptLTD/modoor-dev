@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onBeforeUnmount, watch } from 'vue'
+import { onBeforeUnmount, useSlots, watch } from 'vue'
 import { useI18n } from '@modoor/hooks'
 
 const props = withDefaults(
@@ -16,6 +16,7 @@ const props = withDefaults(
 
 const emit = defineEmits<{ close: [] }>()
 const { t } = useI18n()
+const slots = useSlots()
 
 function onKey(e: KeyboardEvent) {
   if (e.key === 'Escape') emit('close')
@@ -38,9 +39,19 @@ onBeforeUnmount(() => {
 <template>
   <Teleport to="body">
     <div v-if="open" class="sd-mask" @click.self="emit('close')">
-      <aside class="sd-panel" role="dialog" aria-modal="true" :aria-label="title" :style="{ width }">
+      <aside
+        class="sd-panel"
+        role="dialog"
+        aria-modal="true"
+        :aria-label="title || undefined"
+        :style="{ width }"
+      >
         <header class="sd-head">
-          <strong class="sd-title truncate">{{ title }}</strong>
+          <div class="sd-title-wrap">
+            <slot name="title">
+              <strong class="sd-title truncate">{{ title }}</strong>
+            </slot>
+          </div>
           <div v-if="$slots.extra" class="sd-extra">
             <slot name="extra" />
           </div>
@@ -51,6 +62,9 @@ onBeforeUnmount(() => {
         <div class="sd-body">
           <slot />
         </div>
+        <footer v-if="slots.footer" class="sd-foot">
+          <slot name="footer" />
+        </footer>
       </aside>
     </div>
   </Teleport>
@@ -79,14 +93,23 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 12px 16px;
+  padding: 0 16px;
   border-bottom: 1px solid var(--line, #e2e6eb);
   flex-shrink: 0;
   min-height: 48px;
 }
+.sd-title-wrap {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: stretch;
+  align-self: stretch;
+}
 .sd-title {
   font-size: 0.95rem;
   min-width: 0;
+  display: flex;
+  align-items: center;
 }
 .sd-extra {
   margin-left: auto;
@@ -114,5 +137,14 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+}
+.sd-foot {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 16px;
+  border-top: 1px solid var(--line, #e2e6eb);
 }
 </style>

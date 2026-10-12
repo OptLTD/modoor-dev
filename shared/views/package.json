@@ -8,6 +8,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./SchemaView": "./src/SchemaView/index.ts",
+    "./SkmTblPrefs": "./src/SkmTblPrefs/index.ts",
     "./RecordDialog": "./src/RecordDialog/index.ts",
     "./RecordDrawer": "./src/RecordDrawer/index.ts",
     "./RecordEntity": "./src/RecordEntity/index.ts",
@@ -19,7 +20,7 @@
     "vue": "^3.5.0"
   },
   "dependencies": {
-    "@modoor/hooks": "0.1.0",
-    "@modoor/widget": "0.1.0"
+    "@modoor/hooks": "workspace:*",
+    "@modoor/widget": "workspace:*"
   }
 }

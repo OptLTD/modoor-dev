@@ -139,28 +139,7 @@
             </label>
           </div>
         </template>
-        <button
-          v-if="!hideBody"
-          type="button"
-          class="icon-btn"
-          :class="{ active: api.columns.open }"
-          :title="t('widget.columns')"
-          :aria-pressed="api.columns.open"
-          @click="api.columns.toggleOpen"
-        >
-          <SvgIcon name="columns" />
-        </button>
-        <button
-          v-if="!hideFilter"
-          type="button"
-          class="icon-btn"
-          :class="{ active: api.filter.panelFilterOpen }"
-          :title="t('widget.filter')"
-          @click="api.filter.togglePanelFilter"
-        >
-          <SvgIcon name="filter" />
-          <span v-if="api.filter.activeFilterCount" class="icon-badge">{{ api.filter.activeFilterCount }}</span>
-        </button>
+        <slot name="toolbar-right" />
         <button
           :title="t('widget.refresh')"
           type="button"
@@ -542,59 +521,6 @@
 
     </div>
 
-    <SideDrawer
-      :open="!hideFilter && api.filter.panelFilterOpen"
-      :title="t('widget.filter')"
-      width="360px"
-      @close="api.filter.closePanelFilter"
-    >
-      <template #extra>
-        <button
-          type="button"
-          class="link"
-          :disabled="!filterPanelRef?.activeCount"
-          @click="filterPanelRef?.resetAll()"
-        >
-          {{ t('widget.reset') }}
-        </button>
-      </template>
-      <FilterPanel
-        ref="filterPanelRef"
-        bare
-        :refers="api.list.theRefers"
-        :fields="api.filter.panelFilterFields"
-        :model-value="api.filter.appliedFilters"
-        @reset="api.filter.clearAllFilters"
-        @update="api.filter.onPanelFilters"
-      />
-    </SideDrawer>
-
-    <SideDrawer
-      :open="!hideBody && api.columns.open"
-      :title="t('widget.columns')"
-      width="320px"
-      @close="api.columns.close"
-    >
-      <template #extra>
-        <button
-          type="button"
-          class="link"
-          :disabled="!columnPanelRef?.customized"
-          @click="columnPanelRef?.reset()"
-        >
-          {{ t('widget.reset') }}
-        </button>
-      </template>
-      <ColumnPanel
-        ref="columnPanelRef"
-        bare
-        :items="api.columns.items"
-        :customized="api.columns.customized"
-        @move="api.columns.move"
-        @reset="api.columns.reset"
-        @toggle="api.columns.toggle"
-      />
-    </SideDrawer>
     <ImageViewer
       v-if="fileOpen"
       :items="fileItems"
@@ -613,9 +539,6 @@ import SelectBox from '../SelectBox/SelectBox.vue'
 import DateRange from '../DateRange/DateRange.vue'
 import Dropdown from '../Dropdown/Dropdown.vue'
 import SvgIcon from '../SvgIcon/SvgIcon.vue'
-import SideDrawer from '../SideDrawer/SideDrawer.vue'
-import FilterPanel from '../FilterPanel/FilterPanel.vue'
-import ColumnPanel from '../ColumnPanel/ColumnPanel.vue'
 import ImageViewer, { type ViewerItem } from '../ImageViewer/ImageViewer.vue'
 import { assetContentUrl, fieldRefer, isMultiple, tagChips, useRecordGateway } from '@modoor/hooks'
 import { pickFieldValue, rowUUKey, useI18n } from '@modoor/hooks'
@@ -637,9 +560,6 @@ const props = withDefaults(
     hideFilter: false,
   },
 )
-
-const filterPanelRef = ref<{ resetAll: () => void; activeCount: number } | null>(null)
-const columnPanelRef = ref<{ reset: () => void; customized: boolean } | null>(null)
 
 const emit = defineEmits<{
   'button-click': [
@@ -896,6 +816,7 @@ onUnmounted(() => {
 })
 
 defineExpose({
+  api,
   reload: api.list.reload,
   getListRequest: api.list.getListRequest,
   getSelectedRows: () => {
@@ -1049,7 +970,7 @@ defineExpose({
   align-items: stretch;
 }
 .filter-panel,
-.column-panel {
+.field-panel {
   flex: 1;
   min-height: 0;
   height: auto;

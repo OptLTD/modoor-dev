@@ -92,11 +92,15 @@ web: ## Alias: make web base … → make dev …
 webui: ## Module Vue only: make webui base wiki
 	@mods="$(filter-out webui,$(MAKECMDGOALS))"; \
 	if [ -z "$$mods" ]; then echo "usage: make webui <module> [module...]"; exit 1; fi; \
+	if [ ! -f "$(ROOT)/pnpm-lock.yaml" ] || [ ! -d "$(ROOT)/node_modules" ]; then \
+		echo ">> pnpm install ($(ROOT))"; \
+		( cd "$(ROOT)" && pnpm install ); \
+	fi; \
 	for m in $$mods; do \
 		d="$(ROOT)/addon/$$m/webui"; \
 		if [ ! -d "$$d" ]; then d="$(ROOT)/builtin/$$m/webui"; fi; \
 		if [ ! -d "$$d" ]; then echo "missing addon|builtin/$$m/webui"; exit 1; fi; \
-		( cd "$$d" && if [ ! -d node_modules ]; then npm install; fi && npm run dev ) & \
+		( cd "$$d" && pnpm run dev ) & \
 	done; wait
 
 api: setup ## API only (:8765)

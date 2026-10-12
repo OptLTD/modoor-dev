@@ -177,7 +177,7 @@ import {
   type SchemaRequest,
   type SchemaTable as SchemaTableData,
 } from '@modoor/hooks'
-import { SchemaTable } from '@modoor/widget/SchemaTable'
+import { SkmTblWithPrefs as SchemaTable } from '../SkmTblPrefs'
 import RecordDialog from '../RecordDialog/RecordDialog.vue'
 import RecordDrawer, { RecordFlatDetail, resolveRecordView } from '../RecordDrawer'
 import TableDrawer from '../TableDrawer'

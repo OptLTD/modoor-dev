@@ -9,9 +9,11 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@modoor/hooks": "file:../../../shared/hooks",
-    "@modoor/widget": "file:../../../shared/widget",
-    "@modoor/views": "file:../../../shared/views",
+    "@modoor/hooks": "workspace:*",
+    "@modoor/widget": "workspace:*",
+    "@modoor/views": "workspace:*",
+    "jspreadsheet-ce": "^5.0.4",
+    "jsuites": "^6.4.3",
     "jszip": "^3.10.1",
     "mammoth": "^1.9.0",
     "vue": "^3.5.0",

@@ -2,7 +2,7 @@
 import { computed, ref } from 'vue'
 import { useI18n } from '@modoor/hooks'
 
-export type ColumnPanelItem = {
+export type FieldPanelItem = {
   id: string
   label: string
   visible: boolean
@@ -10,12 +10,14 @@ export type ColumnPanelItem = {
 
 const props = withDefaults(
   defineProps<{
-    items: ColumnPanelItem[]
+    items: FieldPanelItem[]
     /** 放进抽屉时隐藏自带标题，重置按钮由外层提供 */
     bare?: boolean
     customized?: boolean
+    /** 至少保留勾选的数量；快捷筛选可为 0 */
+    minVisible?: number
   }>(),
-  { bare: false, customized: false },
+  { bare: false, customized: false, minVisible: 1 },
 )
 
 const emit = defineEmits<{
@@ -61,47 +63,50 @@ defineExpose({ reset, customized: computed(() => props.customized) })
 </script>
 
 <template>
-  <div class="column-panel">
+  <div class="field-panel">
     <div v-if="!bare" class="panel-head">
       <div class="panel-title">{{ t('widget.columns') }}</div>
-      <button type="button" class="link" :disabled="!customized" @click="reset">
-        {{ t('widget.reset') }}
-      </button>
     </div>
 
     <div v-if="!items.length" class="empty">{{ t('widget.empty') }}</div>
-    <ul v-else class="col-list">
+    <ul v-else class="field-list">
       <li
         v-for="(item, i) in items"
         :key="item.id"
-        class="col-row"
+        class="field-row"
         :class="{ 'is-over': dragOver === i && dragFrom !== i }"
         @dragover.prevent="onDragOver(i)"
         @drop.prevent="onDrop(i)"
       >
         <span
-          class="col-grip"
+          class="field-grip"
           draggable="true"
           :title="t('widget.columnHint')"
           @dragstart="onDragStart(i, $event)"
           @dragend="onDragEnd"
         >⋮⋮</span>
-        <label class="col-label">
+        <label class="field-label">
           <input
             type="checkbox"
             :checked="item.visible"
-            :disabled="item.visible && visibleCount <= 1"
+            :disabled="item.visible && visibleCount <= minVisible"
             @change="emit('toggle', item.id)"
           />
           <span class="truncate" :title="item.label">{{ item.label }}</span>
         </label>
       </li>
     </ul>
+
+    <div v-if="!bare" class="panel-foot">
+      <button type="button" class="link" :disabled="!customized" @click="reset">
+        {{ t('widget.reset') }}
+      </button>
+    </div>
   </div>
 </template>
 
 <style scoped>
-.column-panel {
+.field-panel {
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -119,7 +124,14 @@ defineExpose({ reset, customized: computed(() => props.customized) })
   font-size: 0.875rem;
   font-weight: 600;
 }
-.col-list {
+.panel-foot {
+  flex-shrink: 0;
+  display: flex;
+  justify-content: flex-start;
+  padding: 8px 12px;
+  border-top: 1px solid var(--line);
+}
+.field-list {
   list-style: none;
   margin: 0;
   padding: 8px;
@@ -127,17 +139,17 @@ defineExpose({ reset, customized: computed(() => props.customized) })
   flex: 1;
   min-height: 0;
 }
-.col-row {
+.field-row {
   display: flex;
   align-items: center;
   gap: 6px;
   padding: 6px 2px;
   border-radius: var(--radius-sm, 4px);
 }
-.col-row.is-over {
+.field-row.is-over {
   background: #eef6f3;
 }
-.col-grip {
+.field-grip {
   flex-shrink: 0;
   width: 1rem;
   text-align: center;
@@ -148,7 +160,7 @@ defineExpose({ reset, customized: computed(() => props.customized) })
   font-size: 12px;
   line-height: 1;
 }
-.col-label {
+.field-label {
   display: flex;
   align-items: center;
   gap: 2px;
@@ -157,7 +169,7 @@ defineExpose({ reset, customized: computed(() => props.customized) })
   font-size: 13px;
   cursor: pointer;
 }
-.col-label input {
+.field-label input {
   flex-shrink: 0;
 }
 .empty {

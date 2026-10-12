@@ -38,6 +38,12 @@ def test_normalize_tbl_data_empty_is_none():
         "order": ["basic.name"],
         "hidden": ["basic.phone"],
     }
+    assert normalize_tbl_data({"order": [], "hidden": [], "filterOrder": ["basic.utime"]}) == {
+        "order": [],
+        "hidden": [],
+        "filterOrder": ["basic.utime"],
+        "filterHidden": [],
+    }
 
 
 def test_upsert_get_and_delete(_env):

@@ -17,9 +17,16 @@ modoor/
   runtime/    # auth / audit / confirmation / tool runner / MCP / worker
   platform/   # module 启停 / loader / 外部服务注册 / bootstrap
   web/        # PC Shell
+pnpm-workspace.yaml  # webui + shared/* → workspace:*
 ```
 
 本仓是完整可运行方案（含 sale demo）。需要其它业务模块时，通过 `MODOOR_ADDON_ROOT` 指向外部 `addon/` 目录即可（发现与 `import addon.*` 都会走该路径）。
+
+前端依赖用 **pnpm**（`workspace:*`），根目录一次安装：
+
+```bash
+pnpm install
+```
 
 设计文档见 [`docs/`](./docs/)，实现约定见 [`docs/PHASE0.md`](./docs/PHASE0.md)。  
 Core 版本与破坏性变更约定见 [`docs/VERSIONING.md`](./docs/VERSIONING.md)。

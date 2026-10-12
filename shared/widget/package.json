@@ -15,6 +15,8 @@
     "./Dropdown": "./src/Dropdown/index.ts",
     "./SvgIcon": "./src/SvgIcon/index.ts",
     "./FilterPanel": "./src/FilterPanel/index.ts",
+    "./FieldPanel": "./src/FieldPanel/index.ts",
+    "./SideDrawer": "./src/SideDrawer/index.ts",
     "./ChartGrid": "./src/ChartGrid/index.ts",
     "./styles.css": "./src/styles.css"
   },
@@ -22,7 +24,7 @@
     "vue": "^3.5.0"
   },
   "dependencies": {
-    "@modoor/hooks": "0.1.0",
+    "@modoor/hooks": "workspace:*",
     "jspreadsheet-ce": "^5.0.4",
     "jsuites": "^6.4.3"
   }

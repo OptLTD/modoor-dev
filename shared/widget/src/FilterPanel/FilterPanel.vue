@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, reactive, watch } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import type { SchemaField } from '@modoor/hooks'
 import { isDraftActive, needsValue2} from '@modoor/hooks'
 import { showValue, type FilterDraft } from '@modoor/hooks'
@@ -15,10 +15,12 @@ const props = withDefaults(
     fields: SchemaField[]
     modelValue: Record<string, FilterDraft>
     refers?: ReferDict
-    /** 放进抽屉时隐藏自带标题，重置按钮由外层提供 */
+    /** 放进抽屉时隐藏自带标题，重置/应用由外层 footer 提供 */
     bare?: boolean
+    /** 勾选后改动自动提交，行为与旧版一致 */
+    autoApply?: boolean
   }>(),
-  { bare: false },
+  { bare: false, autoApply: false },
 )
 
 const emit = defineEmits<{
@@ -54,6 +56,19 @@ function ensure(f: SchemaField): FilterDraft {
   return draft[fk]
 }
 
+let timer: ReturnType<typeof setTimeout> | null = null
+const baselineJSON = ref('{}')
+
+function collectActive(): Record<string, FilterDraft> {
+  const out: Record<string, FilterDraft> = {}
+  for (const f of filterFields.value) {
+    const d = ensure(f)
+    if (!isDraftActive(d)) continue
+    out[fieldKey(f)] = { op: d.op, value: d.value, value2: d.value2 }
+  }
+  return out
+}
+
 function syncDraft() {
   const present = new Set<string>()
   for (const f of filterFields.value) {
@@ -69,6 +84,7 @@ function syncDraft() {
   for (const k of Object.keys(draft)) {
     if (!present.has(k)) delete draft[k]
   }
+  baselineJSON.value = JSON.stringify(collectActive())
 }
 syncDraft()
 
@@ -77,26 +93,30 @@ watch(
   syncDraft,
 )
 
-let timer: ReturnType<typeof setTimeout> | null = null
-let lastJSON = ''
+function emitCurrent() {
+  const out = collectActive()
+  const json = JSON.stringify(out)
+  if (json === baselineJSON.value) return
+  baselineJSON.value = json
+  emit('update', out)
+}
 
 function scheduleEmit() {
+  if (!props.autoApply) return
   if (timer) clearTimeout(timer)
-  timer = setTimeout(() => {
-    const out: Record<string, FilterDraft> = {}
-    for (const f of filterFields.value) {
-      const d = ensure(f)
-      if (!isDraftActive(d)) continue
-      out[fieldKey(f)] = { op: d.op, value: d.value, value2: d.value2 }
-    }
-    const json = JSON.stringify(out)
-    if (json === lastJSON) return
-    lastJSON = json
-    emit('update', out)
-  }, 300)
+  timer = setTimeout(emitCurrent, 300)
 }
 
 watch(draft, scheduleEmit, { deep: true })
+
+watch(
+  () => props.autoApply,
+  (on) => {
+    if (on) scheduleEmit()
+  },
+)
+
+const dirty = computed(() => JSON.stringify(collectActive()) !== baselineJSON.value)
 
 function autoSingleOp(f: SchemaField): string {
   if (isChoiceField(f)) return 'IN'
@@ -202,16 +222,22 @@ function resetAll() {
   for (const f of filterFields.value) {
     draft[fieldKey(f)] = { op: defaultOp(f), value: '', value2: '' }
   }
-  lastJSON = ''
-  emit('reset')
-  emit('update', {})
+  if (props.autoApply) {
+    baselineJSON.value = '{}'
+    emit('reset')
+    emit('update', {})
+  }
+}
+
+function apply() {
+  emitCurrent()
 }
 
 const activeCount = computed(
   () => filterFields.value.filter((f) => isDraftActive(draft[fieldKey(f)])).length,
 )
 
-defineExpose({ resetAll, activeCount })
+defineExpose({ resetAll, apply, activeCount, dirty })
 </script>
 
 <template>
@@ -221,14 +247,6 @@ defineExpose({ resetAll, activeCount })
         筛选
         <span v-if="activeCount" class="badge">{{ activeCount }}</span>
       </div>
-      <button
-        type="button"
-        class="link"
-        :disabled="!activeCount"
-        @click="resetAll"
-      >
-        重置
-      </button>
     </div>
 
     <div class="panel-body">
@@ -294,7 +312,14 @@ defineExpose({ resetAll, activeCount })
       </div>
     </div>
 
-    <div class="panel-foot muted">修改后自动应用</div>
+    <div v-if="!bare" class="panel-foot">
+      <button type="button" class="link" :disabled="!activeCount && !dirty" @click="resetAll">
+        重置
+      </button>
+      <button type="button" class="link accent" :disabled="!dirty" @click="apply">
+        应用
+      </button>
+    </div>
   </div>
 </template>
 
@@ -424,8 +449,16 @@ defineExpose({ resetAll, activeCount })
 }
 .panel-foot {
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
   padding: 8px 12px;
   border-top: 1px solid var(--line);
-  font-size: 11px;
+  font-size: 13px;
+}
+.panel-foot .accent {
+  color: var(--accent, #0f6a5a);
+  font-weight: 600;
 }
 </style>

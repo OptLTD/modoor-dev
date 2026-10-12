@@ -1,0 +1,13 @@
+{
+  "name": "modoor-dev",
+  "private": true,
+  "packageManager": "pnpm@9.15.3",
+  "scripts": {
+    "dev:base": "pnpm --filter @modoor/module-base-webui dev",
+    "dev:wiki": "pnpm --filter @modoor/module-wiki-webui dev",
+    "dev:sale": "pnpm --filter @modoor/module-sale-webui dev",
+    "dev:skill": "pnpm --filter @modoor/module-skill-webui dev",
+    "dev:doc": "pnpm --filter @modoor/module-doc-webui dev",
+    "dev:flow": "pnpm --filter @modoor/module-flow-webui dev"
+  }
+}

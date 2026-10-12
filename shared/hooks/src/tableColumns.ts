@@ -1,12 +1,14 @@
 /**
  * 列表列设置 — base_tbl，level 固定 global。
- * data: { order: 字段键顺序, hidden: 隐藏的字段键 }
+ * data: { order, hidden, filterOrder?, filterHidden? }
  */
 import { get, put } from './http'
 
 export type TableColumnLayout = {
   order: string[]
   hidden: string[]
+  filterOrder?: string[]
+  filterHidden?: string[]
 }
 
 const cache = new Map<string, TableColumnLayout | null>()
@@ -31,11 +33,23 @@ function parseKeys(raw: unknown): string[] {
 
 export function parseTableColumns(raw: unknown): TableColumnLayout | null {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null
-  const obj = raw as { order?: unknown; hidden?: unknown }
+  const obj = raw as {
+    order?: unknown
+    hidden?: unknown
+    filterOrder?: unknown
+    filterHidden?: unknown
+  }
   const order = parseKeys(obj.order)
   const hidden = parseKeys(obj.hidden)
-  if (!order.length && !hidden.length) return null
-  return { order, hidden }
+  const filterOrder = parseKeys(obj.filterOrder)
+  const filterHidden = parseKeys(obj.filterHidden)
+  if (!order.length && !hidden.length && !filterOrder.length && !filterHidden.length) return null
+  const out: TableColumnLayout = { order, hidden }
+  if (filterOrder.length || filterHidden.length) {
+    out.filterOrder = filterOrder
+    out.filterHidden = filterHidden
+  }
+  return out
 }
 
 export async function fetchTableColumns(
@@ -59,7 +73,7 @@ export async function fetchTableColumns(
   }
 }
 
-/** 写入列顺序与隐藏列。columns 为 null 时删除记录，恢复 tables.json 默认。 */
+/** 写入列/快捷筛选布局。columns 为 null 时删除记录，恢复 tables.json 默认。 */
 export function saveTableColumns(
   model: string,
   using: string,

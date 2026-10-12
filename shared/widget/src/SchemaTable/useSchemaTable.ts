@@ -87,10 +87,11 @@ export function useSchemaTable(
   const baseQuery = reactive<Record<string, unknown>>({})
   const filterOpen = ref<string | null>(null)
   const panelFilterOpen = ref(false)
-  const columnOpen = ref(false)
-  /** null 表示沿用模型默认顺序 / 默认显隐 */
+  /** null 表示沿用模型默认顺序 / 默认显隐（已应用；编辑 UI 在 views/SkmTblPrefs） */
   const columnOrder = ref<string[] | null>(null)
   const columnHidden = ref<string[] | null>(null)
+  const filterOrder = ref<string[] | null>(null)
+  const filterHidden = ref<string[] | null>(null)
 
   const colWidths = reactive<Record<string, number>>({})
   const actionResizeMin = computed(() => Math.max(ACTION_MIN, props.actionMin ?? 48))
@@ -199,13 +200,12 @@ export function useSchemaTable(
   }
 
   /** 本视图可配置的列。未保存过时：默认显示的列按 sticky 靠前，schema 隐藏列排在后面 */
-  const columnItems = computed(() => {
+  function buildColumnItems(order: string[] | null, hiddenKeys: string[] | null) {
     const all = fields.value.filter((f) => f.field)
     const byId = new Map(all.map((f) => [fieldId(f), f]))
-    const saved = columnOrder.value
     let keys: string[]
-    if (saved && saved.length) {
-      keys = saved.filter((k) => byId.has(k))
+    if (order && order.length) {
+      keys = order.filter((k) => byId.has(k))
       for (const f of all) {
         const id = fieldId(f)
         if (!keys.includes(id)) keys.push(id)
@@ -215,18 +215,14 @@ export function useSchemaTable(
       const rest = all.filter((f) => f.shown === false).map(fieldId)
       keys = [...applyStickyOrder(shown, stickyKeys.value), ...rest]
     }
-    const hidden = new Set(
-      columnHidden.value ?? all.filter((f) => f.shown === false).map(fieldId),
-    )
+    const hidden = new Set(hiddenKeys ?? all.filter((f) => f.shown === false).map(fieldId))
     return keys.map((id) => {
       const f = byId.get(id)!
-      return {
-        id,
-        label: columnLabel(f),
-        visible: !hidden.has(id),
-      }
+      return { id, label: columnLabel(f), visible: !hidden.has(id) }
     })
-  })
+  }
+
+  const columnItems = computed(() => buildColumnItems(columnOrder.value, columnHidden.value))
 
   const displayFields = computed(() => {
     const byId = new Map(fields.value.filter((f) => f.field).map((f) => [fieldId(f), f]))
@@ -237,7 +233,6 @@ export function useSchemaTable(
   })
 
   const visibleColumnCount = computed(() => columnItems.value.filter((item) => item.visible).length)
-  const columnsCustomized = computed(() => columnOrder.value !== null || columnHidden.value !== null)
 
   const pages = computed(() => Math.max(1, Math.ceil(count.value / size.value)))
 
@@ -259,14 +254,27 @@ export function useSchemaTable(
     }
   }
 
-  function applyColumnLayout(layout: { order: string[]; hidden: string[] } | null) {
+  function applyColumnLayout(
+    layout: {
+      order: string[]
+      hidden: string[]
+      filterOrder?: string[]
+      filterHidden?: string[]
+    } | null,
+  ) {
     if (!layout) {
       columnOrder.value = null
       columnHidden.value = null
+      filterOrder.value = null
+      filterHidden.value = null
       return
     }
-    columnOrder.value = layout.order
-    columnHidden.value = layout.hidden
+    const colsOn = layout.order.length > 0 || layout.hidden.length > 0
+    columnOrder.value = colsOn ? layout.order : null
+    columnHidden.value = colsOn ? layout.hidden : null
+    const filtersOn = (layout.filterOrder?.length || 0) > 0 || (layout.filterHidden?.length || 0) > 0
+    filterOrder.value = filtersOn ? layout.filterOrder || [] : null
+    filterHidden.value = filtersOn ? layout.filterHidden || [] : null
   }
 
   async function loadWidths() {
@@ -274,6 +282,8 @@ export function useSchemaTable(
     actionWidth.value = actionResizeMin.value
     columnOrder.value = null
     columnHidden.value = null
+    filterOrder.value = null
+    filterHidden.value = null
     const model = props.table.model
     const view = using.value
     const mod = modFromModel(model)
@@ -291,54 +301,24 @@ export function useSchemaTable(
     }
   }
 
-  function saveColumnPrefs() {
-    gateway.saveTableColumns(props.table.model, using.value, {
-      order: columnOrder.value || [],
-      hidden: columnHidden.value || [],
-    })
-  }
-
-  function toggleColumn(id: string) {
-    const key = String(id || '').trim()
-    if (!key) return
-    const items = columnItems.value
-    const hidden = new Set(
-      columnHidden.value ?? items.filter((item) => !item.visible).map((item) => item.id),
-    )
-    if (hidden.has(key)) hidden.delete(key)
-    else if (items.filter((item) => item.visible).length <= 1) return
-    else hidden.add(key)
-    if (!columnOrder.value?.length) columnOrder.value = items.map((item) => item.id)
-    columnHidden.value = [...hidden]
-    saveColumnPrefs()
-  }
-
-  function moveColumn(from: number, to: number) {
-    const items = columnItems.value
-    if (from < 0 || to < 0 || from >= items.length || to >= items.length || from === to) return
-    const order = items.map((item) => item.id)
-    const [row] = order.splice(from, 1)
-    order.splice(to, 0, row)
-    if (!columnHidden.value) {
-      columnHidden.value = items.filter((item) => !item.visible).map((item) => item.id)
+  function snapshotLayout() {
+    const colsOn = columnOrder.value !== null || columnHidden.value !== null
+    const filtersOn = filterOrder.value !== null || filterHidden.value !== null
+    if (!colsOn && !filtersOn) return null
+    return {
+      order: colsOn ? columnOrder.value || [] : [],
+      hidden: colsOn ? columnHidden.value || [] : [],
+      ...(filtersOn
+        ? {
+            filterOrder: filterOrder.value || [],
+            filterHidden: filterHidden.value || [],
+          }
+        : {}),
     }
-    columnOrder.value = order
-    saveColumnPrefs()
   }
 
-  function resetColumns() {
-    columnOrder.value = null
-    columnHidden.value = null
-    gateway.saveTableColumns(props.table.model, using.value, null)
-  }
-
-  function closeColumns() {
-    columnOpen.value = false
-  }
-
-  function toggleColumns() {
-    columnOpen.value = !columnOpen.value
-    if (columnOpen.value) panelFilterOpen.value = false
+  function saveColumnPrefs() {
+    gateway.saveTableColumns(props.table.model, using.value, snapshotLayout())
   }
 
   function persistWidth(id: string, w: number) {
@@ -514,52 +494,104 @@ export function useSchemaTable(
     return fieldForFilter(String(key))
   }
 
-  const quickFilterGroups = computed((): QuickFilterGroup[] => {
-    const keys = props.table.filters || []
-    if (!keys.length) return []
-    const out: QuickFilterGroup[] = []
-    for (const key of keys) {
+  function quickFilterKind(f: SchemaField, requireOptions = false): QuickFilterKind | null {
+    if (!isHeaderFilterable(f)) return null
+    const ft = ftypeOf(f)
+    if (ft === 'DATETIME') return 'daterange'
+    if (
+      (ft === 'NUMERIC' || ft === 'INTEGER') &&
+      (String(f.field || '').toLowerCase() === 'uterm' || fieldKey(f).endsWith('.uterm'))
+    ) {
+      return 'text'
+    }
+    if (ft === 'RELATION' || (ft === 'OPTIONAL' && isMultiple(f))) {
+      if (requireOptions && !selectOptionsOf(f).length) return null
+      return 'relation'
+    }
+    if (facetOptions(f)) return 'select'
+    if (ft === 'OPTIONAL' || hasReferOptions(f)) {
+      if (requireOptions && !optionsOf(f).length) return null
+      return 'select'
+    }
+    if (
+      ft === 'STRINGS' ||
+      ft === 'SUBJECT' ||
+      ft === 'KEYWORDS' ||
+      ft === 'SERIALNO' ||
+      ft === 'LONGTEXT'
+    ) {
+      return 'text'
+    }
+    return null
+  }
+
+  const quickFilterCandidates = computed((): SchemaField[] => {
+    const seen = new Set<string>()
+    const out: SchemaField[] = []
+    const consider = (f: SchemaField | undefined) => {
+      if (!f || !quickFilterKind(f, false)) return
+      const id = fieldKey(f)
+      if (!id || seen.has(id)) return
+      seen.add(id)
+      out.push(f)
+    }
+    for (const key of props.table.filters || []) consider(findFieldByKey(String(key)))
+    for (const f of fields.value) {
+      consider(originMap.value[fieldKey(f)] || originMap.value[f.uukey] || f)
+    }
+    for (const f of Object.values(originMap.value)) consider(f)
+    return out
+  })
+
+  const defaultFilterVisible = computed(() => {
+    const ids = new Set<string>()
+    for (const key of props.table.filters || []) {
       const f = findFieldByKey(String(key))
-      if (!f || !isHeaderFilterable(f)) continue
-      const ft = ftypeOf(f)
-      // 日期始终区间筛选，不走 facet 下拉（避免 IN 精确匹配时间戳失败）
-      if (ft === 'DATETIME') {
-        out.push({ field: f, kind: 'daterange' })
-        continue
+      if (f) ids.add(fieldKey(f))
+    }
+    return ids
+  })
+
+  function buildFilterItems(order: string[] | null, hiddenKeys: string[] | null) {
+    const all = quickFilterCandidates.value
+    const byId = new Map(all.map((f) => [fieldKey(f), f]))
+    let keys: string[]
+    if (order && order.length) {
+      keys = order.filter((k) => byId.has(k))
+      for (const f of all) {
+        const id = fieldKey(f)
+        if (!keys.includes(id)) keys.push(id)
       }
-      // 财务期间等数值账期：快捷文本（可输 202608）
-      if (
-        (ft === 'NUMERIC' || ft === 'INTEGER') &&
-        (String(f.field || '').toLowerCase() === 'uterm' || fieldKey(f).endsWith('.uterm'))
-      ) {
-        out.push({ field: f, kind: 'text' })
-        continue
-      }
-      // RELATION，以及多选 OPTIONAL（标签）：可搜索多选，查询用包含任一
-      if (ft === 'RELATION' || (ft === 'OPTIONAL' && isMultiple(f))) {
-        if (!selectOptionsOf(f).length) continue
-        out.push({ field: f, kind: 'relation' })
-        continue
-      }
-      // unique≤100：快捷筛选也用下拉（可搜索）
-      if (facetOptions(f)) {
-        out.push({ field: f, kind: 'select' })
-        continue
-      }
-      if (ft === 'OPTIONAL' || hasReferOptions(f)) {
-        if (!optionsOf(f).length) continue
-        out.push({ field: f, kind: 'select' })
-        continue
-      }
-      if (
-        ft === 'STRINGS' ||
-        ft === 'SUBJECT' ||
-        ft === 'KEYWORDS' ||
-        ft === 'SERIALNO' ||
-        ft === 'LONGTEXT'
-      ) {
-        out.push({ field: f, kind: 'text' })
-      }
+    } else {
+      const shown = all
+        .filter((f) => defaultFilterVisible.value.has(fieldKey(f)))
+        .map((f) => fieldKey(f))
+      const rest = all
+        .filter((f) => !defaultFilterVisible.value.has(fieldKey(f)))
+        .map((f) => fieldKey(f))
+      keys = [...shown, ...rest]
+    }
+    const hidden = new Set(
+      hiddenKeys ??
+        all.filter((f) => !defaultFilterVisible.value.has(fieldKey(f))).map((f) => fieldKey(f)),
+    )
+    return keys.map((id) => {
+      const f = byId.get(id)!
+      return { id, label: columnLabel(f), visible: !hidden.has(id) }
+    })
+  }
+
+  const filterItems = computed(() => buildFilterItems(filterOrder.value, filterHidden.value))
+
+  const quickFilterGroups = computed((): QuickFilterGroup[] => {
+    const out: QuickFilterGroup[] = []
+    for (const item of filterItems.value) {
+      if (!item.visible) continue
+      const f = findFieldByKey(item.id)
+      if (!f) continue
+      const kind = quickFilterKind(f, true)
+      if (!kind) continue
+      out.push({ field: f, kind })
     }
     return out
   })
@@ -895,7 +927,6 @@ export function useSchemaTable(
 
   function togglePanelFilter() {
     panelFilterOpen.value = !panelFilterOpen.value
-    if (panelFilterOpen.value) columnOpen.value = false
   }
 
   const activeFilterCount = computed(
@@ -1023,7 +1054,6 @@ export function useSchemaTable(
     () => {
       page.value = 1
       order.value = null
-      columnOpen.value = false
       panelFilterOpen.value = false
       for (const k of Object.keys(appliedFilters)) delete appliedFilters[k]
       for (const k of Object.keys(filterDraft)) delete filterDraft[k]
@@ -1035,7 +1065,6 @@ export function useSchemaTable(
 
   watch(using, (next, prev) => {
     if (next === prev) return
-    columnOpen.value = false
     panelFilterOpen.value = false
     loadWidths()
   })
@@ -1182,17 +1211,18 @@ export function useSchemaTable(
       quickRangeEnd,
       setQuickRange,
     },
-    /** 列显隐与顺序 */
-    columns: {
-      open: columnOpen,
-      items: columnItems,
+    /** 已应用列/快捷筛选布局（编辑 UI 见 @modoor/views/SkmTblPrefs） */
+    prefs: {
+      model: computed(() => props.table.model),
+      using,
+      snapshot: snapshotLayout,
+      apply: applyColumnLayout,
+      save: saveColumnPrefs,
+      buildColumnItems,
+      buildFilterItems,
+      columnItems,
+      filterItems,
       visibleCount: visibleColumnCount,
-      customized: columnsCustomized,
-      toggleOpen: toggleColumns,
-      close: closeColumns,
-      toggle: toggleColumn,
-      move: moveColumn,
-      reset: resetColumns,
     },
     /** 批量操作 */
     actions: {

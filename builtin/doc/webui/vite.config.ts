@@ -19,6 +19,8 @@ export default defineConfig({
       '@modoor/views': path.resolve(repo, 'shared/views/src'),
       vue: path.resolve(root, 'node_modules/vue'),
       'vue-router': path.resolve(root, 'node_modules/vue-router'),
+      'jspreadsheet-ce': path.resolve(root, 'node_modules/jspreadsheet-ce'),
+      jsuites: path.resolve(root, 'node_modules/jsuites'),
     },
   },
   server: {
