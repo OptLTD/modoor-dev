@@ -553,6 +553,8 @@ const props = withDefaults(
     hideBody?: boolean
     hideFilter?: boolean
     hidePagination?: boolean
+    /** 给定时只显示这些列，顺序固定，不采用视图默认列和已保存的列设置 */
+    fields?: string[]
   }>(),
   {
     hideBody: false,

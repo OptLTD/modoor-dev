@@ -31,7 +31,11 @@ const emit = defineEmits<{
       <p v-if="card.error" class="error">{{ card.error }}</p>
       <p v-else-if="card.loading && card.total == null" class="muted">…</p>
       <div v-else class="count-copy">
-        <p class="count-sum">共{{ card.total ?? '—' }}{{ card.suffix || '条' }}</p>
+        <p class="count-sum">
+          <span class="affix">共</span>
+          <span class="num">{{ card.total ?? '—' }}</span>
+          <span class="affix">{{ card.suffix || '条' }}</span>
+        </p>
         <p v-if="card.note" class="count-note">{{ card.note }}</p>
       </div>
     </div>
@@ -131,7 +135,7 @@ const emit = defineEmits<{
 .count-body {
   flex: 1;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: center;
   min-height: 0;
   padding: 12px 14px;
@@ -139,8 +143,10 @@ const emit = defineEmits<{
 .count-copy {
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: 6px;
   min-width: 0;
+  text-align: center;
 }
 .count-sum,
 .count-note {
@@ -148,9 +154,18 @@ const emit = defineEmits<{
   line-height: 1.4;
 }
 .count-sum {
-  font-size: 18px;
+  display: flex;
+  align-items: baseline;
+  gap: 2px;
   font-weight: 650;
   color: var(--accent, #0f6a5a);
+}
+.count-sum .num {
+  font-size: 36px;
+  line-height: 1;
+}
+.count-sum .affix {
+  font-size: 14px;
 }
 .count-card.warn .count-sum {
   color: var(--danger, #a33b2b);

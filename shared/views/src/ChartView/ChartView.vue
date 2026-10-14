@@ -236,6 +236,9 @@ function openCount(key: string) {
 const listModel = computed(() => String(listCard.value?.query?.model || ''))
 const listUsing = computed(() => listCard.value?.query?.using || 'default')
 const listQuery = computed(() => (listCard.value ? chartSearchQuery(listCard.value) : {}))
+const listFields = computed(() =>
+  (listCard.value?.option?.fields || []).map((k) => String(k).trim()).filter(Boolean),
+)
 const listTitle = computed(() => {
   const card = listCard.value
   if (!card) return ''
@@ -280,6 +283,7 @@ async function openRow(payload: { key: string; rowKey: string }) {
     :title="listTitle"
     :model="listModel"
     :using="listUsing"
+    :fields="listFields"
     :fixed-query="listQuery"
     @close="listOpen = false"
   />

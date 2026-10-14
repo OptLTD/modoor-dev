@@ -39,6 +39,7 @@ def test_table_appends_unlisted_model_fields_as_hidden():
         },
     )
     table = project_table(bundle, using="default", scene="SEARCH")
+    assert table["request"]["order"] == {"field": "basic.utime", "order": "desc"}
     shown = [(f["uukey"], f["shown"]) for f in table["fields"]]
     assert shown == [
         ("basic.name", True),
@@ -71,8 +72,18 @@ def test_extra_filter_feeds_table_filters():
             "recent": {
                 "title": "订单列表",
                 "extra": {"filter": ["basic.utime", "basic.uukey"]},
+                "order": {"field": "basic.uukey", "order": "asc"},
             }
         },
     )
     table = project_table(bundle, using="recent", scene="SEARCH")
     assert table["filters"] == ["basic.utime", "basic.uukey"]
+    assert table["request"]["order"] == {"field": "basic.uukey", "order": "asc"}
+
+    ordered = project_table(
+        bundle,
+        using="recent",
+        scene="SEARCH",
+        order={"field": "basic.utime", "order": "desc"},
+    )
+    assert ordered["request"]["order"] == {"field": "basic.utime", "order": "desc"}

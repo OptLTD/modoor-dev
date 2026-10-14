@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session
 from modoor.core.ctx import Ctx
 from modoor.core.errors import AppError
 from modoor.engine.adapters import ModelAdapter, flatten_pick, normalize_batch_row
-from modoor.engine.query import QueryTerm, parse_query
+from modoor.engine.query import QueryTerm, parse_query, resolve_list_order
 
 FACET_TYPES = frozenset(
     {
@@ -491,10 +491,15 @@ class ColsOrmAdapter(ModelAdapter):
             base = base.where(cls.state == STATE_ON)
         base = self._apply_terms(base, terms)
         count = session.scalar(select(func.count()).select_from(base.subquery())) or 0
-        order_field = (order or {}).get("field") or "basic.uukey"
-        order_dir = str((order or {}).get("order") or "desc").lower()
-        col_name = self.COLS.get(str(order_field), "uukey")
-        col = getattr(cls, col_name, getattr(cls, "uukey", cls.id))
+        resolved = resolve_list_order(order)
+        order_field = resolved["field"]
+        order_dir = resolved["order"]
+        col_name = self.COLS.get(order_field)
+        col = getattr(cls, col_name, None) if col_name else None
+        if col is None and order_field == "basic.utime":
+            col = getattr(cls, "utime", None)
+        if col is None:
+            col = getattr(cls, self.COLS.get("basic.uukey", "uukey"), getattr(cls, "uukey", cls.id))
         ordered = base.order_by(desc(col) if order_dir == "desc" else asc(col))
         rows = session.scalars(ordered.offset((page - 1) * size).limit(size)).all()
         values = [self._to_values(r, field_keys) for r in rows]
@@ -723,7 +728,10 @@ class ColsOrmAdapter(ModelAdapter):
             return self._list_has_any(col, vals)
         if op == "NE":
             hit = self._list_has_any(col, [val])
-            return ~hit if hit is not None else None
+            if hit is None:
+                return None
+            # 没打标签的也算「不包含」，否则 NULL 会被 NOT 滤掉
+            return or_(col.is_(None), ~hit)
         if op == "NIL":
             text = cast(col, String)
             empty = or_(col.is_(None), text.in_(["[]", "null", ""]))

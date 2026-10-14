@@ -58,6 +58,8 @@ export function useSchemaTable(
     actionMin?: number
     /** 隐藏表体时跳过列表拉取（批量 sheet 态） */
     hideBody?: boolean
+    /** 给定时只显示这些列，顺序固定 */
+    fields?: string[]
   },
   options?: {
     onRequestChange?: (req: {
@@ -199,10 +201,32 @@ export function useSchemaTable(
     return String(f.label || f.field || fieldId(f))
   }
 
+  /** 卡片指定列：只显示这些字段，忽略视图默认列和已保存列设置 */
+  function pinnedFieldIds(all: SchemaField[]): string[] | null {
+    const raw = props.fields
+    if (!raw?.length) return null
+    const ids = new Set(all.map(fieldId))
+    const keys = raw.map((k) => String(k).trim()).filter((k) => k && ids.has(k))
+    return keys.length ? keys : null
+  }
+
   /** 本视图可配置的列。未保存过时：默认显示的列按 sticky 靠前，schema 隐藏列排在后面 */
   function buildColumnItems(order: string[] | null, hiddenKeys: string[] | null) {
     const all = fields.value.filter((f) => f.field)
     const byId = new Map(all.map((f) => [fieldId(f), f]))
+    const pinned = pinnedFieldIds(all)
+    if (pinned) {
+      const pinnedSet = new Set(pinned)
+      const keys = [...pinned]
+      for (const f of all) {
+        const id = fieldId(f)
+        if (!pinnedSet.has(id)) keys.push(id)
+      }
+      return keys.map((id) => {
+        const f = byId.get(id)!
+        return { id, label: columnLabel(f), visible: pinnedSet.has(id) }
+      })
+    }
     let keys: string[]
     if (order && order.length) {
       keys = order.filter((k) => byId.has(k))

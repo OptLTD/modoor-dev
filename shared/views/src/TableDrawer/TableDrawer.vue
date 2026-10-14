@@ -23,6 +23,8 @@ const props = defineProps<{
   model: string
   fixedQuery?: Record<string, unknown>
   using?: string
+  /** 强制显示这些列，顺序与传入一致 */
+  fields?: string[]
 }>()
 
 const emit = defineEmits<{
@@ -72,7 +74,7 @@ const table = computed((): SchemaTable | null => {
 
 const remountKey = computed(
   () =>
-    `${props.model}|${props.using || 'default'}|${JSON.stringify(props.fixedQuery || {})}`,
+    `${props.model}|${props.using || 'default'}|${(props.fields || []).join(',')}|${JSON.stringify(props.fixedQuery || {})}`,
 )
 
 async function loadSchema() {
@@ -147,6 +149,7 @@ watch(
             class="td-table"
             :table="table"
             :using="table.using"
+            :fields="props.fields"
             @record-click="onRecordClick"
           />
         </div>

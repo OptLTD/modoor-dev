@@ -15,6 +15,36 @@ class QueryTerm:
     group: str = ""  # "" = AND; "or" = OR group (charts.json logic: OR / GROUP:OR)
 
 
+DEFAULT_LIST_ORDER = {"field": "basic.utime", "order": "desc"}
+
+
+def resolve_list_order(
+    order: dict[str, Any] | None = None,
+    view: dict[str, Any] | None = None,
+) -> dict[str, str]:
+    """请求排序优先；否则用视图上定义的 order；都没有则 basic.utime desc。"""
+
+    def _one(raw: Any) -> dict[str, str] | None:
+        if not isinstance(raw, dict):
+            return None
+        field = str(raw.get("field") or "").strip()
+        if not field:
+            return None
+        direction = str(raw.get("order") or "desc").strip().lower()
+        if direction not in ("asc", "desc"):
+            direction = "desc"
+        return {"field": field, "order": direction}
+
+    hit = _one(order)
+    if hit:
+        return hit
+    if isinstance(view, dict):
+        hit = _one(view.get("order"))
+        if hit:
+            return hit
+    return dict(DEFAULT_LIST_ORDER)
+
+
 def query_field_key(key: str) -> str:
     """``basic.utime:BTW`` → ``basic.utime``; bare keys unchanged."""
     k = str(key or "")

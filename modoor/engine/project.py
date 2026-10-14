@@ -384,10 +384,10 @@ def project_table(
 
     click_ids = list(view.get("clicks") or [])
     clicks = _expand_click_ids(bundle, click_ids)
-    from modoor.engine.query import merge_search_query
+    from modoor.engine.query import merge_search_query, resolve_list_order
 
     default_query = merge_search_query(view.get("query") or {}, query)
-    default_order = order or {"field": "basic.uukey", "order": "desc"}
+    default_order = resolve_list_order(order, view)
     sheet_raw = extra.get("sheet")
     sheet: list[str] = []
     if isinstance(sheet_raw, list):
