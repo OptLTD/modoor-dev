@@ -1,4 +1,5 @@
 import type { SchemaField } from './record'
+import { readGlobalSettings } from './globalSettings'
 
 export type FilterDraft = {
   op: string
@@ -37,24 +38,86 @@ export function pickFieldValue(row: Record<string, unknown> | null | undefined, 
   return undefined
 }
 
+function formatWithPattern(
+  parts: { year: string; month: string; day: string; hour: string; minute: string; second: string },
+  pattern: string,
+): string {
+  return pattern
+    .replace(/YYYY/g, parts.year)
+    .replace(/MM/g, parts.month)
+    .replace(/DD/g, parts.day)
+    .replace(/HH/g, parts.hour)
+    .replace(/mm/g, parts.minute)
+    .replace(/ss/g, parts.second)
+}
+
+function formatInTimeZone(date: Date, timeZone: string, pattern: string): string {
+  const bits = new Intl.DateTimeFormat('en-US', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(date)
+  const pick = (type: string) => bits.find((p) => p.type === type)?.value || ''
+  let hour = pick('hour')
+  if (hour === '24') hour = '00'
+  return formatWithPattern(
+    {
+      year: pick('year'),
+      month: pick('month'),
+      day: pick('day'),
+      hour,
+      minute: pick('minute'),
+      second: pick('second'),
+    },
+    pattern,
+  )
+}
+
+/** DATETIME uses the company time format. Offset values are shifted into the company timezone. */
 export function formatDateTimeDisplay(
   raw: unknown,
   mode: boolean | DateTimeKind = false,
 ): string {
   if (raw == null || raw === '') return ''
-  const s = String(raw)
-  const kind: DateTimeKind = mode === true 
-    ? 'ONLYDATE' : mode === false 
+  const s = String(raw).trim()
+  const kind: DateTimeKind = mode === true
+    ? 'ONLYDATE' : mode === false
     ? 'DATETIME' : mode
-  if (/^\d{4}-\d{2}/.test(s)) {
-    if (kind === 'ONLYMONTH') return s.slice(0, 7)
-    if (kind === 'ONLYDATE') return s.slice(0, 10)
-    if (/^\d{4}-\d{2}-\d{2}/.test(s)) {
-      return s.includes('T') ? s.replace('T', ' ').slice(0, 19) : s.slice(0, 19).replace('T', ' ')
-    }
-    return s.slice(0, 7)
+  if (kind === 'ONLYMONTH') return s.slice(0, 7)
+  if (kind === 'ONLYDATE') return s.slice(0, 10)
+  if (!/^\d{4}-\d{2}-\d{2}/.test(s)) {
+    return /^\d{4}-\d{2}/.test(s) ? s.slice(0, 7) : s
   }
-  return s
+  const prefs = readGlobalSettings()
+  const pattern = prefs.timeFormat || 'YYYY-MM-DD HH:mm:ss'
+  if (/[zZ]$|[+-]\d{2}:?\d{2}$/.test(s)) {
+    const date = new Date(s)
+    if (!Number.isNaN(date.getTime())) {
+      try {
+        return formatInTimeZone(date, prefs.timezone || 'Asia/Shanghai', pattern)
+      } catch {
+        /* unknown zone: fall through */
+      }
+    }
+  }
+  const naive = s.match(/^(\d{4})[-/](\d{2})[-/](\d{2})(?:[T ](\d{2}):(\d{2})(?::(\d{2}))?)?/)
+  if (!naive) return s.slice(0, 19).replace('T', ' ')
+  return formatWithPattern(
+    {
+      year: naive[1],
+      month: naive[2],
+      day: naive[3],
+      hour: naive[4] || '00',
+      minute: naive[5] || '00',
+      second: naive[6] || '00',
+    },
+    pattern,
+  )
 }
 
 export function formatDateInputValue(raw: unknown): string {

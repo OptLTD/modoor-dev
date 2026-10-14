@@ -157,7 +157,22 @@ def login_submit(
     return RedirectResponse(href, status_code=303)
 
 
-@app.get("/", response_class=HTMLResponse)
+@app.get("/")
+def root(request: Request):
+    """Entry: send a logged-in user to the company default module, or the workbench."""
+    user = kit.current_user(request)
+    if not user:
+        return RedirectResponse("/login", status_code=303)
+    with session_scope() as session:
+        mid, href = kit.landing_for_user(session, user)
+        if mid:
+            request.session["active_module"] = mid
+        else:
+            request.session.pop("active_module", None)
+    return RedirectResponse(href, status_code=303)
+
+
+@app.get("/home", response_class=HTMLResponse)
 def home(request: Request):
     user = kit.current_user(request)
     if not user:

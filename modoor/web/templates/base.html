@@ -495,6 +495,53 @@
       margin: 0;
     }
 
+    .workbench-tools {
+      display: flex;
+      align-items: center;
+      gap: 0.85rem;
+      flex-shrink: 0;
+    }
+
+    .workbench-settings {
+      font: inherit;
+      background: transparent;
+      color: var(--ink);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-md);
+      padding: 0.38rem 0.75rem;
+      cursor: pointer;
+    }
+
+    .workbench-settings:hover {
+      background: color-mix(in srgb, var(--line) 45%, transparent);
+    }
+
+    .global-settings-body {
+      padding: 16px;
+    }
+
+    .global-settings-lead {
+      margin: 0 0 14px;
+    }
+
+    .global-field {
+      display: flex;
+      flex-direction: column;
+      gap: 0.28rem;
+      margin-bottom: 0.85rem;
+      font-size: 0.9rem;
+    }
+
+    .global-field select {
+      width: 100%;
+      font: inherit;
+      padding: 0.4rem 0.55rem;
+    }
+
+    .global-settings-error {
+      margin: 0 0 10px;
+    }
+
     .workbench-group {
       margin-bottom: 1.7rem;
     }
@@ -939,7 +986,7 @@
 <body class="{% block body_class %}{% endblock %}">
   {% block shell %}
   <header class="top">
-    <a class="shell-logo" href="/" aria-label="Modoor">
+    <a class="shell-logo" href="/home" aria-label="Modoor">
       <img src="/logo.png" alt="" width="32" height="32" />
     </a>
     {% if current_user %}
@@ -950,7 +997,7 @@
         <span class="caret" aria-hidden="true">▾</span>
       </button>
       <div class="switcher" id="brand-menu" role="listbox">
-        <a href="/" role="option" class="switcher-item {% if not current_module %}active{% endif %}"
+        <a href="/home" role="option" class="switcher-item {% if not current_module %}active{% endif %}"
           data-i18n="workbench">工作台</a>
         {% for m in module_switcher %}
         <a href="{{ m.href }}" role="option" class="switcher-item {% if m.id == current_module %}active{% endif %}{% if m.online == False %} muted{% endif %}"
@@ -1059,11 +1106,6 @@
             <div class="name">{{ current_user.display_name }}</div>
             <div class="sub">{{ current_user.username }} · {{ tenant }}</div>
           </div>
-          <div class="systray-menu-header lang-head">
-            <div class="sub" data-i18n="language">语言</div>
-          </div>
-          <button type="button" class="menu-link js-set-locale" data-locale="zh-CN" role="menuitem">中文</button>
-          <button type="button" class="menu-link js-set-locale" data-locale="en-US" role="menuitem">English</button>
           <div class="sep"></div>
           <button type="button" class="menu-link js-agent-connect" role="menuitem" data-i18n="connectAgentGuide">接入到
             Agent</button>
@@ -1152,7 +1194,18 @@
           originBuiltin: "内置",
           originAddon: "业务插件",
           originLightappHint: "自行构建的模块将出现在这里。",
-          originEmpty: "本组暂无模块"
+          originEmpty: "本组暂无模块",
+          globalSettings: "设置",
+          globalSettingsTitle: "全局设置",
+          globalSettingsLead: "对本公司所有人生效。",
+          globalLanguage: "语言",
+          globalTimezone: "时区",
+          globalTimeFormat: "时间格式",
+          globalDefaultModule: "默认模块",
+          globalDefaultModuleHint: "登录后进入该模块。留空则进入工作台。",
+          globalWorkbench: "工作台",
+          globalSave: "保存",
+          globalReadonly: "仅管理员可修改。"
         },
         "en-US": {
           inbox: "Inbox",
@@ -1185,7 +1238,18 @@
           originBuiltin: "Builtin",
           originAddon: "Addon",
           originLightappHint: "Tenant-built modules will appear here.",
-          originEmpty: "Nothing in this group"
+          originEmpty: "Nothing in this group",
+          globalSettings: "Settings",
+          globalSettingsTitle: "Global settings",
+          globalSettingsLead: "Applies to everyone in this company.",
+          globalLanguage: "Language",
+          globalTimezone: "Time zone",
+          globalTimeFormat: "Time format",
+          globalDefaultModule: "Default module",
+          globalDefaultModuleHint: "Opened after login. Leave empty to stay on the workbench.",
+          globalWorkbench: "Workbench",
+          globalSave: "Save",
+          globalReadonly: "Only an administrator can change these."
         }
       };
 
@@ -1251,18 +1315,20 @@
 
       window.__modoorApplyI18n = applyI18n;
       applyI18n(detectLocale());
-
-      document.querySelectorAll(".js-set-locale").forEach(function (btn) {
-        btn.addEventListener("click", function (e) {
-          e.preventDefault();
-          e.stopPropagation();
-          var next = normalizeLocale(btn.getAttribute("data-locale"));
-          try { localStorage.setItem(STORAGE_KEY, next); } catch (err) { }
-          applyI18n(next);
-          var wrap = btn.closest("[data-dropdown]");
-          if (wrap) wrap.classList.remove("open");
-        });
-      });
+      window.__modoorGlobalReady = fetch("/api/base/global", { credentials: "same-origin" })
+        .then(function (res) { return res.ok ? res.json() : null; })
+        .then(function (data) {
+          if (!data || !data.settings) return data;
+          var loc = normalizeLocale(data.settings.locale);
+          try {
+            localStorage.setItem(STORAGE_KEY, loc);
+            localStorage.setItem("modoor.global", JSON.stringify(data.settings));
+          } catch (err) { }
+          applyI18n(loc);
+          window.__modoorGlobal = data;
+          return data;
+        })
+        .catch(function () { return null; });
 
       function closeAll(except) {
         document.querySelectorAll("[data-dropdown].open, #brand-wrap.open, [data-nav-group].open").forEach(function (el) {
@@ -1450,6 +1516,7 @@
       });
     })();
   </script>
+  {% block page_script %}{% endblock %}
 </body>
 
 </html>

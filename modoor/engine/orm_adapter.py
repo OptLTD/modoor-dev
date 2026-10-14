@@ -1,6 +1,6 @@
 """COLS-driven ORM adapter — shared search / totals / facets for all modules.
 
-Modules declare ``COLS`` / ``JSON_GROUPS`` / ``NUM_KEYS`` / ``DT_KEYS`` and inherit
+Modules declare ``COLS`` / ``JSON_GROUPS`` / ``NUM_KEYS`` / ``DT_KEYS`` / ``LIST_KEYS`` and inherit
 ``ColsOrmAdapter``. Fleet-specific serial / uterm hooks override thin methods.
 """
 
@@ -11,7 +11,8 @@ from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Any, Callable
 
-from sqlalchemy import and_, asc, desc, func, or_, select
+from sqlalchemy import String, and_, asc, cast, desc, func, or_, select
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Session
 
 from modoor.core.ctx import Ctx
@@ -105,6 +106,8 @@ class ColsOrmAdapter(ModelAdapter):
     COLS: dict[str, str]
     DT_KEYS: set[str] = set()
     NUM_KEYS: set[str] = set()
+    # JSON 数组列。筛选 IN/EQ 按「包含任一」，与内存里的多选字段一致。
+    LIST_KEYS: set[str] = set()
     REQUIRED_ON_CREATE: list[str] = []
     JSON_GROUPS: set[str] = set()
     after_upsert: Callable[[Session, Ctx, Any, dict[str, Any], bool], None] | None = None
@@ -285,6 +288,8 @@ class ColsOrmAdapter(ModelAdapter):
         col = getattr(cls, col_name)
         op = term.op
         val = self._coerce_query_val(term.field, op, term.value)
+        if term.field in self.LIST_KEYS:
+            return self._list_clause(col, op, val)
         if op == "EQ":
             return col == val
         if op == "NE":
@@ -703,7 +708,43 @@ class ColsOrmAdapter(ModelAdapter):
         d = to_dec(val)
         return to_float(d) if self._json_path(sk) else d
 
+    def _list_has_any(self, col: Any, values: list[Any]) -> Any | None:
+        wanted = [str(v).strip() for v in values if str(v).strip()]
+        if not wanted:
+            return None
+        blob = cast(col, JSONB)
+        clauses = [blob.contains([item]) for item in wanted]
+        return or_(*clauses) if len(clauses) > 1 else clauses[0]
+
+    def _list_clause(self, col: Any, op: str, val: Any) -> Any | None:
+        """多选标签存在 JSON 数组里：命中其中一项即可。"""
+        if op in ("IN", "EQ"):
+            vals = val if isinstance(val, list) else [val]
+            return self._list_has_any(col, vals)
+        if op == "NE":
+            hit = self._list_has_any(col, [val])
+            return ~hit if hit is not None else None
+        if op == "NIL":
+            text = cast(col, String)
+            empty = or_(col.is_(None), text.in_(["[]", "null", ""]))
+            return empty if val in (True, "true", 1, "1") else ~empty
+        if op == "LIKE":
+            return cast(col, String).ilike(f"%{val}%")
+        return None
+
+    def _coerce_list(self, val: Any) -> list[str]:
+        if val in (None, ""):
+            return []
+        if isinstance(val, list):
+            return [str(item).strip() for item in val if str(item).strip()]
+        text = str(val).strip()
+        if not text:
+            return []
+        return [part.strip() for part in text.replace(",", "\n").split("\n") if part.strip()]
+
     def _coerce_write(self, sk: str, val: Any) -> Any:
+        if sk in self.LIST_KEYS:
+            return self._coerce_list(val)
         if val in (None, ""):
             return None if sk in self.DT_KEYS or sk in self.NUM_KEYS else ""
         if sk in self.DT_KEYS:

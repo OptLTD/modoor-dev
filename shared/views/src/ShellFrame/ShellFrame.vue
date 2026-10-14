@@ -1,7 +1,7 @@
 <template>
   <div class="shell" :class="{ 'nav-side': menuLayout === 'side' }" @click="closeMenus">
     <header class="top">
-      <a class="shell-logo" href="/" aria-label="Modoor">
+      <a class="shell-logo" href="/home" aria-label="Modoor">
         <img :src="logoSrc" alt="" width="32" height="32" />
       </a>
       <div class="brand-wrap" :class="{ open: openMenu === 'brand' }" @click.stop>
@@ -332,15 +332,6 @@
           </label>
 
           <label class="settings-field">
-            <span class="settings-label">{{ t('shell.language') }}</span>
-            <select v-model="draftLocale" class="settings-select">
-              <option v-for="loc in SUPPORTED_LOCALES" :key="loc.code" :value="loc.code">
-                {{ loc.label }}
-              </option>
-            </select>
-          </label>
-
-          <label class="settings-field">
             <span class="settings-label">{{ t('shell.theme') }}</span>
             <select class="settings-select" disabled :value="'system'">
               <option value="system">{{ t('shell.themeSystem') }}</option>
@@ -482,14 +473,13 @@ import {
   shellLoginUrl,
   useI18n,
   setLocale,
-  SUPPORTED_LOCALES,
+  fetchGlobalSettings,
   useUserPrefs,
   localizedAppLabel,
   localizedEntityLabel,
   type AuthUser,
   type AgentConnectInfo,
   type ShellModule,
-  type LocaleCode,
   type MenuLayout,
 } from '@modoor/hooks'
 
@@ -538,7 +528,6 @@ const agentConnectError = ref('')
 const agentConnect = ref<AgentConnectInfo | null>(null)
 const agentGuideOpen = ref(false)
 const userSettingsOpen = ref(false)
-const draftLocale = ref<LocaleCode>('zh-CN')
 const draftMenuLayout = ref<MenuLayout>('top')
 const agentGuideTitleId = 'shell-agent-guide-title'
 const agentConnectTitleId = 'shell-agent-connect-title'
@@ -733,7 +722,7 @@ async function refresh() {
       visible.length > 0 &&
       !visible.some((m) => m.id === props.moduleId || m.id === activeModule.value)
     ) {
-      location.href = '/'
+      location.href = '/home'
       return
     }
   } catch {
@@ -772,14 +761,23 @@ async function selectTenant(tn: TenantOption) {
 function openUserSettings() {
   closeMenus()
   draftMenuLayout.value = menuLayout.value
-  draftLocale.value = locale.value
   userSettingsOpen.value = true
 }
 
 function applyUserSettings() {
   setModuleMenuLayout(activeModule.value || props.moduleId, draftMenuLayout.value)
-  setLocale(draftLocale.value)
   userSettingsOpen.value = false
+}
+
+void loadCompanySettings()
+
+async function loadCompanySettings() {
+  try {
+    const res = await fetchGlobalSettings()
+    setLocale(res.settings.locale)
+  } catch {
+    /* keep the cached company settings */
+  }
 }
 
 function openAgentGuide() {

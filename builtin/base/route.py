@@ -366,6 +366,62 @@ def api_toggle_module(request: Request, module_id: str, body: ModuleToggle) -> d
         raise http_error(exc) from exc
 
 
+class GlobalSettingsBody(BaseModel):
+    locale: str = "zh-CN"
+    timezone: str = "Asia/Shanghai"
+    timeFormat: str = "YYYY-MM-DD HH:mm:ss"
+    defaultModule: str = ""
+
+
+def _global_payload(session, user, ctx) -> dict[str, Any]:
+    from builtin.base.global_settings import (
+        TIME_FORMATS,
+        TIMEZONES,
+        get_global_settings,
+        user_can_edit_global,
+    )
+
+    return {
+        "settings": get_global_settings(session, ctx),
+        "canEdit": user_can_edit_global(session, ctx, user_id=int(user.id)),
+        "timezones": [
+            {"id": zone, "labelZh": zh, "labelEn": en} for zone, zh, en in TIMEZONES
+        ],
+        "timeFormats": list(TIME_FORMATS),
+    }
+
+
+@router.get("/global")
+def api_get_global(request: Request) -> dict[str, Any]:
+    user = require_user(request)
+    try:
+        with session_scope() as session:
+            return _global_payload(session, user, ctx_of(user))
+    except Exception as exc:  # noqa: BLE001
+        raise http_error(exc) from exc
+
+
+@router.put("/global")
+def api_put_global(request: Request, body: GlobalSettingsBody) -> dict[str, Any]:
+    user = require_user(request)
+    try:
+        with session_scope() as session:
+            ctx = ctx_of(user)
+            from builtin.base.global_settings import save_global_settings, user_can_edit_global
+
+            if not user_can_edit_global(session, ctx, user_id=int(user.id)):
+                raise base_domain.AppError("permission_denied", "global settings require an administrator")
+            save_global_settings(
+                session,
+                ctx,
+                body.model_dump(),
+                enabled=kit().enabled(session, user.tenant),
+            )
+            return _global_payload(session, user, ctx)
+    except Exception as exc:  # noqa: BLE001
+        raise http_error(exc) from exc
+
+
 @router.get("/config")
 def api_list_config(request: Request, mod: str | None = None) -> dict[str, Any]:
     """列出 base_config（表 base_cfg）；可选 mod 过滤。fleet 首次访问会灌 dicts.json 种子。"""
@@ -377,7 +433,8 @@ def api_list_config(request: Request, mod: str | None = None) -> dict[str, Any]:
                 from addon.fleet.domain import load_dicts_catalog
 
                 base_domain.ensure_config_seeded(
-                    session, ctx, mod="fleet", catalog=load_dicts_catalog()
+                    session, ctx, mod="fleet",
+                    catalog=load_dicts_catalog()
                 )
             items = base_domain.list_configs(session, ctx, mod=mod)
             return {"items": items, "count": len(items)}

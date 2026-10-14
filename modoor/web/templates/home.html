@@ -8,7 +8,9 @@
         <h1 data-i18n="workbench">工作台</h1>
         <p class="workbench-lead meta" data-i18n="workbenchHint">选择模块开始工作</p>
       </div>
-      <div class="workbench-who">
+      <div class="workbench-tools">
+        <button type="button" class="workbench-settings" id="global-settings-open" hidden data-i18n="globalSettings">设置</button>
+        <div class="workbench-who">
         <span class="avatar workbench-avatar">{{ user_initials }}</span>
         <div class="workbench-who-text">
           <strong class="workbench-who-name">{{ current_user.display_name or current_user.realname or current_user.username }}</strong>
@@ -18,6 +20,7 @@
             {% endif %}
             {{ tenant }}
           </p>
+        </div>
         </div>
       </div>
     </header>
@@ -75,4 +78,170 @@
     </p>
     {% endif %}
   </section>
+
+  <div id="global-settings-modal" class="modal-mask" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="global-settings-title">
+      <header class="modal-head">
+        <strong id="global-settings-title" data-i18n="globalSettingsTitle">全局设置</strong>
+        <button type="button" class="btn secondary js-global-settings-close" data-i18n="close">关闭</button>
+      </header>
+      <form class="global-settings-body" id="global-settings-form">
+        <p class="meta global-settings-lead" data-i18n="globalSettingsLead">对本公司所有人生效。</p>
+        <p class="error global-settings-error" id="global-settings-error" hidden></p>
+        <label class="global-field">
+          <span data-i18n="globalLanguage">语言</span>
+          <select name="locale" id="global-locale">
+            <option value="zh-CN">中文</option>
+            <option value="en-US">English</option>
+          </select>
+        </label>
+        <label class="global-field">
+          <span data-i18n="globalTimezone">时区</span>
+          <select name="timezone" id="global-timezone"></select>
+        </label>
+        <label class="global-field">
+          <span data-i18n="globalTimeFormat">时间格式</span>
+          <select name="timeFormat" id="global-time-format"></select>
+        </label>
+        <label class="global-field">
+          <span data-i18n="globalDefaultModule">默认模块</span>
+          <select name="defaultModule" id="global-default-module">
+            <option value="" data-i18n="globalWorkbench">工作台</option>
+            {% for m in apps %}
+            <option value="{{ m.id }}" data-i18n-label data-zh="{{ m.title_zh }}" data-en="{{ m.title_en }}">{{ m.title_zh }}</option>
+            {% endfor %}
+          </select>
+          <span class="meta" data-i18n="globalDefaultModuleHint">登录后进入该模块。留空则进入工作台。</span>
+        </label>
+        <p class="meta" id="global-settings-readonly" hidden data-i18n="globalReadonly">仅管理员可修改。</p>
+        <div class="modal-actions">
+          <button type="button" class="btn secondary js-global-settings-close" data-i18n="close">关闭</button>
+          <button type="submit" class="btn" id="global-settings-save" data-i18n="globalSave">保存</button>
+        </div>
+      </form>
+    </div>
+  </div>
+{% endblock %}
+
+{% block page_script %}
+<script>
+  (function () {
+    var openBtn = document.getElementById("global-settings-open");
+    var modal = document.getElementById("global-settings-modal");
+    var form = document.getElementById("global-settings-form");
+    if (!openBtn || !modal || !form) return;
+
+    var tzSelect = document.getElementById("global-timezone");
+    var fmtSelect = document.getElementById("global-time-format");
+    var errorEl = document.getElementById("global-settings-error");
+    var readonlyEl = document.getElementById("global-settings-readonly");
+    var saveBtn = document.getElementById("global-settings-save");
+    var payload = null;
+
+    function fillSelect(select, values, current) {
+      select.innerHTML = "";
+      values.forEach(function (item) {
+        var opt = document.createElement("option");
+        opt.value = item.id;
+        opt.textContent = item.label;
+        opt.setAttribute("data-zh", item.labelZh || item.label);
+        opt.setAttribute("data-en", item.labelEn || item.label);
+        opt.setAttribute("data-i18n-label", "");
+        select.appendChild(opt);
+      });
+      select.value = current;
+    }
+
+    function applyPayload(data) {
+      if (!data || !data.settings) return;
+      payload = data;
+      if (data.canEdit) openBtn.hidden = false;
+      var locale = (document.documentElement.lang || "zh-CN") === "en-US" ? "en-US" : "zh-CN";
+      var zones = (data.timezones || []).map(function (z) {
+        return {
+          id: z.id,
+          label: locale === "en-US" ? z.labelEn : z.labelZh,
+          labelZh: z.labelZh,
+          labelEn: z.labelEn
+        };
+      });
+      fillSelect(tzSelect, zones, data.settings.timezone);
+      fillSelect(fmtSelect, (data.timeFormats || []).map(function (fmt) {
+        return { id: fmt, label: fmt, labelZh: fmt, labelEn: fmt };
+      }), data.settings.timeFormat);
+      form.locale.value = data.settings.locale || "zh-CN";
+      form.defaultModule.value = data.settings.defaultModule || "";
+      var locked = !data.canEdit;
+      Array.prototype.forEach.call(form.elements, function (el) {
+        if (el.type === "submit" || el.classList.contains("js-global-settings-close")) return;
+        el.disabled = locked;
+      });
+      saveBtn.hidden = locked;
+      readonlyEl.hidden = !locked;
+      if (window.__modoorApplyI18n) window.__modoorApplyI18n(data.settings.locale || locale);
+    }
+
+    function showError(text) {
+      errorEl.hidden = !text;
+      errorEl.textContent = text || "";
+    }
+
+    function openModal() {
+      showError("");
+      modal.hidden = false;
+    }
+
+    function closeModal() {
+      modal.hidden = true;
+    }
+
+    openBtn.addEventListener("click", openModal);
+    modal.addEventListener("click", function (e) {
+      if (e.target === modal) closeModal();
+    });
+    document.querySelectorAll(".js-global-settings-close").forEach(function (btn) {
+      btn.addEventListener("click", function (e) {
+        e.preventDefault();
+        closeModal();
+      });
+    });
+    form.addEventListener("submit", function (e) {
+      e.preventDefault();
+      if (!payload || !payload.canEdit) return;
+      showError("");
+      saveBtn.disabled = true;
+      var body = {
+        locale: form.locale.value,
+        timezone: form.timezone.value,
+        timeFormat: form.timeFormat.value,
+        defaultModule: form.defaultModule.value
+      };
+      fetch("/api/base/global", {
+        method: "PUT",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify(body)
+      }).then(function (res) {
+        return res.json().then(function (data) {
+          if (!res.ok) {
+            var detail = data && data.detail;
+            var msg = (detail && detail.message) || (typeof detail === "string" ? detail : "") || "保存失败";
+            throw new Error(msg);
+          }
+          return data;
+        });
+      }).then(function (data) {
+        applyPayload(data);
+        closeModal();
+      }).catch(function (err) {
+        showError(String(err && err.message ? err.message : err));
+      }).finally(function () {
+        saveBtn.disabled = false;
+      });
+    });
+
+    var ready = window.__modoorGlobalReady || Promise.resolve(null);
+    ready.then(applyPayload);
+  })();
+</script>
 {% endblock %}

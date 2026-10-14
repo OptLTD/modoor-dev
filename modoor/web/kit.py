@@ -129,8 +129,7 @@ class ShellKit:
     ) -> tuple[str | None, str]:
         """Pick (module_id, href) after login.
 
-        Default landing is the workbench at ``/``. Prefer ``next_url`` only when it
-        points at an allowed module (deep link); otherwise stay on the workbench.
+        A deep link wins. Otherwise open the company's default module, or the workbench at /home.
         """
         from urllib.parse import urlparse
 
@@ -144,17 +143,36 @@ class ShellKit:
         else:
             path = (raw.split("?", 1)[0] or "/").strip() or "/"
             href = path
-        if path in ("/", "/login"):
-            return None, "/"
-        parts = [p for p in path.split("/") if p]
-        if len(parts) >= 2 and parts[0] == "go":
-            mid = parts[1]
+        if path == "/home":
+            return None, path
+        if path not in ("/", "/login"):
+            parts = [p for p in path.split("/") if p]
+            if len(parts) >= 2 and parts[0] == "go":
+                mid = parts[1]
+                if mid and (allowed is None or mid in allowed):
+                    return mid, href
+            mid = detect_module(path)
             if mid and (allowed is None or mid in allowed):
                 return mid, href
-        mid = detect_module(path)
-        if mid and (allowed is None or mid in allowed):
-            return mid, href
-        return None, "/"
+        return self._company_home(session, user, enabled, allowed)
+
+    def _company_home(
+        self,
+        session,
+        user: SystemUser,
+        enabled: set[str],
+        allowed: set[str] | None,
+    ) -> tuple[str | None, str]:
+        from builtin.base.global_settings import get_global_settings, landing_module
+
+        mid = landing_module(
+            get_global_settings(session, self.ctx(user)),
+            enabled=enabled,
+            allowed=allowed,
+        )
+        if mid:
+            return mid, f"/go/{mid}"
+        return None, "/home"
 
     def workbench_apps(
         self,
@@ -255,7 +273,7 @@ class ShellKit:
             current_module = detect_module(request.url.path) or request.session.get(
                 "active_module"
             )
-            if request.url.path in ("/", ""):
+            if request.url.path in ("/", "", "/home"):
                 current_module = None
             elif current_module and current_module not in enabled:
                 current_module = None

@@ -211,7 +211,7 @@
       "uukey": "set_role",
       "label": "设置角色",
       "action": "user.set_role",
-      "group": "account",
+      "group": "更多",
       "seqno": 2,
       "ctype": "button"
     },
@@ -219,7 +219,7 @@
       "uukey": "set_pswd",
       "label": "设置密码",
       "action": "user.set_pswd",
-      "group": "account",
+      "group": "更多",
       "seqno": 3,
       "ctype": "button"
     },
@@ -227,7 +227,7 @@
       "uukey": "enable",
       "label": "启用账号",
       "action": "user.enable",
-      "group": "account",
+      "group": "更多",
       "seqno": 4,
       "ctype": "button"
     },
@@ -235,7 +235,7 @@
       "uukey": "disable",
       "label": "停用账号",
       "action": "user.disable",
-      "group": "account",
+      "group": "更多",
       "seqno": 5,
       "ctype": "button"
     },

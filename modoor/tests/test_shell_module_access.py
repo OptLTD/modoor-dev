@@ -57,7 +57,7 @@ def test_shell_modules_filtered_by_role_nodes(client: TestClient):
         "/api/auth/login", json={"username": "limited", "password": "pw"}
     )
     assert logged.status_code == 200
-    assert logged.json()["home"] == "/"
+    assert logged.json()["home"] == "/home"
     assert logged.json()["module"] is None
 
     shell = client.get("/api/shell/modules")
@@ -65,7 +65,11 @@ def test_shell_modules_filtered_by_role_nodes(client: TestClient):
     ids = {m["id"] for m in shell.json()["modules"]}
     assert ids == {"wiki", "doc"}
 
-    home = client.get("/", follow_redirects=False)
+    root = client.get("/", follow_redirects=False)
+    assert root.status_code == 303
+    assert root.headers["location"] == "/home"
+
+    home = client.get("/home", follow_redirects=False)
     assert home.status_code == 200
     body = home.text
     assert "工作台" in body

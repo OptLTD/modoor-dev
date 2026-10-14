@@ -311,6 +311,16 @@ def _expand_click_ids(bundle: ModelBundle, click_ids: list[Any]) -> list[dict[st
     return clicks
 
 
+def _view_filter_keys(view: dict[str, Any], extra: dict[str, Any]) -> list[str]:
+    """顶层 filters；旧视图写在 extra.filter，最新表格同样要进快捷筛选。"""
+    raw = view.get("filters")
+    if not raw:
+        raw = extra.get("filter")
+    if not isinstance(raw, list):
+        return []
+    return [str(x).strip() for x in raw if str(x).strip()]
+
+
 def project_table(
     bundle: ModelBundle,
     *,
@@ -386,7 +396,7 @@ def project_table(
             if s in ("update", "insert") and s not in sheet:
                 sheet.append(s)
 
-    filter_keys = [str(x).strip() for x in (view.get("filters") or []) if str(x).strip()]
+    filter_keys = _view_filter_keys(view, extra)
     # origin：原始字段定义（digest 度量可能改写 ftype）；快捷/侧栏筛选按 key 映射到此
     origin: dict[str, Any] = {}
     for key in filter_keys:
