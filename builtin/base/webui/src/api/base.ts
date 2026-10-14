@@ -116,6 +116,11 @@ export async function rolesBundle() {
         label: string
         i18n?: Record<string, Record<string, string>>
         abilities: string[]
+        groups?: {
+          id: string
+          label: string
+          items: { id: string; label: string; abilities: string[] }[]
+        }[]
       }[]
       abilities: string[]
       count: number

@@ -1571,6 +1571,15 @@ def list_user_abilities(
     }
 
 
+def access_gate(session: Session, ctx: Ctx, *, user_id: int) -> dict[str, Any]:
+    """Ability gate for shell menus and schema clicks. Admin is unrestricted."""
+    info = list_user_abilities(session, ctx, user_id=user_id)
+    return {
+        "unrestricted": bool(info.get("unrestricted")),
+        "abilities": [str(a) for a in (info.get("abilities") or [])],
+    }
+
+
 def module_allowed_by_abilities(module_id: str, abilities: set[str] | list[str]) -> bool:
     mid = str(module_id or "").strip()
     if not mid:
@@ -1604,12 +1613,59 @@ def allowed_modules_for_user(
     return {mid for mid in candidates if module_allowed_by_abilities(mid, abilities)}
 
 
-def list_ability_catalog(settings: Any | None = None) -> dict[str, Any]:
-    """Aggregate ability codes from all module manifests, grouped by module."""
-    from modoor.platform.module_state import discover_manifests
+def _permission_groups(menus: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Menu sections whose leaves declare ``access``. Empty when a module has none."""
+    groups: list[dict[str, Any]] = []
+    loose: list[dict[str, Any]] = []
+    for menu in menus:
+        if not isinstance(menu, dict):
+            continue
+        kids = [
+            {
+                "id": str(child.get("id") or ""),
+                "label": str(child.get("label") or child.get("id") or ""),
+                "abilities": [str(a) for a in (child.get("access") or []) if str(a).strip()],
+            }
+            for child in (menu.get("items") or [])
+            if isinstance(child, dict) and child.get("access")
+        ]
+        if kids:
+            groups.append(
+                {
+                    "id": str(menu.get("id") or ""),
+                    "label": str(menu.get("label") or menu.get("id") or ""),
+                    "items": kids,
+                }
+            )
+        elif menu.get("access"):
+            loose.append(
+                {
+                    "id": str(menu.get("id") or ""),
+                    "label": str(menu.get("label") or menu.get("id") or ""),
+                    "abilities": [str(a) for a in menu.get("access") or [] if str(a).strip()],
+                }
+            )
+    if loose:
+        groups.insert(0, {"id": "", "label": "", "items": loose})
+    return groups
 
+
+def list_ability_catalog(
+    session: Session,
+    ctx: Ctx,
+    settings: Any | None = None,
+) -> dict[str, Any]:
+    """Ability codes for modules this tenant has enabled, grouped by module.
+
+    Disabled modules stay out of role management. ``base`` is always listed.
+    """
+    from modoor.platform.module_state import discover_manifests, enabled_module_ids
+
+    enabled = enabled_module_ids(session, ctx.tenant) | {"base"}
     modules: list[dict[str, Any]] = []
     for m in discover_manifests(settings):
+        if m["id"] not in enabled:
+            continue
         abilities = [str(a) for a in (m.get("ability") or []) if str(a).strip()]
         if not abilities:
             continue
@@ -1619,6 +1675,7 @@ def list_ability_catalog(settings: Any | None = None) -> dict[str, Any]:
                 "label": m.get("label") or m["id"],
                 "i18n": m.get("i18n") or {},
                 "abilities": abilities,
+                "groups": _permission_groups(m.get("menus") or []),
             }
         )
     flat = sorted({a for g in modules for a in g["abilities"]})

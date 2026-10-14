@@ -1,4 +1,5 @@
-import { get, post } from './http'
+import { cachedAccess, filterMenus, rememberAccess, type AccessGate } from './access'
+import { get } from './http'
 
 /** Special key in module.yaml i18n: module / shell brand title. */
 export const APP_LABEL_KEY = 'app.label'
@@ -17,6 +18,8 @@ export type ShellMenu = {
   key?: string
   /** Nested menus rendered as a dropdown group. */
   items?: ShellMenu[]
+  /** Abilities that grant this menu. Any one is enough; omit to always show. */
+  access?: string[]
 }
 
 export type ShellModule = {
@@ -38,10 +41,29 @@ export type ShellCatalog = {
   tenant: { id: string; name: string }
   profile: { id: string | number; username: string; realname?: string; tenant: string | number } | null
   modules: ShellModule[]
+  /** Current user. Menus whose access misses this gate are removed. */
+  access?: AccessGate
 }
 
 export async function fetchShellCatalog() {
-  return get<ShellCatalog>('/api/shell/modules')
+  const catalog = await get<ShellCatalog>('/api/shell/modules')
+  const gate = catalog.access
+  rememberAccess(gate)
+  return {
+    ...catalog,
+    modules: (catalog.modules || []).map((mod) => ({
+      ...mod,
+      menus: mod.menus ? filterMenus(mod.menus, gate) : mod.menus,
+    })),
+  }
+}
+
+/** Ability gate for the signed-in user. Reuses the shell catalog once it has loaded. */
+export async function ensureShellAccess(): Promise<AccessGate> {
+  const hit = cachedAccess()
+  if (hit) return hit
+  const catalog = await fetchShellCatalog()
+  return catalog.access || {}
 }
 
 /**

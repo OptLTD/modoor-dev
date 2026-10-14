@@ -15,6 +15,8 @@ export type ChartGridCard = {
   total?: number | null
   prefix?: string
   suffix?: string
+  note?: string
+  help?: string
   clickable?: boolean
   content?: string
   columns?: ChartGridColumn[]

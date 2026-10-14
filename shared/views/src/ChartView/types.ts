@@ -11,6 +11,8 @@ export type ChartCard = {
     method?: string
     prefix?: string
     suffix?: string
+    note?: string
+    help?: string
   }
   query?: {
     model?: string

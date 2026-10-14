@@ -3,6 +3,8 @@ name = "modoor"
 version = "0.1.0"
 description = "AI capability layer: Module → Skill + MCP (Phase 0)"
 readme = "README.md"
+# 双许可见 LICENSE：默认 AGPL-3.0；闭源修改核心或去除 Modoor 标识须另取商业许可。
+license = { text = "AGPL-3.0-only" }
 requires-python = ">=3.11"
 dependencies = [
   "mcp>=2.0",

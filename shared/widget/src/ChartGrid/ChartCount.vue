@@ -16,7 +16,13 @@ const emit = defineEmits<{
     @click="emit('open')"
   >
     <div class="chart-head">
-      <span class="chart-title">{{ card.title }}</span>
+      <span class="chart-title">
+        {{ card.title }}
+        <span v-if="card.help" class="chart-help" tabindex="0" @click.stop>
+          ?
+          <span class="chart-help-pop" role="tooltip">{{ card.help }}</span>
+        </span>
+      </span>
       <button type="button" class="chart-refresh" :disabled="card.loading" @click.stop="emit('refresh')">
         刷新
       </button>
@@ -24,10 +30,9 @@ const emit = defineEmits<{
     <div class="count-body">
       <p v-if="card.error" class="error">{{ card.error }}</p>
       <p v-else-if="card.loading && card.total == null" class="muted">…</p>
-      <div v-else class="count-value">
-        <span v-if="card.prefix" class="affix">{{ card.prefix }}</span>
-        <span class="num">{{ card.total ?? '—' }}</span>
-        <span v-if="card.suffix" class="affix">{{ card.suffix }}</span>
+      <div v-else class="count-copy">
+        <p class="count-sum">共{{ card.total ?? '—' }}{{ card.suffix || '条' }}</p>
+        <p v-if="card.note" class="count-note">{{ card.note }}</p>
       </div>
     </div>
   </div>
@@ -42,10 +47,15 @@ const emit = defineEmits<{
   background: var(--panel, #fff);
   border: 1px solid var(--line, #e2e6eb);
   border-radius: 8px;
-  overflow: hidden;
+  overflow: visible;
 }
 .count-card.clickable {
   cursor: pointer;
+}
+.count-card:hover,
+.count-card:focus-within {
+  position: relative;
+  z-index: 4;
 }
 .count-card.warn {
   border-color: color-mix(in srgb, var(--danger, #a33b2b) 35%, var(--line, #e2e6eb));
@@ -60,8 +70,51 @@ const emit = defineEmits<{
   flex-shrink: 0;
 }
 .chart-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
   font-size: 14px;
   font-weight: 600;
+}
+.chart-help {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border: 1px solid var(--line, #e2e6eb);
+  border-radius: 50%;
+  color: var(--muted, #6b6458);
+  font-size: 11px;
+  font-weight: 650;
+  line-height: 1;
+  cursor: help;
+  flex-shrink: 0;
+}
+.chart-help-pop {
+  display: none;
+  position: absolute;
+  z-index: 8;
+  top: calc(100% + 6px);
+  left: 0;
+  width: max-content;
+  max-width: 240px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: var(--ink, #1c1914);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.45;
+  text-align: left;
+  white-space: normal;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16);
+}
+.chart-help:hover .chart-help-pop,
+.chart-help:focus-visible .chart-help-pop {
+  display: block;
 }
 .chart-refresh {
   appearance: none;
@@ -78,27 +131,33 @@ const emit = defineEmits<{
 .count-body {
   flex: 1;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
   min-height: 0;
+  padding: 12px 14px;
 }
-.count-value {
+.count-copy {
   display: flex;
-  align-items: baseline;
-  gap: 4px;
-  line-height: 1.2;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
 }
-.num {
-  font-size: 36px;
+.count-sum,
+.count-note {
+  margin: 0;
+  line-height: 1.4;
+}
+.count-sum {
+  font-size: 18px;
   font-weight: 650;
   color: var(--accent, #0f6a5a);
 }
-.count-card.warn .num {
+.count-card.warn .count-sum {
   color: var(--danger, #a33b2b);
 }
-.affix {
+.count-note {
   font-size: 13px;
-  color: var(--muted, #6b6458);
+  color: var(--ink, #1c1914);
 }
 .muted,
 .error {

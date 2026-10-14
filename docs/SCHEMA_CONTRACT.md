@@ -157,7 +157,7 @@ addon/<module_id>/ 或 builtin/<module_id>/
 
 ### 2.4 `clicks`
 
-动作按钮（列表/表单工具栏）。建议至少具备业务需要的 create / delete；可映射到 Module `exports.actions` 或 tools。
+动作按钮（列表/表单工具栏）。建议至少具备业务需要的 create；删除整条记录时再提供 delete。可映射到 Module `exports.actions` 或 tools。
 
 | 字段 | 说明 |
 |---|---|
@@ -166,6 +166,20 @@ addon/<module_id>/ 或 builtin/<module_id>/
 | `ctype` | 如 `button` |
 | `action` | 语义动作，如 `record.create` / `record.delete` / `record.export` |
 | `seqno` | 排序 |
+| `access` | 能力点列表。用户持有其中任一即显示该按钮；缺省或空数组表示不设门槛 |
+
+`access` 用模块已声明的能力点，后缀约定：
+
+| 后缀 | 角色页名称 | 绑哪些按钮 |
+|---|---|---|
+| `.list` | 查看数据 | 导出、明细 |
+| `.edit` | 编辑数据 | 新建、修改、报废，以及登记、安装、更换、出入库等业务写入 |
+| `.alert` | 危险操作 | 删除整条记录 |
+| 其他 | 自定义名称 | 对不进上面三级的动作，角色页用该编码的 i18n 文案 |
+
+基础数据（车辆、挂车、司机、地址）、轮胎、物料不提供删除，这些模型不要声明 `record.delete`，也不要挂 `.alert`。报废只改状态，归 `.edit`。
+
+壳在 `@modoor/hooks` 里按当前用户能力点隐藏按钮：`fetchSchema` 滤掉 `table.clicks`。角色码 `admin` 不受限，全部显示。未声明 `access` 的按钮始终显示。
 
 ---
 

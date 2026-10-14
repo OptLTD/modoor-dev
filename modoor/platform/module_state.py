@@ -64,6 +64,28 @@ def _manifest_actived(data: dict[str, Any]) -> bool:
     return str(raw or "").strip().lower() in ("1", "true", "yes", "on")
 
 
+def _menu_access_tree(raw: Any) -> list[dict[str, Any]]:
+    """Slim menu tree kept for role permissions. ``access`` lists ability codes."""
+    if not isinstance(raw, list):
+        return []
+    out: list[dict[str, Any]] = []
+    for item in raw:
+        if not isinstance(item, dict):
+            continue
+        mid = str(item.get("id") or "").strip()
+        if not mid:
+            continue
+        out.append(
+            {
+                "id": mid,
+                "label": str(item.get("label") or mid),
+                "access": [str(a).strip() for a in (item.get("access") or []) if str(a).strip()],
+                "items": _menu_access_tree(item.get("items")),
+            }
+        )
+    return out
+
+
 def discover_manifests(settings: Settings | None = None) -> list[dict[str, Any]]:
     settings = settings or get_settings()
     from modoor.platform.roots import module_pkg_roots
@@ -107,6 +129,7 @@ def discover_manifests(settings: Settings | None = None) -> list[dict[str, Any]]
                     "summary": data.get("summary") or "",
                     "risk_default": data.get("risk_default") or "",
                     "ability": [str(x) for x in (data.get("ability") or []) if str(x).strip()],
+                    "menus": _menu_access_tree((data.get("exports") or {}).get("menus") if isinstance(data.get("exports"), dict) else None),
                     "depends": list(data.get("depends") or []),
                     "tools": (data.get("exports") or {}).get("tools") or [],
                     "skills": (data.get("exports") or {}).get("skills") or [],

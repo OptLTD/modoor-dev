@@ -1,3 +1,4 @@
+import { filterClickMap, filterClicks, type AccessGate } from './access'
 import { post } from './http'
 
 export type SchemaGroup = {
@@ -38,6 +39,8 @@ export type SchemaClick = {
   /** Create-menu item: which input view to open, e.g. general / engineering. */
   using?: string
   extra?: { using?: string }
+  /** Abilities that grant this button. Any one is enough; omit to always show. */
+  access?: string[]
 }
 
 export type SchemaTable = {
@@ -86,16 +89,22 @@ export type SearchResult = {
 }
 
 export async function fetchSchema(model: string, using = 'default', scene = 'SEARCH') {
-  return post<{
+  const res = await post<{
     model: string
     using: string
     scene: string
     table: SchemaTable
     tabs?: { using: string; label: string }[]
+    access?: AccessGate
     source?: {
       fields?: Record<string, SchemaField>
+      clicks?: Record<string, SchemaClick>
     }
   }>('/api/record/schema', { model, using, scene, page: 1, size: 50 })
+  const gate = res.access
+  if (res.table) res.table.clicks = filterClicks(res.table.clicks, gate)
+  if (res.source?.clicks) res.source.clicks = filterClickMap(res.source.clicks, gate)
+  return res
 }
 
 export async function searchRecords(

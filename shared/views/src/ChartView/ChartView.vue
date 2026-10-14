@@ -176,6 +176,8 @@ const cards = computed((): ChartGridCard[] =>
         total: state?.total ?? null,
         prefix: String(card.option?.prefix || ''),
         suffix: String(card.option?.suffix || ''),
+        note: String(card.option?.note || ''),
+        help: String(card.option?.help || ''),
         clickable: !!card.query?.model,
       }
     }

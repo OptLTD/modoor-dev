@@ -74,7 +74,7 @@
               class="perm-search"
               :placeholder="t('base.filterAbilities')"
             />
-            <span class="muted">{{ t('base.selectedCount', { n: draftAbilities.length, total: flatCatalog.length }) }}</span>
+            <span class="muted">{{ t('base.selectedCount', { n: selectedInCatalog, total: flatCatalog.length }) }}</span>
           </div>
 
           <div class="perm-groups">
@@ -94,7 +94,41 @@
                   <span class="muted">{{ g.module_id }}</span>
                 </label>
               </header>
-              <div class="ability-grid">
+              <template v-if="g.groups?.length">
+                <section v-for="grp in g.groups" :key="grp.id || g.module_id" class="perm-subgroup">
+                  <h3 v-if="grp.label">{{ abilityLabel(g, grp.id) }}</h3>
+                  <div class="ability-grid">
+                    <div v-for="item in grp.items" :key="item.id" class="ability-item perm-menu">
+                      <span class="ability-name">{{ abilityLabel(g, item.id) }}</span>
+                      <span class="perm-verbs">
+                        <label
+                          v-for="verb in permVerbs"
+                          v-show="verbCodes(item, verb).length"
+                          :key="verb"
+                          class="perm-verb"
+                          :class="{ 'is-alert': verb === 'alert' }"
+                        >
+                          <input
+                            type="checkbox"
+                            :checked="codesOn(verbCodes(item, verb))"
+                            @change="toggleCodes(verbCodes(item, verb), ($event.target as HTMLInputElement).checked)"
+                          />
+                          {{ verbLabel(verb) }}
+                        </label>
+                        <label v-for="code in extraCodes(item)" :key="code" class="perm-verb">
+                          <input
+                            type="checkbox"
+                            :checked="draftSet.has(code)"
+                            @change="toggleAbility(code, ($event.target as HTMLInputElement).checked)"
+                          />
+                          {{ abilityLabel(g, code) }}
+                        </label>
+                      </span>
+                    </div>
+                  </div>
+                </section>
+              </template>
+              <div v-else class="ability-grid">
                 <label
                   v-for="a in g.abilities"
                   :key="a"
@@ -225,11 +259,24 @@ type Role = {
   description?: string | null
 }
 
+type PermItem = {
+  id: string
+  label: string
+  abilities: string[]
+}
+
+type PermGroup = {
+  id: string
+  label: string
+  items: PermItem[]
+}
+
 type AbilityGroup = {
   module_id: string
   label: string
   i18n?: ManifestI18n
   abilities: string[]
+  groups?: PermGroup[]
 }
 
 const { t, locale } = useI18n()
@@ -258,8 +305,16 @@ const pickedUserIds = ref<number[]>([])
 const selected = computed(() => roles.value.find((r) => r.id === selectedId.value) || null)
 const draftSet = computed(() => new Set(draftAbilities.value))
 const dirty = computed(() => JSON.stringify([...draftAbilities.value].sort()) !== savedSnapshot.value)
-const flatCatalog = computed(() => catalog.value.flatMap((g) => g.abilities))
-const flatVisible = computed(() => filteredCatalog.value.flatMap((g) => g.abilities))
+function visibleAbilities(g: AbilityGroup) {
+  if (!g.groups?.length) return g.abilities
+  return g.groups.flatMap((grp) => grp.items.flatMap((item) => item.abilities))
+}
+
+const flatCatalog = computed(() => catalog.value.flatMap((g) => visibleAbilities(g)))
+const selectedInCatalog = computed(
+  () => draftAbilities.value.filter((a) => flatCatalog.value.includes(a)).length,
+)
+const flatVisible = computed(() => filteredCatalog.value.flatMap((g) => visibleAbilities(g)))
 const allVisibleSelected = computed(
   () => flatVisible.value.length > 0 && flatVisible.value.every((a) => draftSet.value.has(a)),
 )
@@ -294,19 +349,35 @@ const filteredCatalog = computed(() => {
   const q = permKeyword.value.trim().toLowerCase()
   if (!q) return catalog.value
   return catalog.value
-    .map((g) => ({
-      ...g,
-      abilities: g.abilities.filter((a) => {
-        const name = abilityLabel(g, a).toLowerCase()
-        return (
-          a.toLowerCase().includes(q) ||
-          name.includes(q) ||
-          g.module_id.toLowerCase().includes(q) ||
-          moduleLabel(g).toLowerCase().includes(q)
-        )
-      }),
-    }))
-    .filter((g) => g.abilities.length)
+    .map((g) => {
+      const moduleHit =
+        g.module_id.toLowerCase().includes(q) || moduleLabel(g).toLowerCase().includes(q)
+      if (g.groups?.length) {
+        const groups = g.groups
+          .map((grp) => ({
+            ...grp,
+            items: grp.items.filter((item) => {
+              if (moduleHit) return true
+              const name = abilityLabel(g, item.id).toLowerCase()
+              return item.id.toLowerCase().includes(q) || name.includes(q) || grp.label.toLowerCase().includes(q)
+            }),
+          }))
+          .filter((grp) => grp.items.length)
+        return { ...g, groups }
+      }
+      return {
+        ...g,
+        abilities: g.abilities.filter((a) => {
+          const name = abilityLabel(g, a).toLowerCase()
+          return (
+            moduleHit ||
+            a.toLowerCase().includes(q) ||
+            name.includes(q)
+          )
+        }),
+      }
+    })
+    .filter((g) => (g.groups?.length ? g.groups.length : g.abilities.length))
 })
 
 function moduleLabel(g: AbilityGroup) {
@@ -332,14 +403,44 @@ function toggleAbility(code: string, on: boolean) {
 }
 
 function moduleAllChecked(g: AbilityGroup) {
-  return g.abilities.length > 0 && g.abilities.every((a) => draftSet.value.has(a))
+  const codes = visibleAbilities(g)
+  return codes.length > 0 && codes.every((a) => draftSet.value.has(a))
 }
 
 function toggleModule(g: AbilityGroup, on: boolean) {
   const set = new Set(draftAbilities.value)
-  for (const a of g.abilities) {
+  for (const a of visibleAbilities(g)) {
     if (on) set.add(a)
     else set.delete(a)
+  }
+  draftAbilities.value = [...set].sort()
+}
+
+const permVerbs = ['list', 'edit', 'alert'] as const
+
+function verbCodes(item: PermItem, verb: string) {
+  return item.abilities.filter((code) => code.endsWith('.' + verb))
+}
+
+function extraCodes(item: PermItem) {
+  return item.abilities.filter((code) => !permVerbs.some((verb) => code.endsWith('.' + verb)))
+}
+
+function verbLabel(verb: string) {
+  if (verb === 'list') return t('base.permView')
+  if (verb === 'edit') return t('base.permEdit')
+  return t('base.permAlert')
+}
+
+function codesOn(codes: string[]) {
+  return codes.length > 0 && codes.every((code) => draftSet.value.has(code))
+}
+
+function toggleCodes(codes: string[], on: boolean) {
+  const set = new Set(draftAbilities.value)
+  for (const code of codes) {
+    if (on) set.add(code)
+    else set.delete(code)
   }
   draftAbilities.value = [...set].sort()
 }
@@ -347,7 +448,7 @@ function toggleModule(g: AbilityGroup, on: boolean) {
 function selectAllModule() {
   const set = new Set(draftAbilities.value)
   for (const g of filteredCatalog.value) {
-    for (const a of g.abilities) set.add(a)
+    for (const a of visibleAbilities(g)) set.add(a)
   }
   draftAbilities.value = [...set].sort()
 }
@@ -675,9 +776,20 @@ onMounted(() => {
   font-size: 0.78rem;
 }
 
+.perm-subgroup + .perm-subgroup {
+  margin-top: 10px;
+}
+
+.perm-subgroup h3 {
+  margin: 0 0 6px;
+  font-size: 0.78rem;
+  font-weight: 650;
+  color: var(--muted);
+}
+
 .ability-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(460px, 1fr));
   gap: 6px 10px;
 }
 
@@ -694,6 +806,33 @@ onMounted(() => {
   line-height: 1.2;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.perm-menu {
+  justify-content: flex-start;
+  gap: 14px;
+}
+
+.perm-menu .ability-name {
+  flex: none;
+}
+
+.perm-verbs {
+  display: flex;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.perm-verb {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.perm-verb.is-alert {
+  color: var(--danger, #a33b2b);
 }
 
 .assign-modal {

@@ -79,6 +79,10 @@ def _ctx(user: SystemUser) -> Ctx:
     return Ctx(tenant=user.tenant, user_id=user.id, team_id=user.team_id)
 
 
+def _access_gate(session, user: SystemUser) -> dict[str, Any]:
+    return base_domain.access_gate(session, _ctx(user), user_id=user.id)
+
+
 def _err(exc: Exception) -> HTTPException:
     if isinstance(exc, AppError):
         code = 404 if exc.code == "not_found" else 400
@@ -263,7 +267,9 @@ def api_schema(request: Request, body: dict[str, Any] = Body(default_factory=dic
     user = _require_user(request)
     try:
         with session_scope() as session:
-            return get_engine().table_schema(session, _ctx(user), body)
+            payload = get_engine().table_schema(session, _ctx(user), body)
+            payload["access"] = _access_gate(session, user)
+            return payload
     except Exception as exc:  # noqa: BLE001
         raise _err(exc) from exc
 
@@ -273,7 +279,9 @@ def api_input(request: Request, body: dict[str, Any] = Body(default_factory=dict
     user = _require_user(request)
     try:
         with session_scope() as session:
-            return get_engine().input_schema(session, _ctx(user), body)
+            payload = get_engine().input_schema(session, _ctx(user), body)
+            payload["access"] = _access_gate(session, user)
+            return payload
     except Exception as exc:  # noqa: BLE001
         raise _err(exc) from exc
 

@@ -246,7 +246,7 @@ def api_roles_bundle(request: Request) -> dict[str, Any]:
             r["id"]: base_domain.list_role_nodes(session, ctx, role_id=r["id"])["nodes"]
             for r in roles
         }
-    catalog = base_domain.list_ability_catalog()
+        catalog = base_domain.list_ability_catalog(session, ctx)
     return {
         "roles": roles,
         "users": users,

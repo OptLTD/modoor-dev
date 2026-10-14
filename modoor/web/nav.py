@@ -47,6 +47,9 @@ def _normalize_menu(raw: dict[str, Any], *, mid: str, fallback_id: str) -> dict[
     }
     if path:
         item["path"] = path
+    access = [str(a).strip() for a in (raw.get("access") or []) if str(a).strip()]
+    if access:
+        item["access"] = access
     if items:
         item["items"] = items
     return item
@@ -426,14 +429,26 @@ def registry_catalog(
     base = modoor_base_url()
     tenant_id = getattr(user, "tenant", None)
     tenant_name = settings.modoor_tenant
+    access = {"unrestricted": False, "abilities": []}
     if tenant_id is not None:
+        from modoor.core.ctx import Ctx
         from modoor.core.db import session_scope
-        from builtin.base.domain import SystemTenant
+        from builtin.base.domain import SystemTenant, access_gate
 
         with session_scope() as session:
             row = session.get(SystemTenant, int(tenant_id))
             if row is not None:
                 tenant_name = row.name
+            if user is not None and getattr(user, "id", None):
+                access = access_gate(
+                    session,
+                    Ctx(
+                        tenant=int(user.tenant),
+                        user_id=int(user.id),
+                        team_id=getattr(user, "team_id", None),
+                    ),
+                    user_id=int(user.id),
+                )
     else:
         from modoor.core.db import session_scope
         from builtin.base.domain import ensure_tenant
@@ -454,4 +469,5 @@ def registry_catalog(
         "logout_url": f"{base}/logout",
         "modules": switcher_items(enabled, allowed_modules=allowed_modules),
         "exports": aggregated_exports(),
+        "access": access,
     }

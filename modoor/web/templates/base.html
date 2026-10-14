@@ -38,6 +38,8 @@
       background: var(--bg);
       color: var(--ink);
       min-height: 100vh;
+      display: flex;
+      flex-direction: column;
     }
 
     /* Header — match shared/widget ShellFrame (.top) */
@@ -403,6 +405,26 @@
       padding: 1.5rem;
       max-width: 1280px;
       margin: 0 auto;
+      flex: 1 0 auto;
+      width: 100%;
+    }
+
+    .legal-notice {
+      flex-shrink: 0;
+      padding: 0.35rem 1.5rem 0.85rem;
+      text-align: center;
+      font-size: 0.75rem;
+      line-height: 1.4;
+      color: var(--muted);
+    }
+
+    .legal-notice a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    .legal-notice a:hover {
+      text-decoration: underline;
     }
 
     h1 {
@@ -445,7 +467,7 @@
       border-radius: var(--radius-lg);
       padding: 1.45rem 1.55rem 1.2rem;
       box-shadow: 0 1px 0 color-mix(in srgb, var(--line) 50%, transparent);
-      min-height: calc(100vh - 6.5rem);
+      min-height: calc(100vh - 8.75rem);
     }
 
     .workbench-head {
@@ -885,7 +907,7 @@
     body.page-login main {
       padding: 0;
       max-width: none;
-      min-height: 100vh;
+      min-height: 0;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -1159,6 +1181,11 @@
     {% if flash %}<div class="flash">{{ flash }}</div>{% endif %}
     {% block content %}{% endblock %}
   </main>
+  <footer class="legal-notice">
+    <a href="https://modoor.dev" target="_blank" rel="noopener noreferrer"><span data-i18n="basedOnModoor">基于 Modoor</span></a>
+    <span aria-hidden="true"> · </span>
+    <span>Copyright © 2026 Option.LTD.</span>
+  </footer>
   <script>
     (function () {
       var STORAGE_KEY = "modoor.locale";
@@ -1186,6 +1213,7 @@
           copied: "已复制",
           gotIt: "知道了",
           close: "关闭",
+          basedOnModoor: "基于 Modoor",
           workbench: "工作台",
           workbenchHint: "选择模块开始工作",
           workbenchOffline: "离线",
@@ -1230,6 +1258,7 @@
           copied: "Copied",
           gotIt: "Got it",
           close: "Close",
+          basedOnModoor: "Based on Modoor",
           workbench: "Workbench",
           workbenchHint: "Choose a module to get started",
           workbenchOffline: "Offline",

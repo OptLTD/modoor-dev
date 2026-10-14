@@ -103,3 +103,11 @@ Skill 文档路径：`addon/sale/skills/create_and_confirm_order.md`
 | `team_id` | 否 | `MODOOR_TEAM_ID` |
 
 进程启动时校验 `MODOOR_API_KEY`；当前一进程绑定一套 ctx。
+
+## 许可
+
+Copyright (c) 2026 Option.LTD.
+
+默认许可是 [AGPL-3.0](./LICENSE)，并带有仓库内的附加条款。核心（`modoor/`、`builtin/`、`shared/`）的修改在分发或提供网络交互时须公开对应源码。`addon/`、`external/` 以及不改核心的扩展模块可以按自有条款分发。界面须保留文字标识：「基于 Modoor」（链接到 https://modoor.dev）和 Copyright (c) Option.LTD.
+
+向付费客户做私有化部署并收费，只要遵守上述条款即可。闭源修改核心，或去除、遮挡上述文字标识，须发邮件至 chnwine@qq.com，向 Option.LTD. 另行取得书面商业许可。

@@ -202,9 +202,9 @@ exports:
 | `ui-web.seqno` | 壳下拉 / 工作台 | 模块排序（越小越前）；缺省 `1000`；建议 builtin `0–100`，业务 addon 按域段分配 |
 | `exports.menus[].route` | 壳 | 相对 `base` |
 | `exports.menus[].seqno` | 壳 Nav | 菜单排序（越小越前）；缺省 `100` |
+| `exports.menus[].access` | 壳 / 角色页 | 能力点列表。角色页把 `.list` / `.edit` / `.alert` 显示为查看数据、编辑数据、危险操作，其余编码用 i18n 自定义名称。用户持有其中任一即显示该菜单；分组在子项被滤空后隐藏。未声明则始终显示。没有 `path` 的子项只进角色页（页签权限），不进导航 |
 | `ui-web.entry` | 兜底 | 可选；**不替代** `resolve_entry` |
-| ~~`built-in` / `constant`~~ | — | 遗留；解析视同 `app` |
-| ~~`path_prefix` / 菜单绝对 `path` / `home`~~ | — | 废弃；`base` 替代 `path_prefix`，解析层短期兼容 |
+
 
 **推荐使用顺序：**
 
