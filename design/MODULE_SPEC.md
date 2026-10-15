@@ -363,14 +363,19 @@ tabs: [
 
 ### 4.2 内置 vs 领域
 
+`SchemaView` 只实现这些内置动作。页面可以通过 `handlers` 接走，模块也可以用 `registerRecordHandle(action, fn)` 注册；任一处返回 `true` 即不再走默认行为。
+
 | 类型 | action | 默认处理方 |
 |---|---|---|
-| 内置 | `record.create` | Workspace 听 `button-click` → RecordDialog / handlers |
-| 内置 | `record.modify` | Workspace 听 `action-click` → RecordDialog / handlers |
-| 内置 | `record.open` | Workspace 听 `record-click` → Drawer / handlers |
-| 内置 | `record.delete` | Workspace 听 `button-click` → delete API |
-| 内置 | `record.export` | Workspace 听 `button-click` → export |
-| 领域 | `fleet.tire.install` 等 | Workspace 听 `button-click` / `action-click` |
+| 内置 | `record.create` | 打开新建表单 |
+| 内置 | `record.modify` | 打开编辑表单 |
+| 内置 | `record.delete` | 删除选中行 |
+| 内置 | `record.export` | 按当前查询或选中行导出 |
+| 内置 | `record.open` | 打开详情抽屉。运单点编号进详情页，就是在这里返回 `true` |
+
+不在上表里的动作（启用、停用、入库、装胎、同步工资等）不要写进 `SchemaView`。在所属模块的 webui 入口注册 handle：返回 `true` 表示已消费。弹表单和刷新列表是 `SchemaView` 暴露的能力，作为 handle 的第二个参数传入，不放进点击 payload。
+
+handle 收到三份行数据，够覆盖表头按钮、行内按钮和单元格点击：`records` 是当前列表可见行，`selected` 是勾选行，`current` 是行内按钮或单元格点击的那一行。表头按钮读 `selected` 和 `records`；行内按钮和点单元格读 `current` 和 `records`。
 
 ### 4.3 领域 Action 约定
 
@@ -382,7 +387,7 @@ tabs: [
 ### 4.4 行级
 
 - 当前标准：`SchemaTable` 只 emit；`SchemaView`（或自绑 Page）打开 RecordDialog（edit）/ RecordDrawer（detail，§13）。模块可用 `handlers` 改走全页路由。
-- 行级自定义 Action：预留；现以工具栏领域动作为主。
+- 行级自定义 Action 与工具栏一样：不是内置动作就注册 handle，不在 `SchemaView` 里按业务名分支。
 
 ---
 

@@ -1,17 +1,43 @@
-/** Global interceptors for SchemaView row / relation clicks. */
+/** Global interceptors for SchemaView actions that are not built-in. */
 
 export type RecordHandlePayload = {
   model?: string
+  /** Clicked identity: the row key, or the relation cell's key. */
   uukey?: string
   title?: string
-  record?: Record<string, unknown>
+  /** Rows currently visible in the list. */
+  records?: Record<string, unknown>[]
+  /** Checked rows. Toolbar buttons read this. */
+  selected?: Record<string, unknown>[]
+  /** The row of an inline button or a cell click. */
+  current?: Record<string, unknown>
   lookup?: Record<string, unknown>
   intent?: 'detail' | 'modify'
   using?: string
-  click?: { uukey?: string; action?: string; using?: string }
+  click?: {
+    uukey?: string
+    action?: string
+    label?: string
+    using?: string
+    extra?: Record<string, unknown>
+  }
 }
 
-export type RecordHandle = (payload: RecordHandlePayload) => boolean | void
+/** List-page abilities. SchemaView exposes these; handles receive them beside the click payload. */
+export type RecordView = {
+  openForm: (form: {
+    model: string
+    using?: string
+    title?: string
+    defaults?: Record<string, unknown>
+  }) => void
+  reload: () => Promise<void>
+}
+
+export type RecordHandle = (
+  payload: RecordHandlePayload,
+  view: RecordView,
+) => boolean | void | Promise<boolean | void>
 
 type Entry = { key: string; fn: RecordHandle }
 
@@ -29,9 +55,13 @@ export function registerRecordHandle(
 }
 
 /** First handler that returns true consumes the action. */
-export function invokeRecordHandles(action: string, payload: RecordHandlePayload): boolean {
+export async function invokeRecordHandles(
+  action: string,
+  payload: RecordHandlePayload,
+  view: RecordView,
+): Promise<boolean> {
   for (const entry of registry.get(action) || []) {
-    if (entry.fn(payload) === true) return true
+    if ((await entry.fn(payload, view)) === true) return true
   }
   return false
 }

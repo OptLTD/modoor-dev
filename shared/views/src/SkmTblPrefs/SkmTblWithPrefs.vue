@@ -75,6 +75,7 @@ type TableExpose = {
   reload: () => void
   getListRequest: () => unknown
   getSelectedRows: () => Record<string, unknown>[]
+  getVisibleRows: () => Record<string, unknown>[]
   getSelectedKeys: () => string[]
   exportByQuery: (...args: unknown[]) => unknown
   exportSelected: () => unknown
@@ -113,6 +114,7 @@ defineExpose({
   reload: () => tableRef.value?.reload(),
   getListRequest: () => tableRef.value?.getListRequest(),
   getSelectedRows: () => tableRef.value?.getSelectedRows() || [],
+  getVisibleRows: () => tableRef.value?.getVisibleRows() || [],
   getSelectedKeys: () => tableRef.value?.getSelectedKeys() || [],
   exportByQuery: (...args: unknown[]) => tableRef.value?.exportByQuery(...args),
   exportSelected: () => tableRef.value?.exportSelected(),

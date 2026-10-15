@@ -160,19 +160,19 @@
 /**
  * Schema list screen: tabs, table, sheet, form, and record drawer.
  * Lives in @modoor/views because it loads schema from the API.
- * Module pages may override via handlers (e.g. freight full-page builder).
+ * Built-in clicks are create, modify, delete, and export.
+ * Any other action is a registered record handle in the owning module.
  */
 import { computed, defineAsyncComponent, nextTick, ref, watch } from 'vue'
 import {
-  appConfirm,
   appToast,
-  post,
   entityLabel,
   fetchSchema,
   resolveModelTitle,
   rememberModelTitle,
   invokeRecordHandles,
-  rowUUKey, useI18n,
+  rowUUKey,
+  useI18n,
   type SchemaClick,
   type SchemaRequest,
   type SchemaTable as SchemaTableData,
@@ -277,6 +277,7 @@ const tableRef = ref<{
     order?: { field: string; order: string }
   }
   getSelectedRows: () => Record<string, unknown>[]
+  getVisibleRows: () => Record<string, unknown>[]
   getSelectedKeys: () => string[]
   exportByQuery: () => Promise<void>
   exportSelected: () => Promise<void>
@@ -741,7 +742,13 @@ async function openRecordDetail(payload: {
   emit('record-click', payload)
   if (
     props.handlers?.['record.open']?.({ ...payload, intent }) === true ||
-    invokeRecordHandles('record.open', { ...payload, intent })
+    (await invokeRecordHandles('record.open', {
+      ...payload,
+      intent,
+      current: payload.record,
+      records: visibleRows(),
+      selected: selectedRows(),
+    }, viewApi))
   ) {
     return
   }
@@ -763,111 +770,57 @@ async function onFormSaved() {
   await tableRef.value?.reload()
 }
 
-function requireOneRow(rows: Record<string, unknown>[]): Record<string, unknown> | null {
-  if (rows.length !== 1) {
-    appToast(t('widget.pickOneRow'), 'error')
-    return null
-  }
-  return rows[0]
+function openActionForm(form: {
+  model: string
+  using?: string
+  title?: string
+  defaults?: Record<string, unknown>
+}) {
+  actionModel.value = form.model
+  actionUsing.value = form.using || 'default'
+  actionTitle.value = form.title || ''
+  actionDefaults.value = form.defaults || {}
+  actionOpen.value = true
 }
 
-async function handleDomainButton(payload: {
+const viewApi = {
+  openForm: openActionForm,
+  reload: async () => {
+    await tableRef.value?.reload()
+  },
+}
+
+defineExpose(viewApi)
+
+function visibleRows() {
+  return tableRef.value?.getVisibleRows?.() || []
+}
+
+function selectedRows() {
+  return tableRef.value?.getSelectedRows?.() || []
+}
+
+function actionHandlePayload(payload: {
   click: SchemaClick
-  keys: string[]
-  records: Record<string, unknown>[]
+  record?: Record<string, unknown>
+  key?: string
 }) {
   const action = String(payload.click.action || '')
-  const label = payload.click.label || payload.click.uukey
-
-  if (action === 'fleet.salary.sync.current' || action === 'fleet.salary.sync.previous') {
-    const period = action.endsWith('previous') ? 'previous' : 'current'
-    const ok = await appConfirm(`确认${label}？将按财务期间汇总在职司机的考核工资。`)
-    if (!ok) return true
-    try {
-      const res = await post<{ uterm: number; upserted: number }>('/api/fleet/salary/sync', {
-        period,
-      })
-      appToast(`${label}完成：期间 ${res.uterm}，更新 ${res.upserted} 人`)
-      await tableRef.value?.reload()
-    } catch (err) {
-      appToast(err instanceof Error ? err.message : String(err), 'error')
-    }
-    return true
+  return {
+    model: activeModel.value,
+    using: activeUsing.value,
+    uukey: payload.key,
+    records: visibleRows(),
+    selected: selectedRows(),
+    current: payload.record,
+    click: {
+      uukey: payload.click.uukey,
+      action,
+      label: payload.click.label,
+      using: activeUsing.value,
+      extra: (payload.click.extra || undefined) as Record<string, unknown> | undefined,
+    },
   }
-
-  if (
-    action === 'fleet.tire.install'
-    || action === 'fleet.tire.replace'
-    || action === 'fleet.tire.remove'
-    || action === 'fleet.tire.scrap'
-  ) {
-    const row = requireOneRow(payload.records)
-    if (!row) return true
-    const tireId = rowUUKey(row)
-    if (!tireId) {
-      appToast(t('widget.pickOneRow'), 'error')
-      return true
-    }
-    const using =
-      action === 'fleet.tire.replace'
-        ? 'replace'
-        : action === 'fleet.tire.remove'
-          ? 'remove'
-          : action === 'fleet.tire.scrap'
-            ? 'scrap'
-            : 'install'
-    actionModel.value = 'fleet.tirelog'
-    actionUsing.value = using
-    actionTitle.value = label
-    actionDefaults.value = {
-      'basic.tire': tireId,
-      'basic.event_type': using,
-    }
-    actionOpen.value = true
-    return true
-  }
-
-  if (action === 'fleet.tire.register') {
-    const row = requireOneRow(payload.records)
-    if (!row) return true
-    const tireId = rowUUKey(row)
-    if (!tireId) {
-      appToast(t('widget.pickOneRow'), 'error')
-      return true
-    }
-    actionModel.value = 'fleet.tiremile'
-    actionUsing.value = 'default'
-    actionTitle.value = label
-    actionDefaults.value = {
-      'basic.tire': tireId,
-      'basic.source': 'manual',
-    }
-    actionOpen.value = true
-    return true
-  }
-
-  if (action === 'fleet.product.inbound' || action === 'fleet.product.outbound') {
-    const row = requireOneRow(payload.records)
-    if (!row) return true
-    const productId = rowUUKey(row)
-    if (!productId) {
-      appToast(t('widget.pickOneRow'), 'error')
-      return true
-    }
-    const kind = action === 'fleet.product.inbound' ? 'inbound' : 'outbound'
-    actionModel.value = 'fleet.oplog'
-    actionUsing.value = kind
-    actionTitle.value = label
-    actionDefaults.value = {
-      'basic.product': productId,
-      'basic.type': kind,
-      'basic.price': row['basic.price'] ?? row.price ?? '',
-      'basic.warehouse': row['basic.warehouse'] ?? row.warehouse ?? '',
-    }
-    actionOpen.value = true
-    return true
-  }
-  return false
 }
 
 async function onButtonClick(payload: {
@@ -882,11 +835,13 @@ async function onButtonClick(payload: {
     const using = picked || activeUsing.value
     if (
       props.handlers?.['record.create']?.({ using }) === true ||
-      invokeRecordHandles('record.create', {
+      (await invokeRecordHandles('record.create', {
         model: activeModel.value,
         using,
+        records: visibleRows(),
+        selected: selectedRows(),
         click: { uukey: payload.click.uukey, action: payload.click.action, using },
-      })
+      }, viewApi))
     ) {
       return
     }
@@ -905,7 +860,8 @@ async function onButtonClick(payload: {
     await tableRef.value?.exportByQuery()
     return
   }
-  if (await handleDomainButton(payload)) return
+  const action = String(payload.click.action || '').trim()
+  if (action && (await invokeRecordHandles(action, actionHandlePayload({ click: payload.click }), viewApi))) return
 }
 
 function onActionClick(payload: {
@@ -929,12 +885,17 @@ function onActionClick(payload: {
     })
     return
   }
-  // Domain row actions: reuse domain button handler with single-row selection.
-  void handleDomainButton({
-    click: payload.click,
-    keys: payload.key ? [payload.key] : [],
-    records: [payload.record],
-  })
+  const action = String(payload.click.action || '').trim()
+  if (!action) return
+  void invokeRecordHandles(
+    action,
+    actionHandlePayload({
+      click: payload.click,
+      key: payload.key,
+      record: payload.record,
+    }),
+    viewApi,
+  )
 }
 
 function onRecordClick(payload: {

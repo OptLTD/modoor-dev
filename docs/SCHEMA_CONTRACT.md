@@ -181,6 +181,8 @@ addon/<module_id>/ 或 builtin/<module_id>/
 
 壳在 `@modoor/hooks` 里按当前用户能力点隐藏按钮：`fetchSchema` 滤掉 `table.clicks`。角色码 `admin` 不受限，全部显示。未声明 `access` 的按钮始终显示。
 
+`SchemaView` 只内置 `record.create`、`record.modify`、`record.delete`、`record.export`、`record.open`。其余 `action` 由所属模块用 `registerRecordHandle` 注册，不在 `SchemaView` 里按业务名写分支。见 [`design/MODULE_SPEC.md`](../design/MODULE_SPEC.md) §4.2。
+
 ---
 
 ## 3. 核心字段约定（uukey / utime / status）

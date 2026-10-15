@@ -1909,7 +1909,7 @@ CFG_TYPE_DICT = "dict"
 # 列顺序与隐藏列在 base_tbl，不写这里。
 CFG_TYPE_TABLE_LAYOUT = "table.layout"
 
-# 种子迁移时勿删的保留 type
+# 种子迁移时勿删的保留 type。其余非字典行（如 fields / reminder）也不删，见 _is_legacy_dict_row。
 _CFG_TYPES_KEEP = frozenset({CFG_TYPE_DICT, CFG_TYPE_TABLE_LAYOUT, "price.rules", "formula"})
 
 
@@ -2156,6 +2156,18 @@ def list_dict_options(
     ]
 
 
+def _is_legacy_dict_row(row: BaseConfig, bundle_keys: set[str]) -> bool:
+    """旧的散装字典行才删除：type 落在字典目录里，或 data 是选项列表 / 含 options。"""
+    t = str(row.type or "").strip()
+    if not t or t in _CFG_TYPES_KEEP or t.startswith("price.") or t == "formula":
+        return False
+    if t in bundle_keys:
+        return True
+    if isinstance(row.data, list):
+        return True
+    return isinstance(row.data, dict) and "options" in row.data
+
+
 def ensure_config_seeded(
     session: Session,
     ctx: Ctx,
@@ -2234,11 +2246,10 @@ def ensure_config_seeded(
             existing.data = cur
             existing.updated_at = datetime.now(timezone.utc)
             session.flush()
-        for row in legacy:
-            t = str(row.type or "").strip()
-            if t and t not in _CFG_TYPES_KEEP and not t.startswith("price."):
-                session.delete(row)
-        if legacy:
+        removed = [row for row in legacy if _is_legacy_dict_row(row, set(bundle))]
+        for row in removed:
+            session.delete(row)
+        if removed:
             session.flush()
         return added
 
@@ -2256,8 +2267,7 @@ def ensure_config_seeded(
         )
     )
     for row in legacy:
-        t = str(row.type or "").strip()
-        if t and t not in _CFG_TYPES_KEEP and not t.startswith("price."):
+        if _is_legacy_dict_row(row, set(bundle)):
             session.delete(row)
     session.flush()
     return len(bundle)

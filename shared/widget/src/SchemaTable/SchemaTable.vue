@@ -825,6 +825,7 @@ defineExpose({
     const set = new Set(api.selection.selectedKeys)
     return api.list.displayRows.filter((r) => set.has(api.selection.rowKey(r)))
   },
+  getVisibleRows: () => [...api.list.displayRows],
   getSelectedKeys: () => [...api.selection.selectedKeys],
   exportByQuery: api.actions.exportByQuery,
   exportSelected: api.actions.exportSelected,
