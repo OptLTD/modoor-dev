@@ -150,6 +150,39 @@ def test_logout_clears_remember_cookie(client: TestClient):
     assert "/login" in home.headers["location"]
 
 
+def test_profile_page_and_self_password(client: TestClient):
+    guest = client.get("/profile", follow_redirects=False)
+    assert guest.status_code == 303
+    assert "/login" in guest.headers["location"]
+
+    logged = client.post(
+        "/login",
+        data={"username": "superuser", "password": "pass@word"},
+        follow_redirects=False,
+    )
+    assert logged.status_code == 303
+    page = client.get("/profile")
+    assert page.status_code == 200
+    assert "个人中心" in page.text
+    assert "修改密码" in page.text
+    assert "验证码" in page.text
+    assert 'class="profile-left"' in page.text
+    assert 'class="profile-right"' in page.text
+    assert 'class="legal-notice"' in page.text
+    assert 'class="profile-table-wrap"' in page.text
+
+    empty = client.post("/api/auth/password", json={"password": "  "})
+    assert empty.status_code == 400
+    missing = client.post("/api/auth/password", json={"password": "admin123"})
+    assert missing.status_code == 400
+    sent = client.post("/login/captcha", json={"username": "superuser"})
+    assert sent.status_code == 200
+    code = sent.json()["dev_code"]
+    ok = client.post("/api/auth/password", json={"password": "admin123", "captcha": code})
+    assert ok.status_code == 200
+    assert ok.json().get("ok") is True
+
+
 def test_captcha_is_not_echoed_when_disabled(client: TestClient, monkeypatch):
     monkeypatch.setenv("MODOOR_CAPTCHA_ECHO", "0")
     get_settings.cache_clear()

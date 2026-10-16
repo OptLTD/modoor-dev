@@ -40,6 +40,8 @@ def test_vue_shell_apis(client: TestClient):
     me = client.get("/api/auth/profile")
     assert me.status_code == 200
     assert str(me.json()["user"]["uukey"]).startswith("USER")
+    assert "email" in me.json()["user"]
+    assert "phone" in me.json()["user"]
     assert isinstance(me.json()["user"].get("tenants"), list)
     assert me.json()["user"]["tenants"]
 

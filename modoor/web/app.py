@@ -330,6 +330,32 @@ def home(request: Request):
     return kit.render(request, "home.html", {"apps": apps, "groups": groups})
 
 
+@app.get("/profile", response_class=HTMLResponse)
+def home_profile(request: Request):
+    user = kit.current_user(request)
+    if not user:
+        return RedirectResponse("/login", status_code=303)
+    request.session.pop("active_module", None)
+    team_name = ""
+    with session_scope() as session:
+        row = base_domain.load_user(session, int(user.id))
+        if row is not None and row.team_id:
+            team = session.get(base_domain.SystemTeam, int(row.team_id))
+            if team is not None:
+                team_name = team.name or ""
+        profile = {
+            "name": (row.display_name if row is not None else user.display_name) or "",
+            "code": (row.uukey if row is not None else user.uukey) or "",
+            "username": user.username,
+            "phone": (row.phone if row is not None else None) or "",
+            "email": (row.email if row is not None else None) or "",
+            "remark": (row.remark if row is not None else None) or "",
+            "utime": row.utime.isoformat() if row is not None and row.utime else "",
+            "team": team_name,
+        }
+    return kit.render(request, "profile.html", {"profile": profile})
+
+
 @app.get("/logout")
 @app.post("/logout")
 def logout(request: Request):

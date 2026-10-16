@@ -38,6 +38,10 @@ def _user_payload(
         "uukey": user.uukey,
         "username": user.username,
         "realname": user.realname,
+        "name": user.name or user.realname,
+        "phone": user.phone,
+        "email": user.email,
+        "remark": user.remark,
         "tenant": user.tenant,
         "current": user.current,
         "base_id": user.base_id,
@@ -107,6 +111,11 @@ class SwitchTenantBody(BaseModel):
     tenant_id: int
 
 
+class PasswordBody(BaseModel):
+    password: str
+    captcha: str = ""
+
+
 @router.post("/api/auth/login")
 def api_login(request: Request, body: LoginBody) -> dict[str, Any]:
     try:
@@ -147,6 +156,36 @@ def api_profile(request: Request) -> dict[str, Any]:
             raise HTTPException(status_code=401, detail="login required")
         tenants = base_domain.list_login_tenants(session, base_id=row.base_id)
         return {"user": _user_payload(row, tenants=tenants)}
+
+
+@router.post("/api/auth/password")
+def api_set_password(request: Request, body: PasswordBody) -> dict[str, Any]:
+    """Current user sets their own login password after captcha check."""
+    from modoor.web.login_auth import verify_captcha
+
+    user = _require_user(request)
+    pwd = str(body.password or "").strip()
+    if not pwd:
+        raise HTTPException(status_code=400, detail="password cannot be empty")
+    try:
+        verify_captcha(request, user.username, body.captcha)
+        with session_scope() as session:
+            base_domain.update_user(
+                session, _ctx(user), user_id=int(user.id), password=pwd
+            )
+        return {"ok": True}
+    except Exception as exc:  # noqa: BLE001
+        raise _err(exc) from exc
+
+
+@router.get("/api/auth/oplogs")
+def api_my_oplogs(request: Request, page: int = 1, size: int = 100) -> dict[str, Any]:
+    """Current user's operation timeline (paginated)."""
+    user = _require_user(request)
+    with session_scope() as session:
+        return base_domain.list_actor_oplogs(
+            session, _ctx(user), actor_id=int(user.id), page=page, size=size
+        )
 
 
 @router.get("/api/auth/agent-connect")

@@ -1,0 +1,526 @@
+{% extends "base.html" %}
+{% block title %}个人中心 · Modoor{% endblock %}
+{% block body_class %}page-workbench page-profile{% endblock %}
+{% block head_extra %}
+<style>
+  .profile-shell {
+    display: flex;
+    align-items: stretch;
+    gap: 1rem;
+    min-width: 0;
+    min-height: 28rem;
+    height: calc(100vh - 7.5rem);
+  }
+  .profile-left,
+  .profile-right {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 1px 0 color-mix(in srgb, var(--line) 50%, transparent);
+    min-height: 0;
+  }
+  .profile-left {
+    flex: 0 0 320px;
+    width: 320px;
+    display: flex;
+    flex-direction: column;
+    padding: 1.1rem 1.2rem 1.4rem;
+    overflow: auto;
+  }
+  .profile-left-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+  }
+  .profile-left-head h1 {
+    margin: 0;
+    font-size: 1.05rem;
+    font-weight: 650;
+  }
+  .profile-pwd-btn {
+    font: inherit;
+    background: none;
+    border: none;
+    padding: 0;
+    color: var(--accent);
+    cursor: pointer;
+    font-size: 0.88rem;
+  }
+  .profile-pwd-btn:hover {
+    text-decoration: underline;
+  }
+  .profile-who {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding-bottom: 1rem;
+    margin-bottom: 1rem;
+    border-bottom: 1px solid var(--line);
+  }
+  .profile-who .avatar {
+    width: 3rem;
+    height: 3rem;
+    font-size: 0.9rem;
+  }
+  .profile-who-text h2 {
+    margin: 0 0 0.25rem;
+    font-size: 1.05rem;
+    font-weight: 650;
+    line-height: 1.3;
+  }
+  .profile-who-text p {
+    margin: 0;
+    font-size: 0.82rem;
+    color: var(--muted);
+  }
+  .profile-left h3 {
+    margin: 0 0 0.75rem;
+    font-size: 0.92rem;
+    font-weight: 650;
+  }
+  .profile-fields {
+    display: flex;
+    flex-direction: column;
+    gap: 0.7rem;
+    margin: 0;
+  }
+  .profile-fields dt {
+    margin: 0 0 0.2rem;
+    font-size: 0.75rem;
+    color: var(--muted);
+  }
+  .profile-fields dd {
+    margin: 0;
+    font-size: 0.9rem;
+    word-break: break-word;
+  }
+  .profile-right {
+    flex: 1;
+    min-width: 0;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .profile-right-head {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.6rem;
+    padding: 0.65rem 0.9rem;
+    border-bottom: 1px solid var(--line);
+  }
+  .profile-right-head select,
+  .profile-pager button {
+    font: inherit;
+    border: 1px solid var(--line);
+    background: #fff;
+    border-radius: var(--radius-sm);
+    padding: 0.2rem 0.45rem;
+    color: var(--ink);
+  }
+  .profile-pager {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.82rem;
+    color: var(--muted);
+  }
+  .profile-table-wrap {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+  }
+  .profile-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.82rem;
+  }
+  .profile-table th,
+  .profile-table td {
+    padding: 0.55rem 0.7rem;
+    border-bottom: 1px solid var(--line);
+    text-align: left;
+    vertical-align: top;
+  }
+  .profile-table th {
+    position: sticky;
+    top: 0;
+    background: var(--panel);
+    font-weight: 600;
+    color: var(--muted);
+    white-space: nowrap;
+    z-index: 1;
+  }
+  .profile-table td.code {
+    color: #c2410c;
+    font-variant-numeric: tabular-nums;
+  }
+  .profile-table td.data {
+    max-width: 28rem;
+    word-break: break-word;
+  }
+  .profile-empty,
+  .profile-loading {
+    padding: 2rem 1rem;
+    text-align: center;
+    color: var(--muted);
+    font-size: 0.88rem;
+  }
+  .pwd-modal {
+    width: min(420px, 100%);
+  }
+  .pwd-modal .form {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 16px;
+  }
+  .pwd-modal .captcha-row {
+    display: flex;
+    gap: 8px;
+    align-items: stretch;
+  }
+  .pwd-modal .captcha-row input {
+    flex: 1;
+    min-width: 0;
+  }
+  .pwd-modal .captcha-row button {
+    flex: 0 0 auto;
+    min-width: 7.5em;
+    white-space: nowrap;
+  }
+  .pwd-modal .error,
+  .pwd-modal .hint {
+    margin: 0;
+    padding: 0.45rem 0.6rem;
+    font-size: 0.85rem;
+  }
+  .pwd-modal .hint {
+    background: #eef6f3;
+    border: 1px solid color-mix(in srgb, var(--accent) 25%, var(--line));
+    color: var(--accent);
+  }
+</style>
+{% endblock %}
+{% block content %}
+  <section class="profile-shell">
+    <aside class="profile-left">
+      <div class="profile-left-head">
+        <h1 data-i18n="userProfile">个人中心</h1>
+        <button type="button" class="profile-pwd-btn" id="pwd-open" data-i18n="changePassword">修改密码</button>
+      </div>
+      <div class="profile-who">
+        <span class="avatar">{{ user_initials }}</span>
+        <div class="profile-who-text">
+          <h2>{{ profile.name or current_user.display_name }}</h2>
+          <p>所属团队：{{ profile.team or '—' }}</p>
+        </div>
+      </div>
+      <h3 data-i18n="profileBasic">基础信息</h3>
+      <dl class="profile-fields">
+        <div>
+          <dt data-i18n="profileCode">员工工号</dt>
+          <dd>{{ profile.code or '—' }}</dd>
+        </div>
+        <div>
+          <dt data-i18n="profileUtime">登记时间</dt>
+          <dd id="profile-utime" data-iso="{{ profile.utime }}">
+            {{ profile.utime or '—' }}
+          </dd>
+        </div>
+        <div>
+          <dt data-i18n="profilePhone">手机号码</dt>
+          <dd>{{ profile.phone or '—' }}</dd>
+        </div>
+        <div>
+          <dt data-i18n="profileEmail">电子邮箱</dt>
+          <dd>{{ profile.email or '—' }}</dd>
+        </div>
+        <div>
+          <dt data-i18n="profileRemark">员工备注</dt>
+          <dd>{{ profile.remark or '—' }}</dd>
+        </div>
+      </dl>
+    </aside>
+    <div class="profile-right">
+      <div class="profile-right-head">
+        <div class="profile-pager">
+          <button type="button" id="oplog-prev" aria-label="prev">‹</button>
+          <span id="oplog-page">1 / 1</span>
+          <button type="button" id="oplog-next" aria-label="next">›</button>
+        </div>
+        <select id="oplog-size" aria-label="page size">
+          <option value="20">20/页</option>
+          <option value="50">50/页</option>
+          <option value="100" selected>100/页</option>
+        </select>
+      </div>
+      <div class="profile-table-wrap">
+        <p id="oplog-status" class="profile-loading" data-i18n="loading">加载中…</p>
+        <table id="oplog-table" class="profile-table" hidden>
+          <thead>
+            <tr>
+              <th data-i18n="profileSeq">序号</th>
+              <th data-i18n="profileRecord">关联编号</th>
+              <th data-i18n="profileTeamCol">所属团队</th>
+              <th data-i18n="profileTime">创建时间</th>
+              <th data-i18n="profileAction">动作</th>
+              <th data-i18n="profileData">数据</th>
+            </tr>
+          </thead>
+          <tbody id="oplog-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <div id="pwd-modal" class="modal-mask" hidden>
+    <div class="modal pwd-modal" role="dialog" aria-modal="true" aria-labelledby="pwd-title">
+      <header class="modal-head">
+        <strong id="pwd-title" data-i18n="changePassword">修改密码</strong>
+        <button type="button" class="btn secondary" id="pwd-close" data-i18n="close">关闭</button>
+      </header>
+      <form class="form" id="pwd-form" data-username="{{ profile.username }}">
+        <label>
+          <span data-i18n="captcha">验证码</span>
+          <span class="captcha-row">
+            <input name="captcha" type="text" inputmode="numeric" maxlength="6" autocomplete="one-time-code" data-i18n-placeholder="captchaHint" placeholder="请输入验证码" />
+            <button type="button" class="btn" id="pwd-send" data-i18n="sendCaptcha">发送验证码</button>
+          </span>
+        </label>
+        <label>
+          <span data-i18n="newPassword">新密码</span>
+          <input name="password" type="password" autocomplete="new-password" />
+        </label>
+        <label>
+          <span data-i18n="confirmPassword">确认密码</span>
+          <input name="confirm" type="password" autocomplete="new-password" />
+        </label>
+        <p id="pwd-error" class="error" hidden></p>
+        <div class="modal-actions">
+          <button type="button" class="btn secondary" id="pwd-cancel" data-i18n="close">关闭</button>
+          <button type="submit" class="btn" id="pwd-save" data-i18n="globalSave">保存</button>
+        </div>
+      </form>
+    </div>
+  </div>
+{% endblock %}
+{% block page_script %}
+<script>
+  (function () {
+    var page = 1;
+    var size = 100;
+    var pages = 1;
+    var statusEl = document.getElementById("oplog-status");
+    var tableEl = document.getElementById("oplog-table");
+    var bodyEl = document.getElementById("oplog-body");
+    var pageEl = document.getElementById("oplog-page");
+    var prevBtn = document.getElementById("oplog-prev");
+    var nextBtn = document.getElementById("oplog-next");
+    var sizeEl = document.getElementById("oplog-size");
+    var ACTION = { INSERT: "新增", UPDATE: "修改", DELETE: "删除", UPSERT: "保存" };
+
+    function pad(n) { return n < 10 ? "0" + n : String(n); }
+    function fmtTime(iso) {
+      if (!iso) return "—";
+      var d = new Date(iso);
+      if (isNaN(d.getTime())) return iso.replace("T", " ").slice(0, 19);
+      return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate())
+        + " " + pad(d.getHours()) + ":" + pad(d.getMinutes()) + ":" + pad(d.getSeconds());
+    }
+    function esc(s) {
+      return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+        return ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c];
+      });
+    }
+
+    var utimeEl = document.getElementById("profile-utime");
+    if (utimeEl && utimeEl.getAttribute("data-iso")) {
+      utimeEl.textContent = fmtTime(utimeEl.getAttribute("data-iso"));
+    }
+
+    function actionLabel(raw) {
+      var key = String(raw || "");
+      return ACTION[key.toUpperCase()] || key || "—";
+    }
+
+    function load() {
+      statusEl.hidden = false;
+      statusEl.className = "profile-loading";
+      statusEl.textContent = "加载中…";
+      tableEl.hidden = true;
+      fetch("/api/auth/oplogs?page=" + page + "&size=" + size, {
+        credentials: "same-origin",
+        headers: { Accept: "application/json" }
+      }).then(function (res) {
+        if (!res.ok) throw new Error("load failed");
+        return res.json();
+      }).then(function (data) {
+        var items = data.items || [];
+        var count = data.count || 0;
+        page = data.page || page;
+        size = data.size || size;
+        pages = Math.max(1, Math.ceil(count / size) || 1);
+        pageEl.textContent = page + " / " + pages;
+        prevBtn.disabled = page <= 1;
+        nextBtn.disabled = page >= pages;
+        bodyEl.innerHTML = "";
+        if (!items.length) {
+          statusEl.textContent = "暂无操作记录";
+          statusEl.className = "profile-empty";
+          return;
+        }
+        items.forEach(function (row) {
+          var tr = document.createElement("tr");
+          tr.innerHTML = "<td>" + esc(row.seq) + "</td>"
+            + "<td class=\"code\">" + esc(row.code || "—") + "</td>"
+            + "<td>" + esc(row.team || "—") + "</td>"
+            + "<td>" + esc(fmtTime(row.utime)) + "</td>"
+            + "<td>" + esc(actionLabel(row.action)) + "</td>"
+            + "<td class=\"data\">" + esc(row.data || "—") + "</td>";
+          bodyEl.appendChild(tr);
+        });
+        statusEl.hidden = true;
+        tableEl.hidden = false;
+      }).catch(function () {
+        statusEl.textContent = "加载失败";
+        statusEl.className = "profile-empty";
+      });
+    }
+
+    prevBtn.addEventListener("click", function () {
+      if (page > 1) { page -= 1; load(); }
+    });
+    nextBtn.addEventListener("click", function () {
+      if (page < pages) { page += 1; load(); }
+    });
+    sizeEl.addEventListener("change", function () {
+      size = Number(sizeEl.value) || 100;
+      page = 1;
+      load();
+    });
+    load();
+
+    var pwdModal = document.getElementById("pwd-modal");
+    var pwdForm = document.getElementById("pwd-form");
+    var pwdError = document.getElementById("pwd-error");
+    var pwdSave = document.getElementById("pwd-save");
+    var pwdSend = document.getElementById("pwd-send");
+    var pwdTimer = null;
+    var pwdLeft = 0;
+    function showPwdMsg(text, kind) {
+      pwdError.hidden = !text;
+      pwdError.textContent = text || "";
+      pwdError.className = kind === "info" ? "hint" : "error";
+    }
+    function tickPwd() {
+      if (pwdLeft <= 0) {
+        if (pwdTimer) clearInterval(pwdTimer);
+        pwdTimer = null;
+        pwdSend.disabled = false;
+        pwdSend.textContent = "发送验证码";
+        return;
+      }
+      pwdSend.disabled = true;
+      pwdSend.textContent = pwdLeft + "秒后重试";
+      pwdLeft -= 1;
+    }
+    function startPwdCountdown(seconds) {
+      pwdLeft = seconds;
+      if (pwdTimer) clearInterval(pwdTimer);
+      tickPwd();
+      pwdTimer = setInterval(tickPwd, 1000);
+    }
+    function openPwd() {
+      showPwdMsg("", "");
+      pwdForm.reset();
+      pwdModal.hidden = false;
+      pwdForm.captcha.focus();
+    }
+    function closePwd() { pwdModal.hidden = true; }
+    document.getElementById("pwd-open").addEventListener("click", openPwd);
+    document.getElementById("pwd-close").addEventListener("click", closePwd);
+    document.getElementById("pwd-cancel").addEventListener("click", closePwd);
+    pwdModal.addEventListener("click", function (e) {
+      if (e.target === pwdModal) closePwd();
+    });
+    pwdSend.addEventListener("click", function () {
+      var name = String(pwdForm.getAttribute("data-username") || "").trim();
+      if (!name) {
+        showPwdMsg("无法发送验证码", "error");
+        return;
+      }
+      if (pwdLeft > 0) return;
+      pwdSend.disabled = true;
+      fetch("/login/captcha", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({ username: name })
+      }).then(function (res) {
+        return res.json().then(function (data) {
+          return { ok: res.ok, data: data || {} };
+        });
+      }).then(function (pack) {
+        var data = pack.data;
+        if (!pack.ok) {
+          showPwdMsg(data.error || "发送验证码失败", "error");
+          var retry = parseInt(data.retry_after, 10);
+          if (retry > 0) startPwdCountdown(retry);
+          else pwdSend.disabled = false;
+          return;
+        }
+        showPwdMsg(data.dev_code ? ("开发环境验证码：" + data.dev_code) : "验证码已发送", "info");
+        startPwdCountdown(60);
+      }).catch(function () {
+        showPwdMsg("发送验证码失败", "error");
+        pwdSend.disabled = false;
+      });
+    });
+    pwdForm.addEventListener("submit", function (e) {
+      e.preventDefault();
+      var code = String(pwdForm.captcha.value || "").trim();
+      var a = String(pwdForm.password.value || "").trim();
+      var b = String(pwdForm.confirm.value || "").trim();
+      if (!code) {
+        showPwdMsg("请输入验证码", "error");
+        pwdForm.captcha.focus();
+        return;
+      }
+      if (!a) {
+        showPwdMsg("请输入密码", "error");
+        return;
+      }
+      if (a !== b) {
+        showPwdMsg("两次输入的密码不一致", "error");
+        return;
+      }
+      pwdSave.disabled = true;
+      fetch("/api/auth/password", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({ password: a, captcha: code })
+      }).then(function (res) {
+        return res.json().then(function (data) {
+          if (!res.ok) {
+            var detail = data && data.detail;
+            var msg = (detail && detail.message) || (typeof detail === "string" ? detail : "") || "保存失败";
+            throw new Error(msg);
+          }
+        });
+      }).then(function () {
+        closePwd();
+      }).catch(function (err) {
+        showPwdMsg(String(err && err.message ? err.message : err), "error");
+      }).finally(function () {
+        pwdSave.disabled = false;
+      });
+    });
+  })();
+</script>
+{% endblock %}

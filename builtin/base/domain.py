@@ -446,6 +446,109 @@ def list_record_oplogs(
     return out
 
 
+def _format_oplog_data(vals: dict[str, Any], action: str | None) -> str:
+    note = str(vals.get("note") or "").strip()
+    if note:
+        return note
+    diff = vals.get("diff")
+    if not isinstance(diff, dict) or not diff:
+        return "—"
+    verb = str(action or "").upper()
+    parts: list[str] = []
+    for key, cell in diff.items():
+        if not isinstance(cell, dict):
+            continue
+        old, new = cell.get("old"), cell.get("new")
+
+        def _cell(raw: Any) -> str:
+            if raw is None or raw == "":
+                return "空"
+            if isinstance(raw, (dict, list)):
+                try:
+                    return json.dumps(raw, ensure_ascii=False)
+                except TypeError:
+                    return str(raw)
+            return str(raw)
+
+        if verb == "INSERT":
+            parts.append(f"{key}: {_cell(new)}")
+        elif verb == "DELETE":
+            parts.append(f"{key}: {_cell(old)}")
+        elif _cell(old) == _cell(new):
+            continue
+        else:
+            parts.append(f"{key}: {_cell(old)}=>{_cell(new)}")
+    return "; ".join(parts) or "—"
+
+
+def list_actor_oplogs(
+    session: Session,
+    ctx: Ctx,
+    *,
+    actor_id: int | None = None,
+    page: int = 1,
+    size: int = 100,
+) -> dict[str, Any]:
+    """Oplogs the current user performed, newest first, paginated."""
+    aid = int(actor_id if actor_id is not None else ctx.user_id)
+    page_n = max(1, int(page or 1))
+    size_n = max(1, min(int(size or 100), 200))
+    actor_clause = or_(
+        SystemOplog.values["actor"].as_string() == str(aid),
+        SystemOplog.values["actor"].as_integer() == aid,
+    )
+    where = [
+        SystemOplog.tenant == ctx.tenant,
+        SystemOplog.state == STATE_ON,
+        actor_clause,
+    ]
+    total = int(session.scalar(select(func.count()).select_from(SystemOplog).where(*where)) or 0)
+    rows = list(
+        session.scalars(
+            select(SystemOplog)
+            .where(*where)
+            .order_by(
+                SystemOplog.utime.desc().nulls_last(),
+                SystemOplog.created_at.desc(),
+            )
+            .offset((page_n - 1) * size_n)
+            .limit(size_n)
+        )
+    )
+    team_ids = {
+        int(v["team_id"])
+        for row in rows
+        if isinstance((v := row.values), dict) and str(v.get("team_id") or "").strip().isdigit()
+    }
+    teams = {
+        int(t.id): (t.name or "")
+        for t in session.scalars(select(SystemTeam).where(SystemTeam.id.in_(team_ids))).all()
+    } if team_ids else {}
+    items: list[dict[str, Any]] = []
+    for i, row in enumerate(rows):
+        vals = dict(row.values) if isinstance(row.values, dict) else {}
+        team_raw = vals.get("team_id")
+        try:
+            team_id = int(team_raw) if team_raw not in (None, "") else None
+        except (TypeError, ValueError):
+            team_id = None
+        items.append(
+            {
+                "id": row.id,
+                "seq": (page_n - 1) * size_n + i + 1,
+                "code": row.code,
+                "model": row.model or str(vals.get("model") or ""),
+                "team": teams.get(team_id, "") if team_id is not None else "",
+                "utime": row.utime.isoformat() if row.utime else (
+                    row.created_at.isoformat() if row.created_at else None
+                ),
+                "action": row.action,
+                "data": _format_oplog_data(vals, row.action),
+            }
+        )
+    return {"items": items, "count": total, "page": page_n, "size": size_n}
+
+
 def _register_oplog_writer() -> None:
     from modoor.engine import oplog as eng_oplog
 

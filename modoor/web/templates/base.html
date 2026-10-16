@@ -458,7 +458,7 @@
     }
 
     .page-workbench main {
-      padding: 1.25rem 1.5rem 1.75rem;
+      padding: 1.25rem 1.5rem 0 1.75rem;
     }
 
     .workbench {
@@ -466,8 +466,8 @@
       border: 1px solid var(--line);
       border-radius: var(--radius-lg);
       padding: 1.45rem 1.55rem 1.2rem;
+      min-height: calc(100vh - 7.5rem);
       box-shadow: 0 1px 0 color-mix(in srgb, var(--line) 50%, transparent);
-      min-height: calc(100vh - 8.75rem);
     }
 
     .workbench-head {
@@ -1046,9 +1046,12 @@
             <div class="name">{{ current_user.display_name }}</div>
             <div class="sub">{{ current_user.username }} · {{ tenant }}</div>
           </div>
+          <button type="button" class="menu-link js-agent-connect" role="menuitem" data-i18n="connectAgentGuide">
+            接入到 Agent
+          </button>
           <div class="sep"></div>
-          <button type="button" class="menu-link js-agent-connect" role="menuitem" data-i18n="connectAgentGuide">接入到
-            Agent</button>
+          <a href="/profile" class="menu-link" role="menuitem" data-i18n="userProfile">个人中心</a>
+          <div class="sep"></div>
           <form method="post" action="/logout">
             <button type="submit" class="menu-link" role="menuitem" data-i18n="logout">退出登录</button>
           </form>
@@ -1116,6 +1119,28 @@
           logout: "退出登录",
           login: "登录",
           language: "语言",
+          userProfile: "个人中心",
+          changePassword: "修改密码",
+          captcha: "验证码",
+          sendCaptcha: "发送验证码",
+          captchaHint: "请输入验证码",
+          newPassword: "新密码",
+          confirmPassword: "确认密码",
+          passwordRequired: "请输入密码",
+          passwordMismatch: "两次输入的密码不一致",
+          passwordSaved: "密码已更新",
+          profileBasic: "基础信息",
+          profileCode: "员工工号",
+          profileUtime: "登记时间",
+          profilePhone: "手机号码",
+          profileEmail: "电子邮箱",
+          profileRemark: "员工备注",
+          profileSeq: "序号",
+          profileRecord: "关联编号",
+          profileTeamCol: "所属团队",
+          profileTime: "创建时间",
+          profileAction: "动作",
+          profileData: "数据",
           connectAgentGuide: "接入到 Agent",
           connectAgentConfig: "MCP 配置",
           connectAgentIntro: "把本系统的 Skill 与 MCP Tools 提供给外部 Agent，由其代为调用 Modoor 能力。",
@@ -1161,6 +1186,28 @@
           logout: "Log out",
           login: "Log in",
           language: "Language",
+          userProfile: "Personal center",
+          changePassword: "Change password",
+          captcha: "Captcha",
+          sendCaptcha: "Send code",
+          captchaHint: "Enter the code",
+          newPassword: "New password",
+          confirmPassword: "Confirm password",
+          passwordRequired: "Password is required",
+          passwordMismatch: "Passwords do not match",
+          passwordSaved: "Password updated",
+          profileBasic: "Basic info",
+          profileCode: "Employee ID",
+          profileUtime: "Registered",
+          profilePhone: "Phone",
+          profileEmail: "Email",
+          profileRemark: "Notes",
+          profileSeq: "No.",
+          profileRecord: "Record",
+          profileTeamCol: "Team",
+          profileTime: "Created",
+          profileAction: "Action",
+          profileData: "Data",
           connectAgentGuide: "Connect to Agent",
           connectAgentConfig: "MCP config",
           connectAgentIntro: "Expose this workspace’s Skills and MCP tools so external agents can call Modoor on your behalf.",

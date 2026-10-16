@@ -149,7 +149,7 @@ class ShellKit:
         else:
             path = (raw.split("?", 1)[0] or "/").strip() or "/"
             href = path
-        if path == "/home":
+        if path == "/home" or path.startswith("/home/") or path == "/profile":
             return None, path
         if path not in ("/", "/login"):
             parts = [p for p in path.split("/") if p]
@@ -279,7 +279,9 @@ class ShellKit:
             current_module = detect_module(request.url.path) or request.session.get(
                 "active_module"
             )
-            if request.url.path in ("/", "", "/home"):
+            if request.url.path in ("/", "", "/home", "/profile") or request.url.path.startswith(
+                "/home/"
+            ):
                 current_module = None
             elif current_module and current_module not in enabled:
                 current_module = None

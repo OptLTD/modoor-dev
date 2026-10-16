@@ -10,6 +10,10 @@ export type AuthUser = {
   uukey?: string
   username: string
   realname?: string
+  name?: string
+  phone?: string | null
+  email?: string | null
+  remark?: string | null
   tenant?: number | string
   current?: number | string | null
   base_id?: number | string

@@ -206,13 +206,16 @@
                 <div class="name">{{ user.realname || user.username }}</div>
                 <div class="sub">{{ user.username }} · {{ tenantName }}</div>
               </div>
-              <button type="button" class="menu-link" role="menuitem" @click="openUserSettings">
-                {{ t('shell.userSettings') }}
-              </button>
-              <div class="sep" />
               <button type="button" class="menu-link" role="menuitem" @click="openAgentConnect">
                 {{ t('shell.connectAgentGuide') }}
               </button>
+              <div class="sep" />
+              <button type="button" class="menu-link" role="menuitem" @click="openUserSettings">
+                {{ t('shell.userSettings') }}
+              </button>
+              <a href="/profile" class="menu-link" role="menuitem" @click="closeMenus">
+                {{ t('shell.userProfile') }}
+              </a>
               <div class="sep" />
               <button type="button" class="menu-link" role="menuitem" @click="onLogout">
                 {{ t('shell.logout') }}
