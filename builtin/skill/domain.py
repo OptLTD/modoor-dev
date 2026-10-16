@@ -14,6 +14,7 @@ from sqlalchemy.orm import Mapped, Session, mapped_column
 from modoor.core.ctx import Ctx
 from modoor.core.db import Base
 from modoor.core.errors import AppError
+from modoor.core.log import log
 
 SOURCE_MODULE = "module"
 SOURCE_CUSTOM = "custom"
@@ -517,6 +518,14 @@ def upsert_skill(
         row.updated_at = datetime.now(timezone.utc)
 
     session.flush()
+    log(
+        ctx,
+        "skill.save",
+        module=row.module,
+        skill=row.skill_key,
+        title=row.title,
+        disabled="1" if row.disabled else "0",
+    )
     return _row_to_dict(
         row,
         include_content=True,
@@ -570,6 +579,13 @@ def set_skill_disabled(
         row.updated_by = ctx.user_id
         row.updated_at = datetime.now(timezone.utc)
     session.flush()
+    log(
+        ctx,
+        "skill.disabled",
+        module=module,
+        skill=skill_key,
+        disabled="1" if disabled else "0",
+    )
 
     if _is_readonly_module(module):
         file_skill = get_module_skill(module=module, skill_key=skill_key)
@@ -623,6 +639,7 @@ def delete_skill(
     )
     session.delete(row)
     session.flush()
+    log(ctx, "skill.delete", module=row.module, skill=row.skill_key, title=row.title)
     return {"deleted": True, "skill": payload}
 
 

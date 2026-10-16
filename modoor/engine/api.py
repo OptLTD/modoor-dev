@@ -94,6 +94,9 @@ def _access_gate(session, user: SystemUser) -> dict[str, Any]:
 
 
 def _err(exc: Exception) -> HTTPException:
+    from modoor.web.api_util import log_api_error
+
+    log_api_error(exc)
     if isinstance(exc, AppError):
         code = 404 if exc.code == "not_found" else 400
         return HTTPException(status_code=code, detail={"code": exc.code, "message": str(exc)})

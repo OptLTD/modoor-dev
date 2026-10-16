@@ -17,6 +17,7 @@ from sqlalchemy.orm import Session
 
 from modoor.core.ctx import Ctx
 from modoor.core.errors import AppError
+from modoor.core.log import log
 from modoor.runtime.jobs import enqueue
 from builtin.flow import domain as flow_domain
 from builtin.flow.domain import FlowDefinition, FlowInstance, FlowTask, _new_id, _now
@@ -161,6 +162,13 @@ def start_instance(
     )
     session.add(inst)
     session.flush()
+    log(
+        ctx,
+        "flow.start",
+        definition=definition.key,
+        instance=inst.id,
+        ref=ref_id,
+    )
     flow_domain.append_log(
         session,
         tenant=ctx.tenant,
@@ -180,6 +188,13 @@ def advance(session: Session, *, instance_id: str) -> None:
     definition = session.get(FlowDefinition, inst.definition_id)
     if definition is None:
         inst.status = "failed"
+        log(
+            Ctx(tenant=inst.tenant, user_id=inst.created_by, team_id=0),
+            "flow.fail",
+            instance=inst.id,
+            node=inst.current_node,
+            error="definition missing",
+        )
         flow_domain.append_log(
             session,
             tenant=inst.tenant,
@@ -200,6 +215,13 @@ def advance(session: Session, *, instance_id: str) -> None:
         node = nodes.get(inst.current_node)
         if node is None:
             inst.status = "failed"
+            log(
+                ctx,
+                "flow.fail",
+                instance=inst.id,
+                node=inst.current_node,
+                error="unknown node",
+            )
             flow_domain.append_log(
                 session,
                 tenant=inst.tenant,
@@ -468,6 +490,7 @@ def decide_task(
     task.decided_at = _now()
     task.updated_at = _now()
     session.flush()
+    log(ctx, "flow.decide", task=task.id, instance=task.instance_id, decision=decision)
     inst = session.get(FlowInstance, task.instance_id)
     if inst is None:
         return flow_domain._task_dict(task)

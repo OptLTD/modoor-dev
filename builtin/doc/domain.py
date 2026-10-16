@@ -16,6 +16,7 @@ from sqlalchemy.orm import Mapped, Session, mapped_column
 from modoor.core.ctx import Ctx
 from modoor.core.db import Base
 from modoor.core.errors import AppError
+from modoor.core.log import log
 from modoor.runtime.jobs import enqueue
 from builtin.doc.extract import MAX_TEXT_CHARS as _MAX_TEXT_CHARS
 from builtin.doc.extract import sanitize_pg_text
@@ -216,6 +217,15 @@ def create_asset(
     session.flush()
     if not provided:
         enqueue(session, kind="doc.extract", payload={"asset_id": asset_id})
+    log(
+        ctx,
+        "doc.create",
+        asset=row.id,
+        filename=row.filename,
+        model=row.model,
+        uukey=row.uukey,
+        field=row.field,
+    )
     return _asset_dict(row)
 
 
@@ -389,6 +399,14 @@ def apply_extract_job(session: Session, payload: dict[str, Any]) -> None:
         row.text_status = "failed"
         row.text_error = sanitize_pg_text(str(exc))[:2000]
         row.updated_at = _now()
+    log(
+        Ctx(tenant=int(row.tenant), user_id=int(row.created_by or 0), team_id=int(row.team_id or 0)),
+        "doc.extract",
+        asset=row.id,
+        status=row.text_status,
+        method=row.text_method,
+        error=row.text_error,
+    )
 
 
 def _touch_origin(row: DocAsset, *, model: str | None, uukey: str | None, field: str | None) -> bool:
@@ -500,6 +518,7 @@ def update_asset(
     row.updated_by = ctx.user_id
     row.updated_at = _now()
     session.flush()
+    log(ctx, "doc.update", asset=row.id, title=row.title, status=row.text_status)
     return _asset_dict(row)
 
 
@@ -518,6 +537,7 @@ def delete_asset(session: Session, ctx: Ctx, *, asset_id: str) -> dict[str, Any]
                 store.delete(name)
         except AppError:
             pass
+    log(ctx, "doc.delete", asset=asset_id, filename=payload.get("filename"))
     return {"deleted": True, "asset": payload}
 
 

@@ -13,6 +13,7 @@ from sqlalchemy.orm import Mapped, Session, mapped_column
 from modoor.core.ctx import Ctx
 from modoor.core.db import Base
 from modoor.core.errors import AppError
+from modoor.core.log import log
 
 
 def _now() -> datetime:
@@ -208,6 +209,7 @@ def create_project(
     project.home_page_id = page_id
     project.updated_at = _now()
     session.flush()
+    log(ctx, "wiki.project.create", project=project.id, name=project.name)
     return {
         "project": _project_to_dict(project),
         "home_page": _page_to_dict(page),
@@ -235,6 +237,7 @@ def update_project(
     project.updated_by = ctx.user_id
     project.updated_at = _now()
     session.flush()
+    log(ctx, "wiki.project.update", project=project.id, name=project.name)
     return _project_to_dict(project)
 
 
@@ -257,6 +260,7 @@ def delete_project(session: Session, ctx: Ctx, *, project_id: str) -> dict[str, 
         session.delete(page)
     session.delete(project)
     session.flush()
+    log(ctx, "wiki.project.delete", project=project_id, name=payload.get("name"), pages=len(pages))
     return {"deleted": True, "project": payload}
 
 
@@ -343,6 +347,7 @@ def create_page(
     )
     session.add(page)
     session.flush()
+    log(ctx, "wiki.page.create", page=page.id, project=project_id, title=page.title)
     return _page_to_dict(page)
 
 
@@ -367,6 +372,7 @@ def update_page(
     page.updated_by = ctx.user_id
     page.updated_at = _now()
     session.flush()
+    log(ctx, "wiki.page.update", page=page.id, title=page.title)
     return _page_to_dict(page)
 
 
@@ -429,6 +435,7 @@ def move_page(
     page.updated_by = ctx.user_id
     page.updated_at = _now()
     session.flush()
+    log(ctx, "wiki.page.move", page=page.id, parent=page.parent_id or "", sort=page.sort_order)
     return _page_to_dict(page, include_body=False)
 
 
@@ -448,4 +455,5 @@ def delete_page(session: Session, ctx: Ctx, *, page_id: str) -> dict[str, Any]:
     payload = _page_to_dict(page, include_body=False)
     session.delete(page)
     session.flush()
+    log(ctx, "wiki.page.delete", page=page_id, title=payload.get("title"))
     return {"deleted": True, "page": payload}

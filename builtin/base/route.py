@@ -348,18 +348,16 @@ def api_toggle_module(request: Request, module_id: str, body: ModuleToggle) -> d
     try:
         with session_scope() as session:
             tenant = kit().tenant()
+            ctx = ctx_of(user)
             if body.enabled:
-                from modoor.core.ctx import Ctx
                 from modoor.platform.loader import ensure_module_enabled
 
-                ctx = Ctx(
-                    tenant=tenant,
-                    user_id=int(user.id),
-                    team_id=int(user.team_id or 0),
-                )
                 ensure_module_enabled(session, tenant, module_id, ctx=ctx)
             else:
                 set_module_enabled(session, tenant, module_id, False)
+            from modoor.core.log import log
+
+            log(ctx, "module.toggle", module=module_id, enabled="1" if body.enabled else "0")
         clear_ui_cache()
         return {"ok": True, "module_id": module_id, "enabled": body.enabled}
     except Exception as exc:  # noqa: BLE001

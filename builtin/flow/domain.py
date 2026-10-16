@@ -11,6 +11,7 @@ from typing import Any
 from sqlalchemy import Boolean, DateTime, Integer, JSON, String, Text, select
 from sqlalchemy.orm import Mapped, Session, mapped_column
 
+from modoor.core.log import log
 from modoor.core.ctx import Ctx
 from modoor.core.db import Base
 from modoor.core.errors import AppError
@@ -266,6 +267,7 @@ def publish_definition(session: Session, ctx: Ctx, *, definition_id: str) -> dic
     row.updated_by = ctx.user_id
     row.updated_at = _now()
     session.flush()
+    log(ctx, "flow.publish", definition=row.key, id=row.id)
     return _def_dict(row)
 
 
@@ -400,6 +402,13 @@ def upsert_schedule(
     row.next_run_at = next_cron_time(row.cron) if row.enabled else None
     row.updated_at = _now()
     session.flush()
+    log(
+        ctx,
+        "flow.schedule",
+        flow=row.flow_key,
+        cron=row.cron,
+        enabled="1" if row.enabled else "0",
+    )
     return {
         "id": row.id,
         "flow_key": row.flow_key,

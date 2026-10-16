@@ -11,7 +11,7 @@ from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Any, Callable
 
-from sqlalchemy import String, and_, asc, cast, desc, func, or_, select
+from sqlalchemy import Float, JSON, String, and_, asc, case, cast, desc, distinct, func, literal, or_, select
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Session
 
@@ -28,7 +28,6 @@ FACET_TYPES = frozenset(
         "SUBJECT",
         "KEYWORDS",
         "DATETIME",
-        "SERIALNO",
     }
 )
 
@@ -136,13 +135,20 @@ class ColsOrmAdapter(ModelAdapter):
             return group, field
         return None
 
+    def _json_element(self, col: Any, field: str) -> Any:
+        return col.op("->")(literal(field))
+
+    def _json_number(self, col: Any, field: str) -> Any:
+        """数值键类型固定。用 jsonb 的 -> 转数字，不再先 ->> 成文本。"""
+        element = self._json_element(col, field)
+        return case((func.jsonb_typeof(element) == "number", cast(element, Float)))
+
     def _json_text_expr(self, group: str, field: str) -> Any:
         col = getattr(self.entity_cls, group)
         return col[field].as_string()
 
     def _json_num_expr(self, group: str, field: str) -> Any:
-        col = getattr(self.entity_cls, group)
-        return col[field].as_float()
+        return self._json_number(getattr(self.entity_cls, group), field)
 
     def _resolve(self, session: Session, ctx: Ctx, key: str) -> Any | None:
         cls = self.entity_cls
@@ -246,6 +252,10 @@ class ColsOrmAdapter(ModelAdapter):
             op = term.op
             val = self._coerce_query_val(term.field, op, term.value)
             text = self._json_text_expr(group, field)
+            if op == "NIL" and term.field in self.NUM_KEYS:
+                element = self._json_element(getattr(cls, group), field)
+                missing = or_(element.is_(None), func.jsonb_typeof(element) != "number")
+                return missing if val in (True, "true", 1, "1") else ~missing
             if op == "NIL":
                 missing = or_(text.is_(None), text == "", text == "null")
                 return missing if val in (True, "true", 1, "1") else ~missing
@@ -330,6 +340,26 @@ class ColsOrmAdapter(ModelAdapter):
         for clauses in or_groups.values():
             stmt = stmt.where(or_(*clauses))
         return stmt
+
+    def _terms_clause(self, terms: list[QueryTerm]) -> Any | None:
+        """把一组条件收成一个布尔表达式，供聚合 FILTER 使用。"""
+        ands: list[Any] = []
+        or_groups: dict[str, list[Any]] = {}
+        for term in terms:
+            clause = self._term_clause(term)
+            if clause is None:
+                continue
+            group = str(getattr(term, "group", "") or "")
+            if group == "or" or group.startswith("or:"):
+                or_groups.setdefault(group, []).append(clause)
+            else:
+                ands.append(clause)
+        parts = list(ands)
+        for clauses in or_groups.values():
+            parts.append(or_(*clauses) if len(clauses) > 1 else clauses[0])
+        if not parts:
+            return None
+        return and_(*parts) if len(parts) > 1 else parts[0]
 
     def digest(
         self,
@@ -466,6 +496,18 @@ class ColsOrmAdapter(ModelAdapter):
 
         return values, group_count, totals
 
+    def _scoped_select(self, ctx: Ctx, terms: list[QueryTerm]) -> Any:
+        cls = self.entity_cls
+        stmt = select(cls).where(cls.tenant == ctx.tenant)
+        # Soft-delete: hide deleted rows unless query explicitly filters basic.state
+        if hasattr(cls, "state") and not any(
+            t.field in ("basic.state", "basic.enable") for t in terms
+        ):
+            from modoor.core.state import STATE_ON
+
+            stmt = stmt.where(cls.state == STATE_ON)
+        return self._apply_terms(stmt, terms)
+
     def search(
         self,
         session: Session,
@@ -481,15 +523,7 @@ class ColsOrmAdapter(ModelAdapter):
         page = max(int(page or 1), 1)
         size = min(max(int(size or 50), 1), 500)
         terms = parse_query(query)
-        base = select(cls).where(cls.tenant == ctx.tenant)
-        # Soft-delete: hide deleted rows unless query explicitly filters basic.state
-        if hasattr(cls, "state") and not any(
-            t.field in ("basic.state", "basic.enable") for t in terms
-        ):
-            from modoor.core.state import STATE_ON
-
-            base = base.where(cls.state == STATE_ON)
-        base = self._apply_terms(base, terms)
+        base = self._scoped_select(ctx, terms)
         count = session.scalar(select(func.count()).select_from(base.subquery())) or 0
         resolved = resolve_list_order(order)
         order_field = resolved["field"]
@@ -506,25 +540,44 @@ class ColsOrmAdapter(ModelAdapter):
         totals = self._search_totals(session, ctx, terms, field_keys, int(count))
         return values, int(count), totals
 
-    def _value_expr(self, sk: str, *, as_date: bool = False, as_month: bool = False) -> Any | None:
+    def _named_col(self, source: Any, name: str | None) -> Any | None:
+        if not name:
+            return None
+        if source is None:
+            return getattr(self.entity_cls, name, None)
+        try:
+            return source.c[name]
+        except AttributeError:
+            return None
+
+    def _value_expr(
+        self,
+        sk: str,
+        *,
+        as_date: bool = False,
+        as_month: bool = False,
+        source: Any = None,
+    ) -> Any | None:
+        """source 为空时读实体列；传入 CTE 时读同一次扫描的结果列。"""
         cls = self.entity_cls
         path = self._json_path(sk)
         if path:
             group, field = path
             if not hasattr(cls, group):
                 return None
-            text = self._json_text_expr(group, field)
+            col = getattr(cls, group) if source is None else source.c[group]
+            text = col[field].as_string()
             if as_month:
                 return func.nullif(func.left(text, 7), "")
             if as_date:
                 return func.nullif(func.left(text, 10), "")
             if sk in self.NUM_KEYS:
-                return self._json_num_expr(group, field)
+                return self._json_number(col, field)
             return text
         attr = self.COLS.get(sk)
         if not attr or not hasattr(cls, attr):
             return None
-        col = getattr(cls, attr)
+        col = getattr(cls, attr) if source is None else source.c[attr]
         if as_month:
             # Postgres：YYYY-MM
             return func.to_char(col, "YYYY-MM")
@@ -553,7 +606,7 @@ class ColsOrmAdapter(ModelAdapter):
             if not sk or sk not in self.COLS:
                 continue
             ft = str(f.get("ftype") or "").upper()
-            if ft not in UNIQUE_TOTAL_TYPES:
+            if ft not in UNIQUE_TOTAL_TYPES or self._row_key(sk):
                 continue
             extra = f.get("extra") if isinstance(f.get("extra"), dict) else {}
             data_type = str(extra.get("dataType") or extra.get("datetime") or "").upper()
@@ -562,11 +615,9 @@ class ColsOrmAdapter(ModelAdapter):
             expr = self._value_expr(sk, as_date=as_date, as_month=as_month)
             if expr is None:
                 continue
-            stmt = (
-                select(func.count(func.distinct(expr)))
-                .where(cls.tenant == ctx.tenant)
-                .where(expr.is_not(None))
-            )
+            stmt = select(func.count(func.distinct(expr))).where(cls.tenant == ctx.tenant)
+            if not self._index_time(sk):
+                stmt = stmt.where(expr.is_not(None))
             if not as_date and not as_month:
                 stmt = stmt.where(expr != "")
             stmt = self._apply_terms(stmt, terms)
@@ -597,7 +648,7 @@ class ColsOrmAdapter(ModelAdapter):
             if not sk or sk not in self.COLS:
                 continue
             ft = str(f.get("ftype") or "").upper()
-            if ft not in FACET_TYPES:
+            if ft not in FACET_TYPES or self._index_time(sk) or self._row_key(sk):
                 continue
             scoped = [t for t in terms if t.field != sk]
             extra = f.get("extra") if isinstance(f.get("extra"), dict) else {}
@@ -607,13 +658,9 @@ class ColsOrmAdapter(ModelAdapter):
             expr = self._value_expr(sk, as_date=as_date, as_month=as_month)
             if expr is None:
                 continue
-            stmt = (
-                select(expr)
-                .where(cls.tenant == ctx.tenant)
-                .where(expr.is_not(None))
-                .distinct()
-                .limit(lim + 1)
-            )
+            stmt = select(expr).where(cls.tenant == ctx.tenant).distinct().limit(lim + 1)
+            if not self._index_time(sk):
+                stmt = stmt.where(expr.is_not(None))
             if not as_date and not as_month:
                 stmt = stmt.where(expr != "")
             stmt = self._apply_terms(stmt, scoped)
@@ -701,6 +748,275 @@ class ColsOrmAdapter(ModelAdapter):
                     totals[sk] = 0.0
 
         return totals or None
+
+    def search_report(
+        self,
+        session: Session,
+        ctx: Ctx,
+        *,
+        query: dict[str, Any] | None,
+        order: dict[str, Any] | None,
+        page: int,
+        size: int,
+        field_keys: list[str],
+        fields: list[dict[str, Any]],
+    ) -> tuple[list[dict[str, Any]], int, dict[str, Any] | None, dict[str, Any] | None]:
+        """一次取出本页、条数、合计和筛选项。条件相同的统计共用一次扫描。"""
+        page = max(int(page or 1), 1)
+        size = min(max(int(size or 50), 1), 500)
+        terms = parse_query(query)
+        lim = 100
+        stat_fields = self._stat_fields(fields)
+        groups: dict[tuple, list[dict[str, Any]]] = {}
+        for spec in stat_fields:
+            if not spec["facet"]:
+                continue
+            scoped = [t for t in terms if t.field != spec["sk"]]
+            spec["scoped"] = scoped
+            groups.setdefault(self._term_signature(scoped), []).append(spec)
+
+        full_sig = self._term_signature(terms)
+        same_where = groups.pop(full_sig, [])
+        pending = groups
+        scan_terms = list(terms)
+        narrow_terms: list[QueryTerm] = []
+
+        columns: list[Any] = [self._count_agg(narrow_terms).label("n")]
+        sum_keys: list[str] = []
+        distinct_keys: list[str] = []
+        facet_slots: list[dict[str, Any]] = []
+        for sk in field_keys:
+            if sk not in self.NUM_KEYS or sk not in self.COLS:
+                continue
+            expr = self._value_expr(sk)
+            if expr is None:
+                continue
+            columns.append(self._sum_agg(expr, narrow_terms).label(f"sum_{len(sum_keys)}"))
+            sum_keys.append(sk)
+        for spec in stat_fields:
+            if not spec["unique"]:
+                continue
+            agg = self._distinct_count_agg(spec, narrow_terms)
+            if agg is None:
+                continue
+            columns.append(agg.label(f"unq_{len(distinct_keys)}"))
+            distinct_keys.append(spec["sk"])
+        for spec in same_where:
+            agg = self._facet_agg(spec, narrow_terms)
+            if agg is None:
+                continue
+            columns.append(agg.label(f"fac_{len(facet_slots)}"))
+            facet_slots.append(spec)
+
+        where = self._scoped_select(ctx, scan_terms).whereclause
+        row = session.execute(select(*columns).where(where)).one()
+        count = int(row[0] or 0)
+        cursor = 1
+        totals: dict[str, Any] | None = None
+        if count > 0:
+            totals = {}
+            if "basic.uukey" in field_keys:
+                totals["basic.uukey"] = count
+            for sk in sum_keys:
+                raw = row[cursor]
+                cursor += 1
+                try:
+                    totals[sk] = float(raw) if raw is not None else 0.0
+                except (TypeError, ValueError):
+                    totals[sk] = 0.0
+            for sk in distinct_keys:
+                totals[sk] = int(row[cursor] or 0)
+                cursor += 1
+        else:
+            cursor += len(sum_keys) + len(distinct_keys)
+
+        facets: dict[str, Any] = {}
+        for spec in facet_slots:
+            facets[spec["sk"]] = self._facet_payload(row[cursor], spec, lim)
+            cursor += 1
+
+        for specs in pending.values():
+            scoped = specs[0]["scoped"]
+            extra_cols: list[Any] = []
+            extra_specs: list[dict[str, Any]] = []
+            for spec in specs:
+                agg = self._facet_agg(spec, [])
+                if agg is None:
+                    continue
+                extra_cols.append(agg.label(f"x_{len(extra_specs)}"))
+                extra_specs.append(spec)
+            if not extra_cols:
+                continue
+            extra = session.execute(
+                select(*extra_cols).where(self._scoped_select(ctx, scoped).whereclause)
+            ).one()
+            for index, spec in enumerate(extra_specs):
+                facets[spec["sk"]] = self._facet_payload(extra[index], spec, lim)
+
+        order_col, order_fn = self._order_piece(None, order)
+        rows = session.scalars(
+            self._scoped_select(ctx, terms)
+            .order_by(order_fn(order_col))
+            .offset((page - 1) * size)
+            .limit(size)
+        ).all()
+        values = [self._to_values(item, field_keys) for item in rows]
+        return values, count, totals or None, facets or None
+
+    def _stat_fields(self, fields: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        specs: list[dict[str, Any]] = []
+        for field in fields:
+            sk = str(field.get("uukey") or "").strip()
+            if not sk or sk not in self.COLS:
+                continue
+            ftype = str(field.get("ftype") or "").upper()
+            extra = field.get("extra") if isinstance(field.get("extra"), dict) else {}
+            data_type = str(extra.get("dataType") or extra.get("datetime") or "").upper()
+            as_month = ftype == "DATETIME" and data_type == "ONLYMONTH"
+            specs.append(
+                {
+                    "sk": sk,
+                    "as_month": as_month,
+                    "as_date": ftype == "DATETIME" and not as_month,
+                    "unique": ftype in UNIQUE_TOTAL_TYPES and not self._row_key(sk),
+                    "facet": ftype in FACET_TYPES and not self._index_time(sk) and not self._row_key(sk),
+                }
+            )
+        return specs
+
+    def _term_id(self, term: QueryTerm) -> tuple:
+        return (term.field, term.op, str(term.group or ""), repr(term.value))
+
+    def _term_signature(self, terms: list[QueryTerm]) -> tuple:
+        return tuple(self._term_id(term) for term in terms)
+
+    def _count_agg(self, scope_terms: list[QueryTerm]) -> Any:
+        agg = func.count()
+        clause = self._terms_clause(scope_terms)
+        if clause is None:
+            return agg
+        return agg.filter(clause)
+
+    def _sum_agg(self, expr: Any, scope_terms: list[QueryTerm]) -> Any:
+        agg = func.sum(expr)
+        clause = self._terms_clause(scope_terms)
+        if clause is not None:
+            agg = agg.filter(clause)
+        return func.coalesce(agg, 0)
+
+    def _order_piece(self, source: Any, order: dict[str, Any] | None) -> tuple[Any, Any]:
+        resolved = resolve_list_order(order)
+        name = self.COLS.get(resolved["field"])
+        col = self._named_col(source, name)
+        if col is None and resolved["field"] == "basic.utime":
+            col = self._named_col(source, "utime")
+        if col is None:
+            col = self._named_col(source, self.COLS.get("basic.uukey", "uukey"))
+        if col is None:
+            col = self._named_col(source, "id")
+        return col, desc if resolved["order"] == "desc" else asc
+
+    def _stat_expr(self, spec: dict[str, Any]) -> Any | None:
+        if not spec["as_date"] and not spec["as_month"] and not self._plain_text(spec["sk"]):
+            return None
+        return self._value_expr(spec["sk"], as_date=spec["as_date"], as_month=spec["as_month"])
+
+    def _plain_text(self, sk: str) -> bool:
+        """JSON 数组没有和空字符串比较、也没有 DISTINCT 的运算符。"""
+        if self._json_path(sk):
+            return True
+        if sk in self.LIST_KEYS:
+            return False
+        attr = self.COLS.get(sk)
+        col = getattr(self.entity_cls, attr, None) if attr else None
+        typ = getattr(col, "type", None)
+        return not isinstance(typ, JSON)
+
+    def _index_time(self, sk: str) -> bool:
+        """列名 utime 与 created_at、updated_at、user_id 一样是约定字段，统计时按非空处理。"""
+        return self.COLS.get(sk) == "utime"
+
+    def _row_key(self, sk: str) -> bool:
+        """列名 uukey 是约定的业务编号，每行唯一，不做去重和下拉。"""
+        return self.COLS.get(sk) == "uukey"
+
+    def _present(self, expr: Any, spec: dict[str, Any]) -> Any | None:
+        if self._index_time(spec["sk"]):
+            return None
+        cond = expr.is_not(None)
+        if spec["as_date"] or spec["as_month"]:
+            return cond
+        return and_(cond, expr != "")
+
+    def _with_present(
+        self,
+        agg: Any,
+        expr: Any,
+        spec: dict[str, Any],
+        scope_terms: list[QueryTerm] | None = None,
+    ) -> Any:
+        parts: list[Any] = []
+        present = self._present(expr, spec)
+        if present is not None:
+            parts.append(present)
+        clause = self._terms_clause(scope_terms or [])
+        if clause is not None:
+            parts.append(clause)
+        if not parts:
+            return agg
+        return agg.filter(and_(*parts) if len(parts) > 1 else parts[0])
+
+    def _distinct_count_agg(
+        self,
+        spec: dict[str, Any],
+        scope_terms: list[QueryTerm] | None = None,
+    ) -> Any | None:
+        expr = self._stat_expr(spec)
+        if expr is None:
+            return None
+        return self._with_present(func.count(distinct(expr)), expr, spec, scope_terms)
+
+    def _facet_agg(
+        self,
+        spec: dict[str, Any],
+        scope_terms: list[QueryTerm] | None = None,
+    ) -> Any | None:
+        expr = self._stat_expr(spec)
+        if expr is None:
+            return None
+        return self._with_present(func.array_agg(distinct(expr)), expr, spec, scope_terms)
+
+    def _facet_payload(self, raw: Any, spec: dict[str, Any], lim: int) -> dict[str, Any]:
+        uniq: list[str] = []
+        seen: set[str] = set()
+        for item in raw or []:
+            text = self._facet_text(item, as_month=spec["as_month"], as_date=spec["as_date"])
+            if not text or text in seen:
+                continue
+            seen.add(text)
+            uniq.append(text)
+        if len(uniq) > lim:
+            return {"overflow": True}
+        uniq.sort()
+        return {"overflow": False, "options": [{"value": v, "label": v} for v in uniq]}
+
+    @staticmethod
+    def _facet_text(raw: Any, *, as_month: bool, as_date: bool) -> str:
+        if raw is None:
+            return ""
+        if hasattr(raw, "isoformat"):
+            iso = raw.isoformat()
+            if as_month:
+                return iso[:7]
+            if as_date:
+                return iso[:10]
+            return iso
+        text = str(raw).strip()
+        if as_month and len(text) >= 7:
+            return text[:7]
+        if as_date and len(text) >= 10:
+            return text[:10]
+        return text
 
     def get_values(self, session: Session, ctx: Ctx, uukey: str) -> dict[str, Any] | None:
         row = self._resolve(session, ctx, uukey)

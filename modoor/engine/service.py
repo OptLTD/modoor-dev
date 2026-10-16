@@ -7,6 +7,7 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
+from modoor.core.log import log_delete, log_upsert
 from modoor.core.ctx import Ctx
 from modoor.core.errors import AppError
 from modoor.engine.adapters import get_adapter
@@ -196,28 +197,39 @@ class EngineService:
                 },
             )
 
-        values, count, totals = adapter.search(
-            session, ctx,
-            query=query,
-            order=order,
-            page=page,
-            size=size,
-            field_keys=field_keys,
-        )
         fields = list(table.get("fields") or [])
-        totals = adapter.enrich_search_totals(
-            session, ctx,
-            query=query,
-            fields=fields,
-            totals=totals,
-            count=int(count),
-        )
-        facets = adapter.search_facets(
-            session, ctx,
-            query=query,
-            fields=fields,
-            limit=100,
-        )
+        if hasattr(adapter, "search_report"):
+            values, count, totals, facets = adapter.search_report(
+                session, ctx,
+                query=query,
+                order=order,
+                page=page,
+                size=size,
+                field_keys=field_keys,
+                fields=fields,
+            )
+        else:
+            values, count, totals = adapter.search(
+                session, ctx,
+                query=query,
+                order=order,
+                page=page,
+                size=size,
+                field_keys=field_keys,
+            )
+            totals = adapter.enrich_search_totals(
+                session, ctx,
+                query=query,
+                fields=fields,
+                totals=totals,
+                count=int(count),
+            )
+            facets = adapter.search_facets(
+                session, ctx,
+                query=query,
+                fields=fields,
+                limit=100,
+            )
         refers = dict(table.get("refers") or {})
         refers.update(adapter.refers(session, ctx) or {})
         refers = merge_dict_key_refers(session, ctx, fields, refers)
@@ -253,6 +265,7 @@ class EngineService:
         adapter = get_adapter(model)
         records = adapter.upsert(session, ctx, batch)
         _stamp_upload_assets(session, ctx, model, records)
+        log_upsert(ctx, model, records)
         return {"records": records}
 
     def delete(
@@ -266,6 +279,7 @@ class EngineService:
         get_bundle(model)
         adapter = get_adapter(model)
         adapter.delete_keys(session, ctx, keys)
+        log_delete(ctx, model, keys)
         return {"ok": True}
 
     def alloc_serials(

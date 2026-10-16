@@ -28,6 +28,7 @@ from sqlalchemy.orm import Mapped, Session, mapped_column, relationship, selecti
 from modoor.core.ctx import Ctx
 from modoor.core.db import Base
 from modoor.core.errors import AppError
+from modoor.core.log import log
 from modoor.engine.oplog import diff_row_values
 from modoor.core.security import hash_password, verify_password
 from modoor.core.state import STATE_ON, as_on, is_on
@@ -1154,6 +1155,7 @@ def create_user(
     session.add(row)
     session.flush()
     session.refresh(row, attribute_names=["login"])
+    log(ctx, "user.create", code=row.code, username=row.username, name=row.name, team=row.team_id)
     return _user_dict(row)
 
 
@@ -1259,6 +1261,22 @@ def update_user(
         row.refer = str(refer or "").strip()
     _touch(row)
     session.flush()
+    changed = [
+        label
+        for label, touched in (
+            ("name", name is not None or realname is not None),
+            ("phone", phone is not None),
+            ("email", email is not None),
+            ("remark", remark is not None),
+            ("active", active is not None),
+            ("password", password is not None),
+            ("team", team_id is not ...),
+            ("model", model is not ...),
+            ("refer", refer is not ...),
+        )
+        if touched
+    ]
+    log(ctx, "user.update", code=row.code, username=row.username, fields=",".join(changed))
     return _user_dict(row)
 
 
@@ -1329,6 +1347,7 @@ def delete_user(
     row.state = STATE_OFF
     _touch(row)
     session.flush()
+    log(ctx, "user.delete", code=row.code, username=row.username)
     return {"deleted": True, "user": _user_dict(row)}
 
 
@@ -1391,6 +1410,7 @@ def create_team(
     )
     session.add(row)
     session.flush()
+    log(ctx, "team.create", code=row.code, name=row.name)
     return _team_dict(row)
 
 
@@ -1424,6 +1444,7 @@ def update_team(
         row.enable = as_on(active)
     _touch(row)
     session.flush()
+    log(ctx, "team.update", code=row.code, name=row.name, enable=row.enable)
     return _team_dict(row)
 
 
@@ -1447,6 +1468,7 @@ def delete_team(session: Session, ctx: Ctx, *, team_id: int) -> dict[str, Any]:
     row.state = STATE_OFF
     _touch(row)
     session.flush()
+    log(ctx, "team.delete", code=row.code, name=row.name, users=len(list(users)))
     return {"deleted": True, "team": _team_dict(row)}
 
 
@@ -1534,6 +1556,7 @@ def create_role(
     )
     session.add(row)
     session.flush()
+    log(ctx, "role.create", code=row.code, name=row.name)
     return _role_dict(row)
 
 
@@ -1561,6 +1584,7 @@ def update_role(
         row.enable = as_on(active)
     _touch(row)
     session.flush()
+    log(ctx, "role.update", code=row.code, name=row.name, enable=row.enable)
     return _role_dict(row)
 
 
@@ -1608,6 +1632,7 @@ def delete_role(
     row.state = STATE_OFF
     _touch(row)
     session.flush()
+    log(ctx, "role.delete", code=row.code, name=row.name)
     return {"deleted": True, "role": _role_dict(row)}
 
 
@@ -1628,6 +1653,7 @@ def assign_role(
     role.users = [*ids, user.id]
     _touch(role)
     session.flush()
+    log(ctx, "role.assign", role=role.code, user=user.id)
     return {
         "user_id": user.id,
         "role_id": role.id,
@@ -1651,6 +1677,7 @@ def revoke_role(
     role.users = [i for i in ids if i != user.id]
     _touch(role)
     session.flush()
+    log(ctx, "role.revoke", role=role.code, user=user.id)
     return {"revoked": True, "user_id": user.id, "role_id": role.id}
 
 
@@ -1821,6 +1848,7 @@ def set_role_nodes(
     role.nodes = wanted
     _touch(role)
     session.flush()
+    log(ctx, "role.nodes", role=role.code, nodes=",".join(wanted))
     return list_role_nodes(session, ctx, role_id=role.id)
 
 
@@ -1893,10 +1921,17 @@ def authenticate_user(
 ) -> SystemUser:
     login = _get_login_by_username(session, username)
     if login is None or not login.password or not verify_password(password, login.password):
+        log(Ctx(tenant=int(tenant or 0), user_id=0, team_id=0), "login.fail", username=username)
         raise AppError("permission_denied", "Invalid username or password")
-    return _choose_login_user(
+    user = _choose_login_user(
         session, login, tenant=tenant, allow_fallback=allow_fallback
     )
+    log(
+        Ctx(tenant=user.tenant, user_id=user.id, team_id=int(user.team_id or 0)),
+        "login.ok",
+        username=username,
+    )
+    return user
 
 
 def list_login_tenants(session: Session, *, base_id: int) -> list[dict[str, Any]]:
@@ -1942,6 +1977,11 @@ def switch_login_tenant(
     login.current = tenant_id
     _touch(login)
     session.flush()
+    log(
+        Ctx(tenant=row.tenant, user_id=row.id, team_id=int(row.team_id or 0)),
+        "login.switch",
+        username=login.username,
+    )
     return row
 
 
@@ -1998,6 +2038,10 @@ def rotate_agent_key(session: Session, user: SystemUser) -> str:
     row.token = _new_token_value()
     _touch(row)
     session.flush()
+    log(
+        Ctx(tenant=user.tenant, user_id=user.id, team_id=int(user.team_id or 0)),
+        "agent.rotate",
+    )
     return str(row.token)
 
 
@@ -2007,6 +2051,11 @@ def set_agent_readonly(session: Session, user: SystemUser, readonly: bool) -> bo
     row.set_readonly(readonly)
     _touch(row)
     session.flush()
+    log(
+        Ctx(tenant=user.tenant, user_id=user.id, team_id=int(user.team_id or 0)),
+        "agent.readonly",
+        readonly="1" if readonly else "0",
+    )
     return row.is_readonly()
 
 
@@ -2278,6 +2327,8 @@ def upsert_config(
             row.title = str(title)
         row.updated_at = now
     session.flush()
+    if t != CFG_TYPE_TABLE_LAYOUT:
+        log(ctx, "config.save", mod=m, type=t, title=row.title)
     return config_row(row)
 
 
@@ -2285,8 +2336,11 @@ def delete_config(session: Session, ctx: Ctx, *, mod: str, type: str) -> bool:
     row = get_config(session, ctx, mod=mod, type=type)
     if row is None:
         return False
+    saved_type = str(row.type or "")
     session.delete(row)
     session.flush()
+    if saved_type != CFG_TYPE_TABLE_LAYOUT:
+        log(ctx, "config.delete", mod=mod, type=saved_type)
     return True
 
 
