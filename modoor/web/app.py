@@ -389,6 +389,7 @@ def logout(request: Request):
 
 
 @app.get("/logo.png", include_in_schema=False)
+@app.get("/favicon.ico", include_in_schema=False)
 def logo_png():
     if not _LOGO_PNG.is_file():
         raise HTTPException(status_code=404, detail="logo not found")

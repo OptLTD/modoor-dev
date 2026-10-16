@@ -12,8 +12,9 @@ export type PrefsPanelItem = {
 }
 
 export type TableLayoutHost = {
-  model: ComputedRef<string> | { value: string }
-  using: ComputedRef<string> | { value: string }
+  // Vue 组件实例会把 ComputedRef 解包成内部值，所以这里也接受 string。
+  model: ComputedRef<string> | { value: string } | string
+  using: ComputedRef<string> | { value: string } | string
   snapshot: () => TableColumnLayout | null
   apply: (layout: TableColumnLayout | null) => void
   save: () => void

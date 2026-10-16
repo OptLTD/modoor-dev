@@ -1,4 +1,4 @@
-.PHONY: help setup db build dev preview mcp web webui api test smoke external base wiki sale skill doc fleet freight capacity dispatch sync flow worker seed
+.PHONY: help setup db build dev preview image mcp web webui api test smoke external base wiki sale skill doc fleet freight capacity dispatch sync flow worker seed
 
 ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 PYTHON := $(ROOT)/.venv/bin/python
@@ -10,6 +10,20 @@ DEV_MODULES := $(filter-out dev setup db worker seed,$(MAKECMDGOALS))
 BUILD_MODULES := $(filter-out build setup,$(MAKECMDGOALS))
 PREVIEW_MODULES := $(filter-out preview setup,$(MAKECMDGOALS))
 SEED_MODULES := $(filter-out seed setup force,$(MAKECMDGOALS))
+
+# make image <tag> <module> [module...] → $(IMAGE_REPO):<tag>
+# Tag is not a module name, so swallow unknown goals only for this command.
+IMAGE_REPO ?= optltd/modoor
+ifeq ($(firstword $(MAKECMDGOALS)),image)
+  IMAGE_ARGS := $(filter-out image,$(MAKECMDGOALS))
+  IMAGE_TAG := $(word 1,$(IMAGE_ARGS))
+  IMAGE_MODULES := $(wordlist 2,$(words $(IMAGE_ARGS)),$(IMAGE_ARGS))
+  IMAGE_UNKNOWN := $(filter-out base wiki sale skill doc fleet freight capacity dispatch sync flow city force,$(IMAGE_ARGS))
+  ifneq ($(IMAGE_UNKNOWN),)
+    $(IMAGE_UNKNOWN):
+	@:
+  endif
+endif
 
 # set BUILD=1 with preview to compile first: make preview BUILD=1 [modules]
 BUILD ?= 0
@@ -31,6 +45,8 @@ help: ## Show targets
 	@echo "  make preview BUILD=1         # build then preview (all)"
 	@echo "  make preview BUILD=1 base    # build then preview base"
 	@echo "  make dev base                # HMR via :8765 proxy"
+	@echo "  make image lyghh fleet freight"
+	@echo "                               # optltd/modoor:lyghh"
 
 setup: ## Create venv and install package (skips pip if up to date)
 	@test -d "$(VENV)" || python3 -m venv "$(VENV)"
@@ -63,6 +79,17 @@ build: setup ## Build module dist: make build base [wiki] [sale] [skill]
 	fi
 	@chmod +x "$(ROOT)/scripts/run_build.sh"
 	@"$(ROOT)/scripts/run_build.sh" $(BUILD_MODULES)
+
+image: ## Pack image: make image <tag> <module> [module...]
+	@if [ -z "$(IMAGE_TAG)" ] || [ -z "$(IMAGE_MODULES)" ]; then \
+		echo "usage: make image <tag> <module> [module...]"; \
+		echo "  example: make image lyghh fleet freight"; \
+		echo "  result:  $(IMAGE_REPO):<tag>"; \
+		echo "  override repo: make image lyghh fleet IMAGE_REPO=registry.example/optltd/modoor"; \
+		exit 1; \
+	fi
+	@chmod +x "$(ROOT)/scripts/build_image.sh"
+	@"$(ROOT)/scripts/build_image.sh" "$(IMAGE_REPO)" "$(IMAGE_TAG)" $(IMAGE_MODULES)
 
 dev: setup ## Start API + vite HMR: make dev base [wiki] [sale] [skill]
 	@if [ -z "$(DEV_MODULES)" ]; then \

@@ -32,6 +32,10 @@ class DocSettings(BaseSettings):
     s3_region: str = Field(default="", alias="MODOOR_DOC_S3_REGION")
     s3_prefix: str = Field(default="doc/", alias="MODOOR_DOC_S3_PREFIX")
     ocr: bool = Field(default=True, alias="MODOOR_DOC_OCR")
+    # tesseract | external. External posts image bytes to MODOOR_OCR_URL.
+    ocr_backend: str = Field(default="tesseract", alias="MODOOR_OCR_BACKEND")
+    ocr_url: str = Field(default="", alias="MODOOR_OCR_URL")
+    ocr_lang: str = Field(default="chi_sim+eng", alias="MODOOR_OCR_LANG")
     ocr_max_pages: int = Field(default=20, alias="MODOOR_DOC_OCR_MAX_PAGES")
 
 

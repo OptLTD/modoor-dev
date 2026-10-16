@@ -15,6 +15,7 @@ from typing import Any
 from xml.etree import ElementTree as ET
 from zipfile import ZipFile
 
+from builtin.doc.pkgs import ensure_office
 from builtin.doc.settings import get_doc_settings
 
 log = logging.getLogger("modoor.doc.extract")
@@ -28,7 +29,6 @@ PREVIEW_MAX_COLS = 40
 PREVIEW_FILTER_MAX_UNIQ = 100
 _TEXT_EXTS = {".txt", ".md", ".markdown", ".csv", ".json", ".log", ".html", ".htm", ".xml"}
 _IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".webp", ".gif", ".tif", ".tiff", ".bmp"}
-_OCR_ENGINE: Any = None
 _OCR_FAILED = False
 
 
@@ -54,16 +54,22 @@ def extract_bytes(filename: str, data: bytes, mime: str = "") -> ExtractResult:
         if ext == ".pdf" or mime_l == "application/pdf":
             return _extract_pdf(data)
         if ext == ".docx" or mime_l.endswith("wordprocessingml.document"):
+            ensure_office()
             return _extract_docx(data)
         if ext == ".doc" or mime_l == "application/msword":
+            ensure_office()
             return _extract_doc(data)
         if ext in {".xlsx", ".xlsm"} or "spreadsheetml.sheet" in mime_l:
+            ensure_office()
             return _extract_xlsx(data)
         if ext == ".xls" or mime_l == "application/vnd.ms-excel":
+            ensure_office()
             return _extract_xls(data)
         if ext == ".pptx" or "presentationml.presentation" in mime_l:
+            ensure_office()
             return _extract_pptx(data)
         if ext == ".ppt" or mime_l == "application/vnd.ms-powerpoint":
+            ensure_office()
             return _extract_ppt(data)
         return ExtractResult("", "none")
     except Exception as exc:  # noqa: BLE001
@@ -93,49 +99,93 @@ def _ocr_enabled() -> bool:
     return bool(get_doc_settings().ocr)
 
 
-def _ocr_engine():
-    global _OCR_ENGINE, _OCR_FAILED
-    if _OCR_FAILED or not _ocr_enabled():
-        return None
-    if _OCR_ENGINE is not None:
-        return _OCR_ENGINE
-    try:
-        from rapidocr_onnxruntime import RapidOCR
+def _ocr_backend() -> str:
+    raw = (get_doc_settings().ocr_backend or "tesseract").strip().lower()
+    if raw in {"external", "http", "remote"}:
+        return "external"
+    return "tesseract"
 
-        _OCR_ENGINE = RapidOCR()
-        return _OCR_ENGINE
+
+def _mark_ocr_failed() -> None:
+    global _OCR_FAILED
+    _OCR_FAILED = True
+
+
+def _png_bytes(data: bytes) -> bytes:
+    """Normalize to PNG when Pillow is installed. Otherwise pass the original bytes."""
+    try:
+        from PIL import Image
+    except ImportError:
+        return data
+    img = Image.open(BytesIO(data))
+    if img.mode not in ("RGB", "L"):
+        img = img.convert("RGB")
+    w, h = img.size
+    if w < 8 or h < 8:
+        return b""
+    if max(w, h) > 2000:
+        scale = 2000 / max(w, h)
+        img = img.resize((max(int(w * scale), 1), max(int(h * scale), 1)))
+    buf = BytesIO()
+    img.save(buf, format="PNG")
+    return buf.getvalue()
+
+
+def _ocr_tesseract(data: bytes) -> str:
+    png = _png_bytes(data)
+    if not png:
+        return ""
+    lang = (get_doc_settings().ocr_lang or "chi_sim+eng").strip() or "chi_sim+eng"
+    try:
+        proc = subprocess.run(
+            ["tesseract", "stdin", "stdout", "-l", lang, "--psm", "6"],
+            input=png,
+            capture_output=True,
+            check=False,
+            timeout=60,
+        )
+    except FileNotFoundError:
+        log.warning("tesseract is not installed")
+        _mark_ocr_failed()
+        return ""
+    if proc.returncode != 0:
+        log.warning("tesseract failed: %s", proc.stderr.decode("utf-8", errors="replace")[:500])
+        return ""
+    return proc.stdout.decode("utf-8", errors="replace").strip()
+
+
+def _ocr_external(data: bytes) -> str:
+    url = (get_doc_settings().ocr_url or "").strip()
+    if not url:
+        log.warning("MODOOR_OCR_URL is empty")
+        _mark_ocr_failed()
+        return ""
+    png = _png_bytes(data)
+    if not png:
+        return ""
+    try:
+        import httpx
+
+        response = httpx.post(
+            url,
+            content=png,
+            headers={"content-type": "image/png"},
+            timeout=60,
+        )
+        response.raise_for_status()
     except Exception:  # noqa: BLE001
-        log.warning("RapidOCR unavailable", exc_info=True)
-        _OCR_FAILED = True
-        return None
+        log.exception("external ocr failed")
+        return ""
+    return (response.text or "").strip()
 
 
 def _ocr_image_bytes(data: bytes) -> str:
-    engine = _ocr_engine()
-    if engine is None:
+    if not _ocr_enabled() or _OCR_FAILED:
         return ""
     try:
-        import numpy as np
-        from PIL import Image
-
-        img = Image.open(BytesIO(data))
-        if img.mode not in ("RGB", "L"):
-            img = img.convert("RGB")
-        w, h = img.size
-        if w < 8 or h < 8:
-            return ""
-        if max(w, h) > 2000:
-            scale = 2000 / max(w, h)
-            img = img.resize((max(int(w * scale), 1), max(int(h * scale), 1)))
-        arr = np.asarray(img.convert("RGB"))
-        result, _elapse = engine(arr)
-        if not result:
-            return ""
-        lines: list[str] = []
-        for item in result:
-            if isinstance(item, (list, tuple)) and len(item) >= 2:
-                lines.append(str(item[1]))
-        return "\n".join(lines).strip()
+        if _ocr_backend() == "external":
+            return _ocr_external(data)
+        return _ocr_tesseract(data)
     except Exception:  # noqa: BLE001
         log.exception("ocr image failed")
         return ""
@@ -146,7 +196,7 @@ def _extract_image(data: bytes) -> ExtractResult:
         return ExtractResult("", "ocr_disabled")
     text = _ocr_image_bytes(data)
     if not text and _OCR_FAILED:
-        return ExtractResult("", "ocr_unavailable", "RapidOCR is not available")
+        return ExtractResult("", "ocr_unavailable", "OCR is not available")
     return ExtractResult(_clip(text), "ocr")
 
 
@@ -193,8 +243,7 @@ def _extract_pdf(data: bytes) -> ExtractResult:
 
 
 def _ocr_pdf_pages(data: bytes, indexes: list[int]) -> dict[int, str]:
-    engine = _ocr_engine()
-    if engine is None:
+    if not _ocr_enabled() or _OCR_FAILED:
         return {}
     try:
         import pypdfium2 as pdfium
@@ -409,6 +458,7 @@ def preview_excel(
     page = max(int(page or 1), 1)
     sheet = max(int(sheet or 0), 0)
     parsed = _coerce_filters(filters)
+    ensure_office()
     if ext == ".xls" or mime_l == "application/vnd.ms-excel":
         return _preview_xls(
             data, sheet=sheet, page=page, filters=parsed, facets=facets

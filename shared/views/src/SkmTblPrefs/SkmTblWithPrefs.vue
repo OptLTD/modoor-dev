@@ -5,7 +5,7 @@
  */
 import { computed, ref, useAttrs, watch } from 'vue'
 import { useI18n } from '@modoor/hooks'
-import type { SchemaClick, SchemaField, SchemaTable } from '@modoor/hooks'
+import type { ReferDict, SchemaClick, SchemaField, SchemaTable } from '@modoor/hooks'
 import type { FilterDraft } from '@modoor/hooks'
 import SchemaTableView from '@modoor/widget/SchemaTable'
 import SvgIcon from '@modoor/widget/SvgIcon'
@@ -70,7 +70,7 @@ type TableExpose = {
   api: {
     prefs: TableLayoutHost
     filter: TableFilterApi
-    list: { theRefers: Record<string, unknown>; loading: boolean }
+    list: { theRefers: ReferDict; loading: boolean }
   }
   reload: () => void
   getListRequest: () => unknown
