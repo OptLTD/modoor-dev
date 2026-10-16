@@ -111,6 +111,18 @@ class Settings(BaseSettings):
     )
     # None: echo the login code only while the session secret is still the dev default.
     modoor_captcha_echo: bool | None = Field(default=None, alias="MODOOR_CAPTCHA_ECHO")
+    # Login captcha delivery: mock | smtp | aliyun-sms. Empty = do not send.
+    modoor_notify: str = Field(default="", alias="MODOOR_NOTIFY")
+    modoor_smtp_host: str = Field(default="", alias="MODOOR_SMTP_HOST")
+    modoor_smtp_port: int = Field(default=587, alias="MODOOR_SMTP_PORT")
+    modoor_smtp_user: str = Field(default="", alias="MODOOR_SMTP_USER")
+    modoor_smtp_pass: str = Field(default="", alias="MODOOR_SMTP_PASS")
+    modoor_smtp_from: str = Field(default="", alias="MODOOR_SMTP_FROM")
+    modoor_smtp_tls: bool = Field(default=True, alias="MODOOR_SMTP_TLS")
+    modoor_aliyun_sms_ak_id: str = Field(default="", alias="MODOOR_ALIYUN_SMS_AK_ID")
+    modoor_aliyun_sms_ak_secret: str = Field(default="", alias="MODOOR_ALIYUN_SMS_AK_SECRET")
+    modoor_aliyun_sms_sign: str = Field(default="", alias="MODOOR_ALIYUN_SMS_SIGN")
+    modoor_aliyun_sms_template: str = Field(default="", alias="MODOOR_ALIYUN_SMS_TEMPLATE")
     modoor_webui_url: str = Field(
         default="http://127.0.0.1:8765",
         alias="MODOOR_WEBUI_URL",

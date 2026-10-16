@@ -22,6 +22,7 @@ def client(monkeypatch):
         MODOOR_ADMIN_USERNAME="superuser",
         MODOOR_ADMIN_PASSWORD="pass@word",
         MODOOR_CAPTCHA_ECHO="1",
+        MODOOR_NOTIFY="",
     )
     get_settings.cache_clear()
     clear_ui_cache()
@@ -78,7 +79,7 @@ def test_password_login_and_remember_cookie(client: TestClient):
 def test_login_without_remember_is_browser_session(client: TestClient):
     res = client.post(
         "/login",
-        data={"username": "admin", "password": "admin123"},
+        data={"username": "superuser", "password": "pass@word"},
         follow_redirects=False,
     )
     assert res.status_code == 303
@@ -100,17 +101,17 @@ def test_captcha_login_and_rate_limit(client: TestClient):
     assert missing.status_code == 404
     assert "dev_code" not in missing.json()
 
-    sent = client.post("/login/captcha", json={"username": "admin"})
+    sent = client.post("/login/captcha", json={"username": "superuser"})
     assert sent.status_code == 200
     code = sent.json()["dev_code"]
     assert len(code) == 6
 
-    again = client.post("/login/captcha", json={"username": "admin"})
+    again = client.post("/login/captcha", json={"username": "superuser"})
     assert again.status_code == 429
 
     bad = client.post(
         "/login",
-        data={"username": "admin", "auth_type": "captcha", "captcha": "000000"},
+        data={"username": "superuser", "auth_type": "captcha", "captcha": "000000"},
         follow_redirects=False,
     )
     assert bad.status_code == 400
@@ -118,14 +119,14 @@ def test_captcha_login_and_rate_limit(client: TestClient):
 
     good = client.post(
         "/login",
-        data={"username": "admin", "auth_type": "captcha", "captcha": code, "remember": "on"},
+        data={"username": "superuser", "auth_type": "captcha", "captcha": code, "remember": "on"},
         follow_redirects=False,
     )
     assert good.status_code == 303
 
     reused = client.post(
         "/login",
-        data={"username": "admin", "auth_type": "captcha", "captcha": code},
+        data={"username": "superuser", "auth_type": "captcha", "captcha": code},
         follow_redirects=False,
     )
     assert reused.status_code == 400
@@ -135,7 +136,7 @@ def test_captcha_login_and_rate_limit(client: TestClient):
 def test_logout_clears_remember_cookie(client: TestClient):
     client.post(
         "/login",
-        data={"username": "admin", "password": "admin123", "remember": "on"},
+        data={"username": "superuser", "password": "pass@word", "remember": "on"},
         follow_redirects=False,
     )
     out = client.post("/logout", follow_redirects=False)
@@ -186,7 +187,40 @@ def test_profile_page_and_self_password(client: TestClient):
 def test_captcha_is_not_echoed_when_disabled(client: TestClient, monkeypatch):
     monkeypatch.setenv("MODOOR_CAPTCHA_ECHO", "0")
     get_settings.cache_clear()
-    res = client.post("/login/captcha", json={"username": "admin"})
+    res = client.post("/login/captcha", json={"username": "superuser"})
     assert res.status_code == 400
     assert "dev_code" not in res.json()
     assert "无法发送" in res.json()["error"]
+
+
+def test_captcha_smtp_requires_email(client: TestClient, monkeypatch):
+    monkeypatch.setenv("MODOOR_CAPTCHA_ECHO", "0")
+    monkeypatch.setenv("MODOOR_NOTIFY", "smtp")
+    monkeypatch.setenv("MODOOR_SMTP_HOST", "smtp.example.com")
+    monkeypatch.setenv("MODOOR_SMTP_FROM", "noreply@example.com")
+    get_settings.cache_clear()
+    res = client.post("/login/captcha", json={"username": "superuser"})
+    assert res.status_code == 400
+    assert "邮箱" in res.json()["error"]
+
+
+def test_captcha_mock_channel_hides_code(client: TestClient, monkeypatch, caplog):
+    import logging
+
+    monkeypatch.setenv("MODOOR_CAPTCHA_ECHO", "0")
+    monkeypatch.setenv("MODOOR_NOTIFY", "mock")
+    get_settings.cache_clear()
+    with caplog.at_level(logging.INFO, logger="modoor.notify"):
+        sent = client.post("/login/captcha", json={"username": "superuser"})
+    assert sent.status_code == 200
+    body = sent.json()
+    assert body["ok"] is True
+    assert "dev_code" not in body
+    code = next(line.split("code=")[-1].strip() for line in caplog.messages if "code=" in line)
+    assert len(code) == 6
+    good = client.post(
+        "/login",
+        data={"username": "superuser", "auth_type": "captcha", "captcha": code},
+        follow_redirects=False,
+    )
+    assert good.status_code == 303

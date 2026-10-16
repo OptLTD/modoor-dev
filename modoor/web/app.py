@@ -19,6 +19,7 @@ from modoor.engine.api import router as engine_router
 from modoor.platform.loader import register_module_web
 from modoor.platform import services as service_registry
 from modoor.platform.tickets import issue_ticket, verify_ticket
+from modoor.core.notify import notify_channel, send_code
 from modoor.core.settings import get_settings
 from modoor.web.access_log import log_filter
 from modoor.web.frontend import register_frontends
@@ -29,6 +30,7 @@ from modoor.web.login_auth import (
     LOGIN_REMEMBER_FLAG,
     SessionPersistMiddleware,
     apply_login_cookies,
+    captcha_destination,
     captcha_echo_enabled,
     issue_captcha,
     issue_remember_token,
@@ -231,14 +233,23 @@ def login_captcha(request: Request, body: CaptchaBody):
     username = body.username.strip()
     if not username:
         return JSONResponse({"ok": False, "error": "请输入登录名称"}, status_code=400)
+    try:
+        channel = notify_channel()
+    except AppError as exc:
+        return JSONResponse({"ok": False, "error": exc.message}, status_code=400)
+    echo = captcha_echo_enabled()
     with session_scope() as session:
         if not base_domain.has_active_login(session, username):
             return JSONResponse({"ok": False, "error": "用户不存在"}, status_code=404)
-    if not captcha_echo_enabled():
-        return JSONResponse(
-            {"ok": False, "error": "未配置短信或邮件，无法发送验证码"},
-            status_code=400,
-        )
+        if not channel and not echo:
+            return JSONResponse(
+                {"ok": False, "error": "未配置短信或邮件，无法发送验证码"},
+                status_code=400,
+            )
+        try:
+            target = captcha_destination(session, username, channel)
+        except AppError as exc:
+            return JSONResponse({"ok": False, "error": exc.message}, status_code=400)
     try:
         code = issue_captcha(request, username)
     except AppError as exc:
@@ -248,7 +259,17 @@ def login_captcha(request: Request, body: CaptchaBody):
             payload["retry_after"] = retry
         status = 429 if exc.code == "rate_limited" else 400
         return JSONResponse(payload, status_code=status)
-    return {"ok": True, "dev_code": code}
+    if channel:
+        try:
+            send_code(channel=channel, target=target, code=code)
+        except AppError as exc:
+            request.session.pop("login_captcha", None)
+            request.session.pop("login_captcha_at", None)
+            return JSONResponse({"ok": False, "error": exc.message}, status_code=400)
+    payload = {"ok": True}
+    if echo:
+        payload["dev_code"] = code
+    return payload
 
 
 @app.post("/login")

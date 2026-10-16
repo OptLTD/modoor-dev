@@ -23,8 +23,8 @@ def _env(monkeypatch, tmp_path):
         MODOOR_API_KEY="test-key",
         MODOOR_TENANT="demo",
         MODOOR_CONFIRM_SECRET="secret",
-        MODOOR_DOC_STORAGE="local",
-        MODOOR_DOC_LOCAL_ROOT=str(tmp_path),
+        MODOOR_STORAGE_TYPE="local",
+        MODOOR_STORAGE_ROOT=str(tmp_path),
         MODOOR_DOC_OCR="0",
         MODOOR_JOBS_INPROCESS="0",
     )

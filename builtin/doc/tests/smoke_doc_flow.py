@@ -25,8 +25,8 @@ from modoor.testing import ensure_database, test_database_url  # noqa: E402
 def main() -> None:
     doc_root = tempfile.mkdtemp(prefix="modoor-doc-")
     os.environ["DATABASE_URL"] = test_database_url()
-    os.environ["MODOOR_DOC_STORAGE"] = "local"
-    os.environ["MODOOR_DOC_LOCAL_ROOT"] = doc_root
+    os.environ["MODOOR_STORAGE_TYPE"] = "local"
+    os.environ["MODOOR_STORAGE_ROOT"] = doc_root
     os.environ["MODOOR_JOBS_INPROCESS"] = "0"
     os.environ["MODOOR_DOC_OCR"] = "0"
     os.environ.setdefault("MODOOR_API_KEY", "dev-key-change-me")
@@ -42,14 +42,14 @@ def main() -> None:
     ctx = resolve_ctx(settings)
 
     # s3 not implemented
-    os.environ["MODOOR_DOC_STORAGE"] = "s3"
+    os.environ["MODOOR_STORAGE_TYPE"] = "s3"
     get_doc_settings.cache_clear()
     try:
         get_blob_store(DocSettings())
         raise SystemExit("expected not_implemented for s3")
     except AppError as exc:
         assert exc.code == "not_implemented", exc
-    os.environ["MODOOR_DOC_STORAGE"] = "local"
+    os.environ["MODOOR_STORAGE_TYPE"] = "local"
     get_doc_settings.cache_clear()
 
     with session_scope() as session:

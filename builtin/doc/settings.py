@@ -16,9 +16,15 @@ class DocSettings(BaseSettings):
         extra="ignore",
     )
 
-    # local | s3 | minio (v1 implements local only)
-    storage: str = Field(default="local", alias="MODOOR_DOC_STORAGE")
-    local_root: Path = Field(default=Path("./storage/doc"), alias="MODOOR_DOC_LOCAL_ROOT")
+    # local | aliyun-oss | s3 | minio (s3/minio are not wired).
+    # local root is always written; with aliyun-oss it is a cache and may be deleted.
+    storage: str = Field(default="local", alias="MODOOR_STORAGE_TYPE")
+    local_root: Path = Field(default=Path("./storage/doc"), alias="MODOOR_STORAGE_ROOT")
+    oss_endpoint: str = Field(default="", alias="MODOOR_ALIYUN_OSS_ENDPOINT")
+    oss_bucket: str = Field(default="", alias="MODOOR_ALIYUN_OSS_BUCKET")
+    oss_ak_id: str = Field(default="", alias="MODOOR_ALIYUN_OSS_AK_ID")
+    oss_ak_secret: str = Field(default="", alias="MODOOR_ALIYUN_OSS_AK_SECRET")
+    oss_prefix: str = Field(default="doc/", alias="MODOOR_ALIYUN_OSS_PREFIX")
     s3_endpoint: str = Field(default="", alias="MODOOR_DOC_S3_ENDPOINT")
     s3_bucket: str = Field(default="", alias="MODOOR_DOC_S3_BUCKET")
     s3_access_key: str = Field(default="", alias="MODOOR_DOC_S3_ACCESS_KEY")

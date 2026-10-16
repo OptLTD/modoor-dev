@@ -31,6 +31,14 @@ export type RecordView = {
     title?: string
     defaults?: Record<string, unknown>
   }) => void
+  /** 下钻到另一模型的 TableDrawer（按 query 过滤）。 */
+  openTable?: (table: {
+    model: string
+    using?: string
+    title?: string
+    query?: Record<string, unknown>
+    fields?: string[]
+  }) => void
   reload: () => Promise<void>
 }
 

@@ -150,6 +150,7 @@
       :title="drillTitle"
       :model="drillModel"
       :using="drillUsing"
+      :fields="drillFields"
       :fixed-query="drillQuery"
       @close="closeDrill"
     />
@@ -353,6 +354,7 @@ const drillTitle = ref('')
 const drillModel = ref('')
 const drillUsing = ref('default')
 const drillQuery = ref<Record<string, unknown>>({})
+const drillFields = ref<string[] | undefined>()
 
 const pageTitle = computed(() => {
   if (props.title) return props.title
@@ -688,6 +690,24 @@ function closeDrill() {
   drillUsing.value = 'default'
   drillTitle.value = ''
   drillQuery.value = {}
+  drillFields.value = undefined
+}
+
+function openTable(spec: {
+  model: string
+  using?: string
+  title?: string
+  query?: Record<string, unknown>
+  fields?: string[]
+}) {
+  const model = String(spec.model || '').trim()
+  if (!model) return
+  drillModel.value = model
+  drillUsing.value = spec.using || 'default'
+  drillQuery.value = spec.query || {}
+  drillTitle.value = spec.title || '明细'
+  drillFields.value = spec.fields
+  drillOpen.value = true
 }
 
 function openDigestDrill(row: Record<string, unknown>) {
@@ -785,6 +805,7 @@ function openActionForm(form: {
 
 const viewApi = {
   openForm: openActionForm,
+  openTable,
   reload: async () => {
     await tableRef.value?.reload()
   },

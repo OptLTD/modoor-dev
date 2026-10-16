@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+import re
 import secrets
 import time
 from pathlib import Path
@@ -156,6 +157,44 @@ def apply_login_cookies(
 def _captcha_digest(code: str) -> str:
     secret = get_settings().modoor_session_secret.encode()
     return hmac.new(secret, code.encode(), hashlib.sha256).hexdigest()
+
+
+def captcha_destination(session, username: str, channel: str) -> str:
+    """Address for this channel. Mock only needs the login name."""
+    name = (channel or "").strip().lower()
+    account = (username or "").strip()
+    if name in {"", "mock"}:
+        return account
+    user = base_domain.login_user_by_username(
+        session,
+        username=account,
+        tenant=get_settings().modoor_tenant_id,
+        allow_fallback=True,
+    )
+    if name == "smtp":
+        email = (user.email or "").strip()
+        if not email and "@" in account:
+            email = account
+        if not email:
+            raise AppError("validation_error", "该账号未绑定邮箱")
+        return email
+    if name == "aliyun-sms":
+        phone = _sms_phone(user.phone or "") or _sms_phone(account)
+        if not phone:
+            raise AppError("validation_error", "该账号未绑定手机号")
+        return phone
+    raise AppError("validation_error", f"不支持的通知通道: {name}")
+
+
+def _sms_phone(raw: str) -> str:
+    text = re.sub(r"[\s\-]", "", (raw or "").strip())
+    if text.startswith("+86"):
+        text = text[3:]
+    elif text.startswith("86") and len(text) == 13:
+        text = text[2:]
+    if text.isdigit() and 5 <= len(text) <= 20:
+        return text
+    return ""
 
 
 def issue_captcha(request: Request, username: str) -> str:

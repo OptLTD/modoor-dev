@@ -157,7 +157,7 @@ def _store_for_row(row: DocAsset, settings=None) -> BlobStore:
     if row.type and row.type != store.backend:
         raise AppError(
             "not_implemented",
-            f"asset stored on '{row.type}' but current MODOOR_DOC_STORAGE is '{store.backend}'",
+            f"asset stored on '{row.type}' but current MODOOR_STORAGE_TYPE is '{store.backend}'",
         )
     return store
 
@@ -188,6 +188,8 @@ def create_asset(
     object_name = f"{ctx.tenant}/{asset_id}/{safe}"
     store.put(object_name, blob, content_type=mime)
     provided = text is not None
+    if provided:
+        store.release(object_name)
     row = DocAsset(
         id=asset_id,
         tenant=ctx.tenant,
@@ -381,6 +383,8 @@ def apply_extract_job(session: Session, payload: dict[str, Any]) -> None:
         row.text_error = sanitize_pg_text(result.error or "")[:2000]
         row.text_status = "failed" if result.error and not (result.text or "").strip() else "ready"
         row.updated_at = _now()
+        if row.text_status == "ready" and row.name:
+            _store_for_row(row).release(row.name)
     except Exception as exc:  # noqa: BLE001
         row.text_status = "failed"
         row.text_error = sanitize_pg_text(str(exc))[:2000]
