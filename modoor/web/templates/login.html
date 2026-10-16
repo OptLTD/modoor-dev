@@ -2,23 +2,479 @@
 {% block title %}登录 · Modoor{% endblock %}
 {% block body_class %}page-login{% endblock %}
 {% block shell %}{% endblock %}
+{% block head_extra %}
+<style>
+  .auth-page {
+    position: relative;
+    flex: 1;
+    min-height: 100vh;
+    display: flex;
+    overflow: hidden;
+  }
+
+  .auth-bg {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, #9333ea 0%, #3b82f6 50%, #4f46e5 100%);
+    overflow: hidden;
+  }
+
+  .auth-bg-image {
+    position: absolute;
+    inset: 0;
+    background: url("/login/assets/login-bg.jpeg") center / cover no-repeat;
+    opacity: 0.3;
+  }
+
+  .auth-float {
+    position: absolute;
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(4px);
+  }
+
+  .auth-float-a {
+    top: 80px;
+    left: 80px;
+    width: 128px;
+    height: 128px;
+    border-radius: 24px;
+    animation: auth-float-a 8s ease-in-out infinite;
+  }
+
+  .auth-float-b {
+    right: 96px;
+    bottom: 128px;
+    width: 160px;
+    height: 160px;
+    border-radius: 50%;
+    animation: auth-float-b 10s ease-in-out infinite;
+  }
+
+  .auth-float-c {
+    top: 50%;
+    right: 33%;
+    width: 96px;
+    height: 96px;
+    border-radius: 16px;
+    animation: auth-float-c 6s ease-in-out infinite;
+  }
+
+  @keyframes auth-float-a {
+    50% { transform: translateY(-30px) rotate(10deg); }
+  }
+
+  @keyframes auth-float-b {
+    50% { transform: translateY(40px) rotate(-15deg); }
+  }
+
+  @keyframes auth-float-c {
+    50% { transform: translateY(-20px) rotate(20deg); }
+  }
+
+  .auth-stage {
+    position: relative;
+    z-index: 1;
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+  }
+
+  .auth-card {
+    width: min(1060px, 100%);
+    height: 600px;
+    display: flex;
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+    overflow: hidden;
+  }
+
+  .auth-illu {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    padding: 40px;
+    background: #f8f9fa;
+  }
+
+  .auth-brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: #1f2937;
+    font-size: 20px;
+    font-weight: 700;
+  }
+
+  .auth-brand img {
+    width: 40px;
+    height: 40px;
+    object-fit: contain;
+  }
+
+  .auth-illu video {
+    flex: 1;
+    width: 100%;
+    min-height: 0;
+    object-fit: contain;
+  }
+
+  .auth-panel {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 50px 40px;
+  }
+
+  .auth-form {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+  }
+
+  .auth-form h2 {
+    margin: 0 0 8px;
+    font-size: 24px;
+    font-weight: 700;
+    text-align: center;
+    color: #111827;
+  }
+
+  .auth-form label {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    color: #374151;
+    font-size: 13px;
+    font-weight: 550;
+  }
+
+  .auth-form input:not([type="checkbox"]) {
+    box-sizing: border-box;
+    width: 100%;
+    height: 40px;
+    margin: 0;
+    padding: 0 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    font: inherit;
+    font-size: 14px;
+    line-height: 20px;
+    color: #111827;
+    background: #fff;
+    appearance: none;
+    -webkit-appearance: none;
+  }
+
+  .auth-form input:focus {
+    outline: 2px solid rgba(79, 70, 229, 0.35);
+    outline-offset: 1px;
+    border-color: #4f46e5;
+  }
+
+  .auth-form .field-captcha {
+    display: none;
+  }
+
+  .auth-form.is-captcha .field-password {
+    display: none;
+  }
+
+  .auth-form.is-captcha .field-captcha {
+    display: flex;
+  }
+
+  .captcha-row {
+    display: flex;
+    gap: 8px;
+  }
+
+  .captcha-row input {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .auth-switch {
+    border: 0;
+    background: transparent;
+    color: #4f46e5;
+    font: inherit;
+    font-size: 13px;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  .auth-switch:hover {
+    color: #7e22ce;
+  }
+
+  .captcha-row button {
+    box-sizing: border-box;
+    flex: 0 0 auto;
+    height: 40px;
+    min-width: 7.5em;
+    padding: 0 14px;
+    border: 0;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #9333ea 0%, #3b82f6 50%, #4f46e5 100%);
+    color: #fff;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 40px;
+    cursor: pointer;
+    white-space: nowrap;
+    box-shadow: 0 4px 12px rgba(147, 51, 234, 0.25);
+  }
+
+  .captcha-row button:hover:not(:disabled) {
+    background: linear-gradient(135deg, #7e22ce 0%, #2563eb 50%, #4338ca 100%);
+  }
+
+  .captcha-row button:disabled {
+    background: #e5e7eb;
+    color: #9ca3af;
+    box-shadow: none;
+    cursor: not-allowed;
+  }
+
+  .auth-form .error,
+  .auth-notice {
+    margin: 0;
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 13px;
+  }
+
+  .auth-form .error,
+  .auth-notice.is-error {
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    color: #b91c1c;
+  }
+
+  .auth-notice.is-info {
+    background: #eef2ff;
+    border: 1px solid #c7d2fe;
+    color: #3730a3;
+  }
+
+  .auth-tools {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .auth-tools .remember {
+    flex-direction: row;
+    align-items: center;
+    gap: 6px;
+    color: #6b7280;
+    font-weight: 450;
+  }
+
+  .auth-tools .remember input {
+    margin: 0;
+  }
+
+  .auth-form.is-captcha .remember {
+    opacity: 0.45;
+    pointer-events: none;
+  }
+
+  .auth-submit {
+    width: 100%;
+    margin-top: 4px;
+    padding: 11px 16px;
+    border: 0;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #9333ea 0%, #3b82f6 50%, #4f46e5 100%);
+    color: #fff;
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 4px 15px rgba(147, 51, 234, 0.3);
+  }
+
+  .auth-submit:hover {
+    background: linear-gradient(135deg, #7e22ce 0%, #2563eb 50%, #4338ca 100%);
+  }
+
+  .auth-hint {
+    margin: 4px 0 0;
+    text-align: center;
+    font-size: 12px;
+    color: #9ca3af;
+  }
+
+  @media (max-width: 1024px) {
+    .auth-illu { display: none; }
+    .auth-card { height: auto; max-width: 440px; }
+    .auth-panel { padding: 36px 28px; }
+  }
+
+  @media (max-width: 640px) {
+    .auth-stage { padding: 20px 12px; }
+    .auth-panel { padding: 28px 20px; }
+  }
+</style>
+{% endblock %}
 {% block content %}
-<div class="login-wrap">
-  <div class="login-brand">
-    <img src="/logo.png?v=1" alt="" width="40" height="40" />
-    <h1>Modoor</h1>
+<div class="auth-page">
+  <div class="auth-bg" aria-hidden="true">
+    <div class="auth-bg-image"></div>
+    <div class="auth-float auth-float-a"></div>
+    <div class="auth-float auth-float-b"></div>
+    <div class="auth-float auth-float-c"></div>
   </div>
-  {% if error %}<div class="error">{{ error }}</div>{% endif %}
-  <form method="post" action="/login" class="login-form">
-    {% if next %}<input type="hidden" name="next" value="{{ next }}" />{% endif %}
-    <label>用户名
-      <input name="username" value="{{ username or 'admin' }}" required autocomplete="username" />
-    </label>
-    <label>密码
-      <input type="password" name="password" required autocomplete="current-password" />
-    </label>
-    <button type="submit">登录</button>
-  </form>
-  <p class="meta login-hint">默认账号 admin / admin123</p>
+  <div class="auth-stage">
+    <div class="auth-card">
+      <section class="auth-illu">
+        <div class="auth-brand">
+          <img src="/logo.png?v=1" alt="" width="40" height="40" />
+          <span>Modoor</span>
+        </div>
+        <video autoplay loop muted playsinline poster="/login/assets/login-view.png">
+          <source src="/login/assets/login-view.webm" type="video/webm" />
+        </video>
+      </section>
+      <section class="auth-panel">
+        <form method="post" action="/login" class="auth-form{% if auth_type == 'captcha' %} is-captcha{% endif %}" id="auth-form">
+          <h2>登录</h2>
+          {% if next %}<input type="hidden" name="next" value="{{ next }}" />{% endif %}
+          <input type="hidden" name="auth_type" value="{{ auth_type or 'password' }}" />
+          {% if error %}<div class="error">{{ error }}</div>{% endif %}
+          <p id="auth-notice" class="auth-notice" hidden></p>
+          <label>登录账号
+            <input type="text" name="username" value="{{ username or '' }}" required autocomplete="username" placeholder="请输入登录名称" />
+          </label>
+          <label class="field-password">登录密码
+            <input type="password" name="password" autocomplete="current-password" placeholder="请输入登录密码" />
+          </label>
+          <label class="field-captcha">验证码
+            <span class="captcha-row">
+              <input type="text" name="captcha" inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="请输入验证码" />
+              <button type="button" id="send-code">发送验证码</button>
+            </span>
+          </label>
+          <div class="auth-tools">
+            <label class="remember">
+              <input type="checkbox" name="remember" value="on" {% if remember %}checked{% endif %} />
+              记住我
+            </label>
+            <button type="button" class="auth-switch" id="switch-mode">验证码登录</button>
+          </div>
+          <button type="submit" class="auth-submit">登录</button>
+        </form>
+      </section>
+    </div>
+  </div>
 </div>
+{% endblock %}
+{% block page_script %}
+<script>
+  (function () {
+    var form = document.getElementById("auth-form");
+    if (!form) return;
+    var mode = form.querySelector('input[name="auth_type"]');
+    var user = form.querySelector('input[name="username"]');
+    var password = form.querySelector('input[name="password"]');
+    var captcha = form.querySelector('input[name="captcha"]');
+    var remember = form.querySelector('input[name="remember"]');
+    var send = document.getElementById("send-code");
+    var toggle = document.getElementById("switch-mode");
+    var notice = document.getElementById("auth-notice");
+    var timer = null;
+    var left = 0;
+
+    function setMode(next) {
+      var captchaMode = next === "captcha";
+      form.classList.toggle("is-captcha", captchaMode);
+      mode.value = captchaMode ? "captcha" : "password";
+      password.disabled = captchaMode;
+      password.required = !captchaMode;
+      captcha.disabled = !captchaMode;
+      captcha.required = captchaMode;
+      toggle.textContent = captchaMode ? "密码登录" : "验证码登录";
+    }
+
+    function showNotice(text, kind) {
+      notice.hidden = !text;
+      notice.textContent = text || "";
+      notice.className = "auth-notice" + (kind ? " is-" + kind : "");
+    }
+
+    function startCountdown(seconds) {
+      left = seconds;
+      if (timer) clearInterval(timer);
+      tick();
+      timer = setInterval(tick, 1000);
+    }
+
+    function tick() {
+      if (left <= 0) {
+        clearInterval(timer);
+        timer = null;
+        send.disabled = false;
+        send.textContent = "发送验证码";
+        return;
+      }
+      send.disabled = true;
+      send.textContent = left + "秒后重试";
+      left -= 1;
+    }
+
+    toggle.addEventListener("click", function () {
+      setMode(form.classList.contains("is-captcha") ? "password" : "captcha");
+      showNotice("", "");
+    });
+
+    send.addEventListener("click", function () {
+      var name = (user.value || "").trim();
+      if (!name) {
+        showNotice("请输入登录名称", "error");
+        user.focus();
+        return;
+      }
+      if (left > 0) return;
+      send.disabled = true;
+      fetch("/login/captcha", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json", "Accept": "application/json" },
+        body: JSON.stringify({ username: name })
+      }).then(function (res) {
+        return res.json().then(function (data) {
+          return { ok: res.ok, data: data || {} };
+        });
+      }).then(function (pack) {
+        var data = pack.data;
+        if (!pack.ok) {
+          showNotice(data.error || "发送验证码失败", "error");
+          var retry = parseInt(data.retry_after, 10);
+          if (retry > 0) startCountdown(retry);
+          else send.disabled = false;
+          return;
+        }
+        showNotice(data.dev_code ? ("开发环境验证码：" + data.dev_code) : "验证码已发送", "info");
+        startCountdown(60);
+      }).catch(function () {
+        showNotice("发送验证码失败", "error");
+        send.disabled = false;
+      });
+    });
+
+    setMode(form.classList.contains("is-captcha") ? "captcha" : "password");
+  })();
+</script>
 {% endblock %}

@@ -50,6 +50,10 @@ def _user_payload(
 def _user_from_session(request: Request) -> SystemUser | None:
     uid = request.session.get("user_id")
     if uid is None or uid == "":
+        from modoor.web.login_auth import restore_remembered_session
+
+        uid = restore_remembered_session(request)
+    if uid is None or uid == "":
         return None
     try:
         user_id = int(uid)
@@ -60,6 +64,8 @@ def _user_from_session(request: Request) -> SystemUser | None:
         # By user id only — membership row carries tenant (supports switch).
         user = base_domain.load_user(session, user_id)
         if user is None or not user.active:
+            request.session.pop("user_id", None)
+            request.scope["modoor_clear_remember"] = True
             return None
         _ = (user.username, user.realname, user.current)
         if user.login is not None:
@@ -320,9 +326,10 @@ def api_record_oplogs(request: Request, body: dict[str, Any] = Body(default_fact
         limit = 200
     try:
         with session_scope() as session:
+            ctx = _ctx(user)
             items = base_domain.list_record_oplogs(
                 session,
-                _ctx(user),
+                ctx,
                 code=code,
                 model=model or None,
                 limit=limit,
@@ -331,7 +338,11 @@ def api_record_oplogs(request: Request, body: dict[str, Any] = Body(default_fact
                 from modoor.engine.registry import load_sample_oplogs
 
                 items = load_sample_oplogs(model, code, limit)
-            return {"items": items, "count": len(items)}
+            return {
+                "items": items,
+                "count": len(items),
+                "users": base_domain.list_oplog_users(session, ctx),
+            }
     except Exception as exc:  # noqa: BLE001
         raise _err(exc) from exc
 

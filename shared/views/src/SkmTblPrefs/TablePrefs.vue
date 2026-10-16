@@ -7,7 +7,7 @@ import SideDrawer from '@modoor/widget/SideDrawer'
 import FieldPanel from '@modoor/widget/FieldPanel'
 import type { TablePrefsApi } from './useTablePrefs'
 
-withDefaults(
+const props = withDefaults(
   defineProps<{
     prefs: TablePrefsApi
     /** 无快捷筛选能力时只显示列表字段 */
@@ -17,6 +17,16 @@ withDefaults(
 )
 
 const { t } = useI18n()
+
+function confirmPrefs() {
+  const prefs = props.prefs
+  if (prefs.tab === 'filters') {
+    if (prefs.filtersDirty) prefs.applyFilters()
+  } else if (prefs.columnsDirty) {
+    prefs.applyColumns()
+  }
+  prefs.close()
+}
 </script>
 
 <template>
@@ -86,13 +96,8 @@ const { t } = useI18n()
       >
         {{ t('widget.reset') }}
       </button>
-      <button
-        type="button"
-        class="btn primary"
-        :disabled="prefs.tab === 'filters' ? !prefs.filtersDirty : !prefs.columnsDirty"
-        @click="prefs.tab === 'filters' ? prefs.applyFilters() : prefs.applyColumns()"
-      >
-        {{ t('widget.apply') }}
+      <button type="button" class="btn primary" @click="confirmPrefs">
+        {{ t('widget.confirm') }}
       </button>
     </template>
   </SideDrawer>

@@ -904,105 +904,23 @@
       gap: 8px;
     }
 
+    body.page-login {
+      background: #4f46e5;
+    }
+
     body.page-login main {
       padding: 0;
       max-width: none;
-      min-height: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .login-wrap {
-      width: min(100% - 2.5rem, 22.5rem);
-      background: color-mix(in srgb, var(--card) 94%, transparent);
-      border: 1px solid var(--line);
-      border-radius: var(--radius-2xl);
-      padding: 2.25rem 2rem 1.75rem;
-      box-shadow: 0 18px 48px rgba(28, 25, 23, 0.07);
-      backdrop-filter: blur(10px);
-    }
-
-    .login-brand {
-      display: flex;
-      flex-direction: row;
-      align-items: center;
-      justify-content: center;
-      gap: 0.75rem;
-      margin-bottom: 1.75rem;
-    }
-
-    .login-brand img {
-      width: 40px;
-      height: 40px;
-      object-fit: contain;
-      background: none;
-      border-radius: 0;
-    }
-
-    .login-brand h1 {
       margin: 0;
-      font-size: 1.45rem;
-      letter-spacing: 0.02em;
-      line-height: 1;
-    }
-
-    .login-brand .meta {
-      margin: 0;
-    }
-
-    .login-form {
+      min-height: 100vh;
       display: flex;
-      flex-direction: column;
-      gap: 0.95rem;
-      border: none;
-      padding: 0;
-      margin: 0;
-      background: transparent;
     }
 
-    .login-form label {
-      gap: 0.4rem;
-      font-size: 0.8rem;
-      font-weight: 550;
-    }
-
-    .login-form input {
-      width: 100%;
-      padding: 0.7rem 0.85rem;
-      border-radius: var(--radius-lg);
-    }
-
-    .login-form input:focus {
-      outline: 2px solid color-mix(in srgb, var(--accent) 35%, transparent);
-      outline-offset: 1px;
-      border-color: var(--accent);
-    }
-
-    .login-form button[type="submit"] {
-      width: 100%;
-      margin-top: 0.25rem;
-      padding: 0.78rem 1rem;
-      border-radius: var(--radius-lg);
-      font-weight: 600;
-      background: var(--accent);
-      color: #fff;
-      border: none;
-      cursor: pointer;
-      font: inherit;
-    }
-
-    .login-wrap .error {
-      border-radius: var(--radius-lg);
-      font-size: 0.88rem;
-    }
-
-    .login-hint {
-      margin: 1.15rem 0 0;
-      text-align: center;
-      font-size: 0.78rem;
+    body.page-login .legal-notice {
+      display: none;
     }
   </style>
+  {% block head_extra %}{% endblock %}
 </head>
 
 <body class="{% block body_class %}{% endblock %}">

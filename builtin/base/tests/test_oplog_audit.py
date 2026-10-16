@@ -13,6 +13,7 @@ from modoor.runtime.auth import resolve_ctx
 from modoor.testing import configure_test_db
 from builtin.base.adapters import SystemUserAdapter
 from builtin.base.domain import SystemOplog, diff_row_values, list_record_oplogs, record_oplog
+from modoor.engine.oplog import record_action
 
 
 @pytest.fixture(autouse=True)
@@ -137,5 +138,48 @@ def test_list_record_oplogs_filters_by_model():
         assert len(vehicle_logs) == 1
         assert vehicle_logs[0]["action"] == "INSERT"
         assert vehicle_logs[0]["model"] == "fleet.vehicle"
+        assert vehicle_logs[0]["values"]["actor"] == ctx.user_id
+        assert "actor_name" not in vehicle_logs[0]["values"]
         all_logs = list_record_oplogs(session, ctx, code="LIST-OP-1")
         assert len(all_logs) == 2
+
+
+def test_list_oplog_users_covers_actor():
+    from builtin.base.domain import list_oplog_users
+
+    ctx = resolve_ctx(get_settings())
+    with session_scope() as session:
+        people = list_oplog_users(session, ctx)
+        hit = next((u for u in people if u["id"] == ctx.user_id), None)
+        assert hit is not None
+        assert hit["name"]
+        assert str(hit["name"]) != str(ctx.user_id)
+
+
+def test_record_action_keeps_empty_diff_and_title():
+    ctx = resolve_ctx(get_settings())
+    with session_scope() as session:
+        empty = record_action(
+            session,
+            ctx,
+            model="fleet.freight",
+            code="RECALC-OP-1",
+            action="freight.recalc",
+        )
+        assert empty is not None
+        assert empty.action == "freight.recalc"
+        assert empty.values.get("op") is None
+        assert empty.values.get("action") is None
+        assert empty.values["diff"] == {}
+
+        record_action(
+            session,
+            ctx,
+            model="fleet.freight",
+            code="RECALC-OP-1",
+            action="freight.recalc",
+            diff={"goods.freight": {"old": 1, "new": 2}},
+        )
+        logs = list_record_oplogs(session, ctx, code="RECALC-OP-1", model="fleet.freight")
+        assert [row["action"] for row in logs] == ["freight.recalc", "freight.recalc"]
+        assert logs[0]["values"]["diff"]["goods.freight"]["new"] == 2

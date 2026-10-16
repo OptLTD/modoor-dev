@@ -136,9 +136,16 @@ export type RecordOplogItem = {
     model?: string
     actor?: number | string
     team_id?: number
+    note?: string
+    refs?: unknown
     diff?: Record<string, { old?: unknown; new?: unknown }>
     [key: string]: unknown
   }
+}
+
+export type OplogUser = {
+  id: number
+  name: string
 }
 
 /** Modification history for one record (base.oplog by business code). */
@@ -147,11 +154,14 @@ export async function fetchRecordOplogs(
   uukey: string,
   opts: { limit?: number } = {},
 ) {
-  return post<{ items: RecordOplogItem[]; count: number }>('/api/record/oplogs', {
-    model,
-    uukey,
-    limit: opts.limit ?? 200,
-  })
+  return post<{ items: RecordOplogItem[]; count: number; users?: OplogUser[] }>(
+    '/api/record/oplogs',
+    {
+      model,
+      uukey,
+      limit: opts.limit ?? 200,
+    },
+  )
 }
 
 export type RecordEntityHead = {

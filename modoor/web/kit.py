@@ -53,6 +53,10 @@ class ShellKit:
     def current_user(self, request: Request) -> SystemUser | None:
         uid = request.session.get("user_id")
         if uid is None or uid == "":
+            from modoor.web.login_auth import restore_remembered_session
+
+            uid = restore_remembered_session(request)
+        if uid is None or uid == "":
             return None
         try:
             user_id = int(uid)
@@ -62,6 +66,8 @@ class ShellKit:
         with session_scope() as session:
             user = base_domain.load_user(session, user_id)
             if user is None or not user.active:
+                request.session.pop("user_id", None)
+                request.scope["modoor_clear_remember"] = True
                 return None
             return self.detach_user(session, user)
 

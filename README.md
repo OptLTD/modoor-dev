@@ -38,7 +38,6 @@ cd /path/to/modoor-dev
 cp .env.example .env     # DATABASE_URL 指向已有 Postgres
 make setup
 make dev base            # 建表 + 初始化 + 启动 Web：http://127.0.0.1:8765
-# 默认账号 admin / admin123
 # make mcp               # MCP（stdio）
 # make test
 ```

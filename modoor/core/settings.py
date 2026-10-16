@@ -109,6 +109,8 @@ class Settings(BaseSettings):
         default="dev-session-secret-change-me",
         alias="MODOOR_SESSION_SECRET",
     )
+    # None: echo the login code only while the session secret is still the dev default.
+    modoor_captcha_echo: bool | None = Field(default=None, alias="MODOOR_CAPTCHA_ECHO")
     modoor_webui_url: str = Field(
         default="http://127.0.0.1:8765",
         alias="MODOOR_WEBUI_URL",
@@ -134,10 +136,10 @@ class Settings(BaseSettings):
     # Example: MODOOR_ADMIN=admin|ADMIN_PASSWORD
     modoor_admin: str | None = Field(default=None, alias="MODOOR_ADMIN")
     modoor_admin_username: str = Field(
-        default="admin", alias="MODOOR_ADMIN_USERNAME"
+        default="superuser", alias="MODOOR_ADMIN_USERNAME"
     )
     modoor_admin_password: str = Field(
-        default="admin123", alias="MODOOR_ADMIN_PASSWORD"
+        default="pass@word", alias="MODOOR_ADMIN_PASSWORD"
     )
     modoor_jobs_inprocess: bool = Field(default=True, alias="MODOOR_JOBS_INPROCESS")
     modoor_jobs_poll_seconds: float = Field(default=0.5, alias="MODOOR_JOBS_POLL_SECONDS")

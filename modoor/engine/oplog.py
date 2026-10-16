@@ -70,3 +70,39 @@ def record_oplog(session: Session, ctx: Ctx, **kwargs: Any) -> Any:
     if _writer is None:
         return None
     return _writer(session, ctx, **kwargs)
+
+
+def record_action(
+    session: Session,
+    ctx: Ctx,
+    *,
+    model: str,
+    code: str,
+    action: str,
+    diff: dict[str, Any] | None = None,
+    note: str | None = None,
+    refs: list[Any] | None = None,
+    extra: dict[str, Any] | None = None,
+) -> Any:
+    """Write a named business action onto the same oplog timeline.
+
+    ``action`` is the verb stored on the row (``freight.recalc``, not UPDATE).
+    Empty ``diff`` is kept. The timeline title comes from this verb.
+    """
+    verb = str(action or "").strip()
+    bag: dict[str, Any] = {}
+    if note:
+        bag["note"] = str(note)
+    if refs:
+        bag["refs"] = refs
+    if extra:
+        bag.update(extra)
+    return record_oplog(
+        session,
+        ctx,
+        model=model,
+        code=code,
+        action=verb,
+        diff=diff if diff is not None else {},
+        extra=bag,
+    )

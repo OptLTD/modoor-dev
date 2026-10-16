@@ -8,7 +8,7 @@ from typing import Any
 
 from fastapi import FastAPI, Form, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse
 from pydantic import BaseModel, Field
 from starlette.middleware.sessions import SessionMiddleware
 
@@ -20,8 +20,20 @@ from modoor.platform.loader import register_module_web
 from modoor.platform import services as service_registry
 from modoor.platform.tickets import issue_ticket, verify_ticket
 from modoor.core.settings import get_settings
+from modoor.web.access_log import log_filter
 from modoor.web.frontend import register_frontends
 from modoor.web.kit import get_kit
+from modoor.web.login_auth import (
+    LOGIN_ASSETS,
+    LOGIN_NAME_COOKIE,
+    LOGIN_REMEMBER_FLAG,
+    SessionPersistMiddleware,
+    apply_login_cookies,
+    captcha_echo_enabled,
+    issue_captcha,
+    issue_remember_token,
+    verify_captcha,
+)
 from modoor.web.agent_routes import register_agent_routes
 from modoor.web.nav import (
     clear_ui_cache,
@@ -48,6 +60,8 @@ async def lifespan(_app: FastAPI):
     finally:
         stop_inprocess()
 
+
+log_filter()
 
 app = FastAPI(title="Modoor Console", version="0.1.0", lifespan=lifespan)
 app.add_middleware(
@@ -89,6 +103,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.add_middleware(SessionPersistMiddleware)
 app.include_router(engine_router)
 
 from modoor.runtime.mcp_http import mount_http_mcp
@@ -105,6 +120,89 @@ register_frontends(app)
 
 # ---- Auth / home / health ----
 
+_LOGIN_ERRORS = {
+    "Invalid username or password": "用户名或密码错误",
+}
+
+
+class CaptchaBody(BaseModel):
+    username: str = ""
+
+
+def _login_message(exc: AppError) -> str:
+    return _LOGIN_ERRORS.get(exc.message, exc.message)
+
+
+def _login_prefill(request: Request) -> tuple[str, bool]:
+    username = (request.cookies.get(LOGIN_NAME_COOKIE) or "").strip() or "admin"
+    remember = request.cookies.get(LOGIN_REMEMBER_FLAG) == "1"
+    return username, remember
+
+
+def _login_page(
+    request: Request,
+    *,
+    username: str,
+    next_url: str,
+    error: str | None,
+    auth_type: str,
+    remember: bool,
+    status_code: int = 200,
+):
+    mode = "captcha" if auth_type == "captcha" else "password"
+    return kit.render(
+        request,
+        "login.html",
+        {
+            "username": username,
+            "next": next_url,
+            "error": error,
+            "auth_type": mode,
+            "remember": remember,
+        },
+        status_code=status_code,
+    )
+
+
+def _complete_login(
+    request: Request,
+    session,
+    user,
+    *,
+    username: str,
+    remember: bool,
+    next_url: str,
+):
+    request.session["user_id"] = user.id
+    request.session["username"] = user.username
+    mid, href = kit.landing_for_user(session, user, next_url=next_url)
+    if mid:
+        request.session["active_module"] = mid
+    else:
+        request.session.pop("active_module", None)
+    request.scope["modoor_session_persist"] = bool(remember)
+    token = issue_remember_token(user) if remember else None
+    response = RedirectResponse(href, status_code=303)
+    apply_login_cookies(
+        response,
+        username=user.username or username,
+        remember=remember,
+        token=token,
+    )
+    return response
+
+
+@app.get("/login/assets/{name}", include_in_schema=False)
+def login_asset(name: str):
+    media = LOGIN_ASSETS.get(name)
+    if media is None:
+        raise HTTPException(status_code=404, detail="not found")
+    path = media[0]
+    if not path.is_file():
+        raise HTTPException(status_code=404, detail="not found")
+    return FileResponse(path, media_type=media[1])
+
+
 @app.get("/login", response_class=HTMLResponse)
 def login_page(request: Request):
     next_url = request.query_params.get("next") or ""
@@ -117,44 +215,92 @@ def login_page(request: Request):
             else:
                 request.session.pop("active_module", None)
         return RedirectResponse(href, status_code=303)
-    return kit.render(
+    username, remember = _login_prefill(request)
+    return _login_page(
         request,
-        "login.html",
-        {"username": "admin", "next": next_url, "error": None},
+        username=username,
+        next_url=next_url,
+        error=None,
+        auth_type="password",
+        remember=remember,
     )
+
+
+@app.post("/login/captcha")
+def login_captcha(request: Request, body: CaptchaBody):
+    username = body.username.strip()
+    if not username:
+        return JSONResponse({"ok": False, "error": "请输入登录名称"}, status_code=400)
+    with session_scope() as session:
+        if not base_domain.has_active_login(session, username):
+            return JSONResponse({"ok": False, "error": "用户不存在"}, status_code=404)
+    if not captcha_echo_enabled():
+        return JSONResponse(
+            {"ok": False, "error": "未配置短信或邮件，无法发送验证码"},
+            status_code=400,
+        )
+    try:
+        code = issue_captcha(request, username)
+    except AppError as exc:
+        payload: dict[str, Any] = {"ok": False, "error": exc.message}
+        retry = exc.details.get("retry_after")
+        if retry:
+            payload["retry_after"] = retry
+        status = 429 if exc.code == "rate_limited" else 400
+        return JSONResponse(payload, status_code=status)
+    return {"ok": True, "dev_code": code}
 
 
 @app.post("/login")
 def login_submit(
     request: Request,
     username: str = Form(...),
-    password: str = Form(...),
+    password: str = Form(""),
+    captcha: str = Form(""),
+    auth_type: str = Form("password"),
+    remember: str = Form(""),
     next: str = Form(""),
 ):
+    mode = "captcha" if auth_type == "captcha" else "password"
+    checked = remember in {"on", "1", "true", "yes"}
     try:
         with session_scope() as session:
-            user = base_domain.authenticate_user(
-                session,
-                tenant=kit.tenant(),
-                username=username,
-                password=password,
-                allow_fallback=True,
-            )
-            request.session["user_id"] = user.id
-            request.session["username"] = user.username
-            mid, href = kit.landing_for_user(session, user, next_url=next)
-            if mid:
-                request.session["active_module"] = mid
+            if mode == "captcha":
+                verify_captcha(request, username, captcha)
+                user = base_domain.login_user_by_username(
+                    session,
+                    tenant=kit.tenant(),
+                    username=username,
+                    allow_fallback=True,
+                )
             else:
-                request.session.pop("active_module", None)
+                if not password:
+                    raise AppError("validation_error", "请输入登录密码")
+                user = base_domain.authenticate_user(
+                    session,
+                    tenant=kit.tenant(),
+                    username=username,
+                    password=password,
+                    allow_fallback=True,
+                )
+            return _complete_login(
+                request,
+                session,
+                user,
+                username=username,
+                remember=checked,
+                next_url=next,
+            )
     except AppError as exc:
-        return kit.render(
+        return _login_page(
             request,
-            "login.html",
-            {"error": exc.message, "username": username, "next": next},
+            username=username,
+            next_url=next,
+            error=_login_message(exc),
+            auth_type=mode,
+            remember=checked,
             status_code=400,
         )
-    return RedirectResponse(href, status_code=303)
 
 
 @app.get("/")
@@ -188,6 +334,7 @@ def home(request: Request):
 @app.post("/logout")
 def logout(request: Request):
     request.session.clear()
+    request.scope["modoor_clear_remember"] = True
     accept = request.headers.get("accept") or ""
     if "application/json" in accept:
         return {"ok": True}

@@ -312,6 +312,19 @@ class SystemOplog(Base):
     )
 
 
+def list_oplog_users(session: Session, ctx: Ctx) -> list[dict[str, Any]]:
+    """Tenant users for the changelog name lookup (id + display name)."""
+    rows = list(
+        session.scalars(
+            _user_query(session).where(
+                SystemUser.tenant == ctx.tenant,
+                SystemUser.state == STATE_ON,
+            )
+        )
+    )
+    return [{"id": int(row.id), "name": row.display_name} for row in rows]
+
+
 def record_oplog(
     session: Session,
     ctx: Ctx,
@@ -334,8 +347,11 @@ def record_oplog(
     if model == "base.oplog":
         return None
     changes = diff if diff is not None else diff_row_values(before, after)
-    op = str(action or "").strip().upper() or "UPSERT"
-    if op in ("UPDATE", "UPSERT") and not changes:
+    extra_bag = dict(extra or {})
+    raw = str(action or "").strip() or "UPSERT"
+    is_crud = raw.upper() in {"INSERT", "UPDATE", "DELETE", "UPSERT"}
+    stored = raw.upper() if is_crud else raw
+    if is_crud and stored in {"UPDATE", "UPSERT"} and not changes:
         return None
     model_key = str(model or "").strip()
     payload: dict[str, Any] = {
@@ -344,15 +360,15 @@ def record_oplog(
         "team_id": ctx.team_id,
         "diff": changes,
     }
-    if extra:
-        payload.update(extra)
+    if extra_bag:
+        payload.update(extra_bag)
     row = SystemOplog(
         id=str(uuid.uuid4()),
         tenant=ctx.tenant,
         model=model_key,
         code=str(code or "").strip(),
         utime=_now(),
-        action=op,
+        action=stored,
         values=payload,
         state=STATE_ON,
     )
@@ -410,8 +426,10 @@ def list_record_oplogs(
         tagged = str(row.model or "").strip() or str(vals.get("model") or "").strip()
         if want_model and tagged and aliases is not None and tagged not in aliases:
             continue
-        if isinstance(vals, dict) and tagged and not vals.get("model"):
-            vals = {**vals, "model": tagged}
+        if isinstance(vals, dict):
+            vals = dict(vals)
+            if tagged and not vals.get("model"):
+                vals["model"] = tagged
         out.append(
             {
                 "id": row.id,
@@ -1703,20 +1721,7 @@ def set_role_nodes(
     return list_role_nodes(session, ctx, role_id=role.id)
 
 
-def authenticate_user(
-    session: Session,
-    *,
-    username: str,
-    password: str,
-    tenant: int | None = None,
-    allow_fallback: bool = False,
-) -> SystemUser:
-    username = username.strip().lower()
-    login = _get_login_by_username(session, username)
-    if login is None:
-        raise AppError("permission_denied", "Invalid username or password")
-    if not login.password or not verify_password(password, login.password):
-        raise AppError("permission_denied", "Invalid username or password")
+def _active_memberships(session: Session, login: SystemLogin) -> list[SystemUser]:
     users = list(
         session.scalars(
             _user_query(session)
@@ -1724,10 +1729,19 @@ def authenticate_user(
             .order_by(SystemUser.id)
         )
     )
-    users = [u for u in users if u.active]
+    return [u for u in users if u.active]
+
+
+def _choose_login_user(
+    session: Session,
+    login: SystemLogin,
+    *,
+    tenant: int | None,
+    allow_fallback: bool,
+) -> SystemUser:
+    users = _active_memberships(session, login)
     if not users:
         raise AppError("permission_denied", "Invalid username or password")
-
     chosen: SystemUser | None = None
     if tenant is not None:
         chosen = next((u for u in users if u.tenant == tenant), None)
@@ -1740,6 +1754,46 @@ def authenticate_user(
     login.current = chosen.tenant
     _touch(login)
     return chosen
+
+
+def has_active_login(session: Session, username: str) -> bool:
+    """True when this sign-in name has at least one usable tenant membership."""
+    login = _get_login_by_username(session, username)
+    if login is None:
+        return False
+    return bool(_active_memberships(session, login))
+
+
+def login_user_by_username(
+    session: Session,
+    *,
+    username: str,
+    tenant: int | None = None,
+    allow_fallback: bool = False,
+) -> SystemUser:
+    """Pick the tenant user after the caller has already verified identity."""
+    login = _get_login_by_username(session, username)
+    if login is None:
+        raise AppError("permission_denied", "Invalid username or password")
+    return _choose_login_user(
+        session, login, tenant=tenant, allow_fallback=allow_fallback
+    )
+
+
+def authenticate_user(
+    session: Session,
+    *,
+    username: str,
+    password: str,
+    tenant: int | None = None,
+    allow_fallback: bool = False,
+) -> SystemUser:
+    login = _get_login_by_username(session, username)
+    if login is None or not login.password or not verify_password(password, login.password):
+        raise AppError("permission_denied", "Invalid username or password")
+    return _choose_login_user(
+        session, login, tenant=tenant, allow_fallback=allow_fallback
+    )
 
 
 def list_login_tenants(session: Session, *, base_id: int) -> list[dict[str, Any]]:

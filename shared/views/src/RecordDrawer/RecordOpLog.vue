@@ -4,10 +4,15 @@
  */
 import { computed, ref, watch } from 'vue'
 import {
+  displayFieldValue,
   fetchRecordOplogs,
   fetchSchema,
+  formatDateTimeDisplay,
+  loadDropdownRefers,
+  normalizeReferDict,
   useI18n,
   type RecordOplogItem,
+  type ReferDict,
   type SchemaField,
 } from '@modoor/hooks'
 
@@ -24,11 +29,18 @@ const loading = ref(false)
 const error = ref('')
 const items = ref<RecordOplogItem[]>([])
 const fieldLabel = ref<Record<string, string>>({})
+const fieldMeta = ref<Record<string, SchemaField>>({})
+const refers = ref<ReferDict>({})
+const userName = ref<Record<string, string>>({})
 
+const CRUD_OPS = new Set(['INSERT', 'UPDATE', 'DELETE', 'UPSERT'])
 const opLabel: Record<string, string> = {
   INSERT: 'widget.opInsert',
   UPDATE: 'widget.opUpdate',
   DELETE: 'widget.opDelete',
+}
+const actionLabel: Record<string, string> = {
+  'freight.recalc': 'widget.opRecalc',
 }
 
 function plainLabel(raw: unknown, fallback: string) {
@@ -40,8 +52,25 @@ function labelOf(key: string) {
   return fieldLabel.value[key] || key
 }
 
-function fmtRaw(raw: unknown): string {
-  if (raw === undefined || raw === null || raw === '') return t('widget.emptyValue')
+function isEmptyRaw(raw: unknown): boolean {
+  if (raw === undefined || raw === null || raw === '') return true
+  return Array.isArray(raw) && raw.length === 0
+}
+
+function fmtRaw(key: string, raw: unknown): string {
+  if (isEmptyRaw(raw)) return t('widget.emptyValue')
+  const field = fieldMeta.value[key]
+  if (field) {
+    const row: Record<string, unknown> = { [key]: raw }
+    if (field.uukey) row[field.uukey] = raw
+    if (field.index) row[field.index] = raw
+    if (field.field) row[field.field] = raw
+    const shown = displayFieldValue(row, field, { refers: refers.value })
+    if (shown !== '') return shown
+  }
+  if (typeof raw === 'string' && /^\d{4}-\d{2}-\d{2}T/.test(raw)) {
+    return formatDateTimeDisplay(raw) || t('widget.emptyValue')
+  }
   if (typeof raw === 'object') {
     try {
       return JSON.stringify(raw)
@@ -52,38 +81,50 @@ function fmtRaw(raw: unknown): string {
   return String(raw)
 }
 
+function actionTitle(item: RecordOplogItem): string {
+  const act = String(item.action || '')
+  if (act && !CRUD_OPS.has(act.toUpperCase())) {
+    const key = actionLabel[act] || actionLabel[act.toLowerCase()]
+    return key ? t(key) : act
+  }
+  const upper = act.toUpperCase()
+  return opLabel[upper] ? t(opLabel[upper]) : upper || '—'
+}
+
 function compactDiff(item: RecordOplogItem): string {
+  const note = String(item.values?.note || '').trim()
+  if (note) return note
   const diff = item.values?.diff
   if (!diff || typeof diff !== 'object') return '—'
   const keys = Object.keys(diff)
   if (!keys.length) return '—'
   const action = String(item.action || '').toUpperCase()
-  return keys
+  const parts = keys
     .map((key) => {
       const cell = diff[key] || {}
-      const a = fmtRaw(cell.old)
-      const b = fmtRaw(cell.new)
+      const a = fmtRaw(key, cell.old)
+      const b = fmtRaw(key, cell.new)
       if (action === 'INSERT') return `${labelOf(key)}: ${b}`
       if (action === 'DELETE') return `${labelOf(key)}: ${a}`
+      if (a === b) return ''
       return `${labelOf(key)}: ${a}=>${b}`
     })
-    .join('; ')
+    .filter(Boolean)
+  return parts.join('; ') || '—'
 }
 
 function formatTime(iso: string | null | undefined): string {
   if (!iso) return ''
-  const d = new Date(iso)
-  if (Number.isNaN(d.getTime())) return String(iso)
-  const pad = (n: number) => String(n).padStart(2, '0')
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
+  return formatDateTimeDisplay(iso) || String(iso)
 }
 
 function stampOf(item: RecordOplogItem): string {
   const when = formatTime(item.utime || item.created_at)
-  const action = String(item.action || '').toUpperCase()
-  const op = opLabel[action] ? t(opLabel[action]) : action || '—'
+  const op = actionTitle(item)
   const actor = item.values?.actor
-  const who = actor !== undefined && actor !== null && actor !== '' ? String(actor) : ''
+  const who = actor === undefined || actor === null || actor === ''
+    ? ''
+    : userName.value[String(actor)] || ''
   return [when, who, op].filter(Boolean).join(' ')
 }
 
@@ -111,25 +152,38 @@ async function load() {
       fetchSchema(props.model, 'default', 'DETAIL').catch(() => null),
     ])
     items.value = op.items || []
+    const names: Record<string, string> = {}
+    for (const u of op.users || []) {
+      if (u?.id == null) continue
+      names[String(u.id)] = String(u.name || '').trim()
+    }
+    userName.value = names
     const map: Record<string, string> = {}
-    const remember = (key: unknown, label: unknown) => {
+    const meta: Record<string, SchemaField> = {}
+    const remember = (key: unknown, f: SchemaField | undefined) => {
       const k = String(key || '').trim()
-      if (!k) return
-      map[k] = plainLabel(label, k)
+      if (!k || !f) return
+      map[k] = plainLabel(f.label, k)
+      meta[k] = f
     }
     const source = sk?.source?.fields
     if (source) {
       for (const [key, f] of Object.entries(source)) {
-        remember(key, f?.label)
-        remember(f?.uukey, f?.label)
-        remember(f?.index, f?.label)
+        remember(key, f)
+        remember(f?.uukey, f)
+        remember(f?.index, f)
       }
     }
     for (const f of (sk?.table?.fields || []) as SchemaField[]) {
-      if (f?.uukey && !map[f.uukey]) remember(f.uukey, f.label)
-      if (f?.index && !map[f.index]) remember(f.index, f.label)
+      if (f?.uukey && !map[f.uukey]) remember(f.uukey, f)
+      if (f?.index && !map[f.index]) remember(f.index, f)
     }
     fieldLabel.value = map
+    fieldMeta.value = meta
+    refers.value = await loadDropdownRefers(
+      Object.values(meta),
+      normalizeReferDict(sk?.table?.refers),
+    )
   } catch (e) {
     error.value = e instanceof Error ? e.message : String(e)
     items.value = []
