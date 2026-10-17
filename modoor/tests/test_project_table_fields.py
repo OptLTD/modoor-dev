@@ -87,3 +87,57 @@ def test_extra_filter_feeds_table_filters():
         order={"field": "basic.utime", "order": "desc"},
     )
     assert ordered["request"]["order"] == {"field": "basic.utime", "order": "desc"}
+
+
+def test_digest_origin_keeps_source_fields():
+    """聚合表 fields 只有分组/度量；origin 仍带上模型原始字段，供快捷筛选。"""
+    bundle = ModelBundle(
+        uukey="fleet.mileage",
+        module_id="fleet",
+        path=Path("."),
+        config={
+            "model": {"uukey": "fleet.mileage", "title": "出车记录"},
+            "groups": {"basic": {"title": "基础", "gtype": "FLATTEN"}},
+            "fields": {
+                "basic.utime": {
+                    "field": "utime",
+                    "label": "出车日期",
+                    "ftype": "DATETIME",
+                    "group": "basic",
+                },
+                "basic.escort": {
+                    "field": "escort",
+                    "label": "押运员",
+                    "ftype": "RELATION",
+                    "group": "basic",
+                    "extra": {"relation": "fleet.driver"},
+                },
+                "basic.vehicle": {
+                    "field": "vehicle",
+                    "label": "车牌号",
+                    "ftype": "RELATION",
+                    "group": "basic",
+                    "extra": {"relation": "fleet.vehicle"},
+                },
+            },
+            "clicks": {},
+        },
+        tables={
+            "pivot-escort": {
+                "title": "押运员看板",
+                "filters": ["basic.utime", "basic.escort"],
+                "extra": {
+                    "group": ["basic.escort|ASC"],
+                    "count": ["basic.utime|UNQ|出车天数"],
+                },
+            }
+        },
+    )
+    table = project_table(bundle, using="pivot-escort", scene="SEARCH")
+    utime = next(f for f in table["fields"] if f["uukey"] == "basic.utime")
+    assert utime["ftype"] == "INTEGER"
+    assert utime["label"] == "出车天数"
+    assert table["origin"]["basic.utime"]["ftype"] == "DATETIME"
+    assert table["origin"]["basic.utime"]["label"] == "出车日期"
+    assert table["origin"]["basic.vehicle"]["ftype"] == "RELATION"
+    assert table["filters"] == ["basic.utime", "basic.escort"]

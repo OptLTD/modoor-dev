@@ -69,6 +69,8 @@ const emit = defineEmits<{
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+  box-sizing: border-box;
+  min-height: 41px;
   padding: 8px 12px;
   border-bottom: 1px solid var(--line, #e2e6eb);
   flex-shrink: 0;
@@ -123,11 +125,13 @@ const emit = defineEmits<{
 .chart-refresh {
   appearance: none;
   border: 0;
+  padding: 0;
   background: transparent;
   color: var(--muted, #6b6458);
   cursor: pointer;
   font: inherit;
   font-size: 12px;
+  line-height: 20px;
 }
 .chart-refresh:disabled {
   opacity: 0.5;

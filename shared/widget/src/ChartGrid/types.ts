@@ -21,4 +21,11 @@ export type ChartGridCard = {
   content?: string
   columns?: ChartGridColumn[]
   rows?: ChartGridRow[]
+  /** compare：本期 current / 上期 / 前期 earlier */
+  scope?: string
+  uterm?: string
+  left?: number | null
+  right?: number | null
+  leftLabel?: string
+  rightLabel?: string
 }

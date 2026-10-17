@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import ChartCount from './ChartCount.vue'
+import ChartDiff from './ChartDiff.vue'
 import ChartTable from './ChartTable.vue'
 import ChartText from './ChartText.vue'
 import type { ChartGridCard, ChartGridTab } from './types'
@@ -20,6 +21,7 @@ const emit = defineEmits<{
   refresh: [key: string]
   open: [key: string]
   row: [payload: { key: string; rowKey: string }]
+  scope: [payload: { key: string; scope: string }]
 }>()
 </script>
 
@@ -59,6 +61,13 @@ const emit = defineEmits<{
           :card="card"
           @refresh="emit('refresh', card.key)"
           @open="emit('open', card.key)"
+        />
+        <ChartDiff
+          v-else-if="card.type === 'compare'"
+          :card="card"
+          @refresh="emit('refresh', card.key)"
+          @open="emit('open', card.key)"
+          @scope="emit('scope', { key: card.key, scope: $event })"
         />
         <div v-else class="kanban-unsupported">{{ card.type }} 尚未接入</div>
       </div>

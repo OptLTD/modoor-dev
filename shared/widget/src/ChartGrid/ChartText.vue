@@ -27,6 +27,10 @@ defineProps<{ card: ChartGridCard }>()
   overflow: hidden;
 }
 .chart-head {
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  min-height: 41px;
   padding: 8px 12px;
   border-bottom: 1px solid var(--line, #e2e6eb);
   flex-shrink: 0;
@@ -34,6 +38,7 @@ defineProps<{ card: ChartGridCard }>()
 .chart-title {
   font-size: 14px;
   font-weight: 600;
+  line-height: 20px;
 }
 .chart-body {
   flex: 1;

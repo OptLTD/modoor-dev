@@ -10,6 +10,7 @@ import {
   fetchSchema,
   normalizeReferDict,
   resolveModelTitle,
+  get,
   searchRecords,
   type ReferDict,
   type SchemaField,
@@ -19,9 +20,17 @@ import RecordDrawer from '../RecordDrawer/RecordDrawer.vue'
 import RecordFlatDetail from '../RecordDrawer/RecordFlatDetail.vue'
 import { resolveRecordView } from '../RecordDrawer/recordViews'
 import TableDrawer from '../TableDrawer/TableDrawer.vue'
+import {
+  diffAmount,
+  queryForTerm,
+  reportUrl,
+  scopeUterm,
+  sumTotals,
+  type DiffScope,
+} from './diff'
 import { chartSlotStyle } from './layout'
 import { chartSearchQuery } from './query'
-import type { ChartBoard, ChartCard, ChartsFile } from './types'
+import type { ChartBoard, ChartCard, ChartValue, ChartsFile } from './types'
 
 const props = withDefaults(
   defineProps<{
@@ -38,6 +47,20 @@ const emit = defineEmits<{
 }>()
 
 type CountState = { loading: boolean; error: string; total: number | null }
+type DiffState = {
+  loading: boolean
+  error: string
+  scope: DiffScope
+  uterm: string
+  left: number | null
+  right: number | null
+  total: number | null
+  leftLabel: string
+  rightLabel: string
+  model: string
+  using: string
+  query: Record<string, unknown>
+}
 type TableState = {
   loading: boolean
   error: string
@@ -70,6 +93,8 @@ function cardKey(card: ChartCard, index: number) {
 
 const counts = ref<Record<string, CountState>>({})
 const tables = ref<Record<string, TableState>>({})
+const diffs = ref<Record<string, DiffState>>({})
+const diffTickets = new Map<string, number>()
 
 function setCount(key: string, patch: Partial<CountState>) {
   const prev: CountState = counts.value[key] || { loading: false, error: '', total: null }
@@ -147,9 +172,103 @@ async function loadTable(key: string, card: ChartCard) {
   }
 }
 
+function isDiffScope(value: string): value is DiffScope {
+  return value === 'current' || value === 'previous' || value === 'earlier'
+}
+
+async function readValue(source: ChartValue, uterm: number): Promise<number> {
+  if (source.type === 'report') {
+    const body = await get<{ totals?: Record<string, unknown> }>(reportUrl(source, uterm))
+    return sumTotals(body.totals, [String(source.total || '')])
+  }
+  const model = String(source.model || '')
+  if (!model) throw new Error('缺少查询模型')
+  const res = await searchRecords(model, source.using || 'default', 1, 1, {
+    query: queryForTerm(source, uterm),
+  })
+  return sumTotals(res.totals, (source.sum || []).map(String))
+}
+
+function querySide(card: ChartCard): ChartValue | null {
+  const q = card.query
+  if (!q?.model) return null
+  return {
+    type: 'query',
+    label: q.label,
+    model: q.model,
+    using: q.using,
+    sum: q.sum,
+    term: q.term,
+    query: q.query,
+  }
+}
+
+async function loadDiff(key: string, card: ChartCard, scope: DiffScope) {
+  const left = querySide(card)
+  const right = card.compare
+  if (!left || !right) return
+  const ticket = (diffTickets.get(key) || 0) + 1
+  diffTickets.set(key, ticket)
+  const prev = diffs.value[key]
+  diffs.value = {
+    ...diffs.value,
+    [key]: {
+      loading: true,
+      error: '',
+      scope,
+      uterm: prev?.uterm || '',
+      left: prev?.left ?? null,
+      right: prev?.right ?? null,
+      total: prev?.total ?? null,
+      leftLabel: String(left.label || ''),
+      rightLabel: String(right.label || ''),
+      model: String(left.model || ''),
+      using: left.using || 'default',
+      query: prev?.query || {},
+    },
+  }
+  try {
+    const uterm = scopeUterm(scope)
+    const [leftValue, rightValue] = await Promise.all([
+      readValue(left, uterm),
+      readValue(right, uterm),
+    ])
+    if (diffTickets.get(key) !== ticket) return
+    diffs.value = {
+      ...diffs.value,
+      [key]: {
+        loading: false,
+        error: '',
+        scope,
+        uterm: String(uterm),
+        left: leftValue,
+        right: rightValue,
+        total: diffAmount(leftValue, rightValue),
+        leftLabel: String(left.label || ''),
+        rightLabel: String(right.label || ''),
+        model: String(left.model || ''),
+        using: left.using || 'default',
+        query: queryForTerm(left, uterm),
+      },
+    }
+  } catch (e) {
+    if (diffTickets.get(key) !== ticket) return
+    diffs.value = {
+      ...diffs.value,
+      [key]: {
+        ...(diffs.value[key] as DiffState),
+        loading: false,
+        error: e instanceof Error ? e.message : String(e),
+        total: null,
+      },
+    }
+  }
+}
+
 function loadCard(key: string, card: ChartCard) {
   if (card.type === 'count') void loadCount(key, card)
   else if (card.type === 'table') void loadTable(key, card)
+  else if (card.type === 'compare') void loadDiff(key, card, diffs.value[key]?.scope || 'current')
 }
 
 watch(
@@ -203,6 +322,28 @@ const cards = computed((): ChartGridCard[] =>
         content: String(card.option?.content || ''),
       }
     }
+    if (card.type === 'compare') {
+      const state = diffs.value[key]
+      return {
+        key,
+        title: card.title,
+        type: card.type,
+        style,
+        loading: state?.loading,
+        error: state?.error,
+        total: state?.total ?? null,
+        suffix: String(card.option?.suffix || '元'),
+        note: String(card.option?.note || ''),
+        help: String(card.option?.help || ''),
+        clickable: !!state?.model,
+        scope: state?.scope || 'current',
+        uterm: state?.uterm || '',
+        left: state?.left ?? null,
+        right: state?.right ?? null,
+        leftLabel: state?.leftLabel || '',
+        rightLabel: state?.rightLabel || '',
+      }
+    }
     return { key, title: card.title, type: card.type, style }
   }),
 )
@@ -221,27 +362,61 @@ function refresh(key: string) {
   if (card) loadCard(key, card)
 }
 
+function onScope(payload: { key: string; scope: string }) {
+  const card = cardAt(payload.key)
+  if (!card || card.type !== 'compare' || !isDiffScope(payload.scope)) return
+  if (diffs.value[payload.key]?.scope === payload.scope && !diffs.value[payload.key]?.error) return
+  void loadDiff(payload.key, card, payload.scope)
+}
+
 const listOpen = ref(false)
 const listCard = ref<ChartCard | null>(null)
 const listTotal = ref<number | null>(null)
+const listQueryOverride = ref<Record<string, unknown> | null>(null)
+const listModelOverride = ref('')
+const listUsingOverride = ref('')
+const listUterm = ref('')
 
 function openCount(key: string) {
   const card = cardAt(key)
-  if (!card?.query?.model || counts.value[key]?.loading) return
+  if (!card || counts.value[key]?.loading) return
+  if (card.type === 'compare') {
+    const state = diffs.value[key]
+    if (!state?.model || state.loading) return
+    listCard.value = card
+    listTotal.value = null
+    listQueryOverride.value = state.query
+    listModelOverride.value = state.model
+    listUsingOverride.value = state.using
+    listUterm.value = state.uterm
+    listOpen.value = true
+    return
+  }
+  if (!card.query?.model) return
   listCard.value = card
   listTotal.value = counts.value[key]?.total ?? null
+  listQueryOverride.value = null
+  listModelOverride.value = ''
+  listUsingOverride.value = ''
+  listUterm.value = ''
   listOpen.value = true
 }
 
-const listModel = computed(() => String(listCard.value?.query?.model || ''))
-const listUsing = computed(() => listCard.value?.query?.using || 'default')
-const listQuery = computed(() => (listCard.value ? chartSearchQuery(listCard.value) : {}))
+const listModel = computed(
+  () => listModelOverride.value || String(listCard.value?.query?.model || ''),
+)
+const listUsing = computed(() => listUsingOverride.value || listCard.value?.query?.using || 'default')
+const listQuery = computed(() => {
+  if (listQueryOverride.value) return listQueryOverride.value
+  return listCard.value ? chartSearchQuery(listCard.value) : {}
+})
 const listFields = computed(() =>
   (listCard.value?.option?.fields || []).map((k) => String(k).trim()).filter(Boolean),
 )
 const listTitle = computed(() => {
   const card = listCard.value
   if (!card) return ''
+  if (listUterm.value) return `${card.title} · ${listUterm.value} 期`
   return listTotal.value == null ? card.title : `${card.title} · ${listTotal.value}`
 })
 
@@ -276,6 +451,7 @@ async function openRow(payload: { key: string; rowKey: string }) {
     @refresh="refresh"
     @open="openCount"
     @row="openRow"
+    @scope="onScope"
   />
 
   <TableDrawer

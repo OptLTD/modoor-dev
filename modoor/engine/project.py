@@ -397,7 +397,9 @@ def project_table(
                 sheet.append(s)
 
     filter_keys = _view_filter_keys(view, extra)
-    # origin：原始字段定义（digest 度量可能改写 ftype）；快捷/侧栏筛选按 key 映射到此
+    # origin：原始字段定义（digest 度量可能改写 ftype）；快捷/侧栏筛选按 key 映射到此。
+    # 聚合表 fields 只有分组维和度量列，与 schema.source.fields 同一份模型字段补进 origin，
+    # 否则快捷筛选只能看到分组维（度量 key 还会把同名筛选项挤掉）。
     origin: dict[str, Any] = {}
     for key in filter_keys:
         if key in origin or key not in bundle.fields:
@@ -416,6 +418,15 @@ def project_table(
             bundle.fields[key],
             group_meta=groups_meta.get(str(bundle.fields[key].get("group") or "")),
         )
+    if digest_meta:
+        for key, raw in bundle.fields.items():
+            if key in origin:
+                continue
+            origin[key] = normalize_field(
+                key,
+                raw,
+                group_meta=groups_meta.get(str(raw.get("group") or "")),
+            )
 
     others = dict(extra)
     if digest_meta:

@@ -16,6 +16,22 @@ from modoor.engine.project import build_source, merge_dict_key_refers, project_i
 from modoor.engine.registry import clear_bundle_cache, get_bundle, login_tabs
 
 
+def _schema_refer_fields(table: dict[str, Any]) -> list[dict[str, Any]]:
+    """投影列 + origin 里多出来的原始字段，供 OPTIONAL dictKey 补选项。"""
+    fields = [f for f in (table.get("fields") or []) if isinstance(f, dict)]
+    origin = table.get("origin") if isinstance(table.get("origin"), dict) else {}
+    seen = {str(f.get("uukey") or "") for f in fields}
+    for raw in origin.values():
+        if not isinstance(raw, dict):
+            continue
+        key = str(raw.get("uukey") or "").strip()
+        if not key or key in seen:
+            continue
+        fields.append(raw)
+        seen.add(key)
+    return fields
+
+
 class EngineService:
     def table_schema(
         self,
@@ -44,7 +60,7 @@ class EngineService:
         adapter = get_adapter(model)
         refers = dict(table.get("refers") or {})
         refers.update(adapter.refers(session, ctx) or {})
-        refers = merge_dict_key_refers(session, ctx, list(table.get("fields") or []), refers)
+        refers = merge_dict_key_refers(session, ctx, _schema_refer_fields(table), refers)
         table["refers"] = refers
         payload: dict[str, Any] = {
             "model": model,
@@ -181,7 +197,7 @@ class EngineService:
             totals = recalc_digest_rows(fields, values, totals)
             refers = dict(table.get("refers") or {})
             refers.update(adapter.refers(session, ctx) or {})
-            refers = merge_dict_key_refers(session, ctx, fields, refers)
+            refers = merge_dict_key_refers(session, ctx, _schema_refer_fields(table), refers)
             return adapter.hook(
                 session,
                 ctx,
@@ -232,7 +248,7 @@ class EngineService:
             )
         refers = dict(table.get("refers") or {})
         refers.update(adapter.refers(session, ctx) or {})
-        refers = merge_dict_key_refers(session, ctx, fields, refers)
+        refers = merge_dict_key_refers(session, ctx, _schema_refer_fields(table), refers)
         return adapter.hook(
             session,
             ctx,

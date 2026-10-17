@@ -130,7 +130,7 @@ export function useSchemaTable(
       const seen = new Set<string>()
       for (const key of keys) {
         const f = fieldForFilter(String(key))
-        if (!f || !isHeaderFilterable(f)) continue
+        if (!f || !isQueryFilterable(f)) continue
         const fk = fieldKey(f)
         if (seen.has(fk)) continue
         seen.add(fk)
@@ -160,6 +160,10 @@ export function useSchemaTable(
     if (!isDigestMode.value) return true
     const key = f.uukey || f.index || ''
     return !digestMetricKeys.value.has(key)
+  }
+  /** 查询条件看原始字段，不看聚合列。度量列（如出车天数）不可筛，但同 key 的原始日期仍可筛。 */
+  function isQueryFilterable(f: SchemaField) {
+    return ftypeOf(f) !== 'UPLOADS'
   }
 
   function clickCtype(c: SchemaClick): 'button' | 'action' {
@@ -519,7 +523,7 @@ export function useSchemaTable(
   }
 
   function quickFilterKind(f: SchemaField, requireOptions = false): QuickFilterKind | null {
-    if (!isHeaderFilterable(f)) return null
+    if (!isQueryFilterable(f)) return null
     const ft = ftypeOf(f)
     if (ft === 'DATETIME') return 'daterange'
     if (

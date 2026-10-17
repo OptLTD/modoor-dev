@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, timedelta
 from typing import Any
+from zoneinfo import ZoneInfo
 
 
 @dataclass
@@ -16,6 +17,9 @@ class QueryTerm:
 
 
 DEFAULT_LIST_ORDER = {"field": "basic.utime", "order": "desc"}
+
+# 列表日期、财务期间都按这个时区的自然日。不要用 UTC 日界，否则上海 0 点会落到前一天。
+BUSINESS_TZ = ZoneInfo("Asia/Shanghai")
 
 
 def resolve_list_order(
@@ -75,8 +79,8 @@ def merge_search_query(
 
 
 def _today_local() -> date:
-    # Keep date-only BTW bounds; local calendar matches option-library day anchor.
-    return datetime.now().astimezone().date()
+    # 快捷区间（本期、本月）按业务时区的今天，不跟服务器 UTC 走。
+    return datetime.now(BUSINESS_TZ).date()
 
 
 def _add_months(d: date, months: int) -> date:
@@ -298,14 +302,24 @@ def _dateish_key(val: Any) -> str | None:
     if val in (None, ""):
         return None
     if isinstance(val, datetime):
-        return val.date().isoformat()
+        dt = val if val.tzinfo else val.replace(tzinfo=BUSINESS_TZ)
+        return dt.astimezone(BUSINESS_TZ).date().isoformat()
     if isinstance(val, date):
         return val.isoformat()
     s = str(val).strip()
     if not s:
         return None
-    # ISO / datetime-local: take calendar day
+    # 带时刻的 ISO 先换到业务时区再取自然日；纯 YYYY-MM-DD 本身就是自然日。
     if len(s) >= 10 and s[4] == "-" and s[7] == "-":
+        if len(s) > 10 and s[10] in "T ":
+            try:
+                raw = s[:-1] + "+00:00" if s.endswith("Z") else s
+                dt = datetime.fromisoformat(raw)
+                if dt.tzinfo is None:
+                    dt = dt.replace(tzinfo=BUSINESS_TZ)
+                return dt.astimezone(BUSINESS_TZ).date().isoformat()
+            except ValueError:
+                return s[:10]
         return s[:10]
     return s
 

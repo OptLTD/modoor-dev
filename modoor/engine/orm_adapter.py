@@ -7,7 +7,7 @@ Modules declare ``COLS`` / ``JSON_GROUPS`` / ``NUM_KEYS`` / ``DT_KEYS`` / ``LIST
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime
 from decimal import Decimal
 from typing import Any, Callable
 
@@ -18,6 +18,7 @@ from sqlalchemy.orm import Session
 from modoor.core.ctx import Ctx
 from modoor.core.errors import AppError
 from modoor.engine.adapters import ModelAdapter, flatten_pick, normalize_batch_row
+from modoor.engine.query import BUSINESS_TZ
 from modoor.engine.query import QueryTerm, parse_query, resolve_list_order
 
 FACET_TYPES = frozenset(
@@ -50,30 +51,37 @@ def parse_dt(val: Any) -> datetime | None:
     s = str(val).strip().replace(" ", "T")
     if s.endswith("Z"):
         s = s[:-1] + "+00:00"
-    # ONLYMONTH：YYYY-MM → 当月 1 日
+    # ONLYMONTH：YYYY-MM → 业务时区当月 1 日 0 点
     if len(s) == 7 and s[4] == "-" and s[:4].isdigit() and s[5:7].isdigit():
-        s = f"{s}-01T00:00:00+00:00"
+        try:
+            year, month = int(s[:4]), int(s[5:7])
+            return datetime(year, month, 1, tzinfo=BUSINESS_TZ)
+        except ValueError as exc:
+            raise AppError("validation_error", f"invalid datetime: {val}") from exc
     try:
         dt = datetime.fromisoformat(s)
     except ValueError as exc:
         raise AppError("validation_error", f"invalid datetime: {val}") from exc
     if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=timezone.utc)
+        dt = dt.replace(tzinfo=BUSINESS_TZ)
     return dt
 
 
 def parse_dt_bound(val: Any, *, end: bool = False) -> datetime | None:
-    """Parse query bound; bare YYYY-MM-DD becomes start/end of that UTC day."""
+    """裸 YYYY-MM-DD 取业务时区当天的起止，不按 UTC 日界。"""
     if val in (None, ""):
         return None
     s = str(val).strip()
     if len(s) == 10 and s[4] == "-" and s[7] == "-":
-        dt = parse_dt(s)
-        if dt is None:
+        try:
+            year, month, day = (int(part) for part in s.split("-"))
+            if end:
+                return datetime(
+                    year, month, day, 23, 59, 59, 999999, tzinfo=BUSINESS_TZ
+                )
+            return datetime(year, month, day, tzinfo=BUSINESS_TZ)
+        except ValueError:
             return None
-        if end:
-            return dt.replace(hour=23, minute=59, second=59, microsecond=999999)
-        return dt.replace(hour=0, minute=0, second=0, microsecond=0)
     return parse_dt(s)
 
 
