@@ -403,6 +403,39 @@ def list_pages(
     }
 
 
+def _reindex_siblings(
+    session: Session,
+    ctx: Ctx,
+    project_id: str,
+    parent_id: str | None,
+    page: WikiPage,
+    index: int | None,
+) -> None:
+    """Put page at index among its new siblings and assign 0..n so order is stable."""
+    parent_clause = (
+        WikiPage.parent_id.is_(None) if parent_id is None else WikiPage.parent_id == parent_id
+    )
+    rows = list(
+        session.scalars(
+            select(WikiPage)
+            .where(
+                WikiPage.tenant == ctx.tenant,
+                WikiPage.project_id == project_id,
+                parent_clause,
+            )
+            .order_by(WikiPage.sort_order.asc(), WikiPage.created_at.asc())
+        )
+    )
+    ordered = [row for row in rows if row.id != page.id]
+    if index is None:
+        ordered.append(page)
+    else:
+        slot = max(0, min(int(index), len(ordered)))
+        ordered.insert(slot, page)
+    for slot, row in enumerate(ordered):
+        row.sort_order = slot
+
+
 def move_page(
     session: Session,
     ctx: Ctx,
@@ -430,8 +463,7 @@ def move_page(
         raise AppError("validation_error", "home page must stay at project root")
 
     page.parent_id = parent_id
-    if sort_order is not None:
-        page.sort_order = int(sort_order)
+    _reindex_siblings(session, ctx, page.project_id, parent_id, page, sort_order)
     page.updated_by = ctx.user_id
     page.updated_at = _now()
     session.flush()

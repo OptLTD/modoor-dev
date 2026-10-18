@@ -27,8 +27,9 @@ const marks = computed(() => ICONS[props.name])
         :cx="mark.circle.cx"
         :cy="mark.circle.cy"
         :r="mark.circle.r"
-        stroke="currentColor"
-        :stroke-width="mark.sw"
+        :fill="mark.fill ? 'currentColor' : 'none'"
+        :stroke="mark.fill ? 'none' : 'currentColor'"
+        :stroke-width="mark.fill ? 0 : mark.sw"
       />
       <path
         v-else

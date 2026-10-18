@@ -95,8 +95,16 @@ def save_global_settings(
     return data
 
 
-def user_can_edit_global(session: Session, ctx: Ctx, *, user_id: int) -> bool:
-    access = base_domain.list_user_abilities(session, ctx, user_id=user_id)
+def user_can_edit_global(
+    session: Session,
+    ctx: Ctx,
+    *,
+    user_id: int,
+    active_role: str | None = None,
+) -> bool:
+    access = base_domain.list_user_abilities(
+        session, ctx, user_id=user_id, active_role=active_role
+    )
     if access.get("unrestricted"):
         return True
     abilities = set(access.get("abilities") or [])

@@ -23,6 +23,7 @@ from modoor.core.notify import notify_channel, send_code
 from modoor.core.settings import get_settings
 from modoor.web.access_log import log_filter
 from modoor.web.frontend import register_frontends
+from modoor.web.acting import acting_role, clear_acting_role_cookie
 from modoor.web.kit import get_kit
 from modoor.web.login_auth import (
     LOGIN_ASSETS,
@@ -177,7 +178,9 @@ def _complete_login(
 ):
     request.session["user_id"] = user.id
     request.session["username"] = user.username
-    mid, href = kit.landing_for_user(session, user, next_url=next_url)
+    mid, href = kit.landing_for_user(
+        session, user, next_url=next_url, active_role=acting_role(request)
+    )
     if mid:
         request.session["active_module"] = mid
     else:
@@ -211,7 +214,9 @@ def login_page(request: Request):
     user = kit.current_user(request)
     if user:
         with session_scope() as session:
-            mid, href = kit.landing_for_user(session, user, next_url=next_url)
+            mid, href = kit.landing_for_user(
+        session, user, next_url=next_url, active_role=acting_role(request)
+    )
             if mid:
                 request.session["active_module"] = mid
             else:
@@ -331,7 +336,9 @@ def root(request: Request):
     if not user:
         return RedirectResponse("/login", status_code=303)
     with session_scope() as session:
-        mid, href = kit.landing_for_user(session, user)
+        mid, href = kit.landing_for_user(
+            session, user, active_role=acting_role(request)
+        )
         if mid:
             request.session["active_module"] = mid
         else:
@@ -346,8 +353,9 @@ def home(request: Request):
         return RedirectResponse("/login", status_code=303)
     request.session.pop("active_module", None)
     with session_scope() as session:
-        apps = kit.workbench_apps(session, user)
-        groups = kit.workbench_groups(session, user)
+        role = acting_role(request)
+        apps = kit.workbench_apps(session, user, active_role=role)
+        groups = kit.workbench_groups(session, user, active_role=role)
     return kit.render(request, "home.html", {"apps": apps, "groups": groups})
 
 
@@ -384,8 +392,8 @@ def logout(request: Request):
     request.scope["modoor_clear_remember"] = True
     accept = request.headers.get("accept") or ""
     if "application/json" in accept:
-        return {"ok": True}
-    return RedirectResponse("/login", status_code=303)
+        return clear_acting_role_cookie(JSONResponse({"ok": True}))
+    return clear_acting_role_cookie(RedirectResponse("/login", status_code=303))
 
 
 @app.get("/logo.png", include_in_schema=False)
@@ -485,8 +493,14 @@ def _apps_catalog(request: Request, *, user):
                 user_id=user.id,
                 enabled=enabled,
                 extra_module_ids=extra,
+                active_role=acting_role(request),
             )
-    return registry_catalog(enabled, user=user, allowed_modules=allowed)
+    return registry_catalog(
+        enabled,
+        user=user,
+        allowed_modules=allowed,
+        active_role=acting_role(request),
+    )
 
 
 @app.get("/api/apps/catalog")
@@ -512,7 +526,9 @@ def switch_tenant_form(request: Request, tenant_id: int = Form(...)):
             session, base_id=user.base_id, tenant_id=int(tenant_id)
         )
         request.session["user_id"] = switched.id
-        mid, href = kit.landing_for_user(session, switched)
+        mid, href = kit.landing_for_user(
+            session, switched, active_role=acting_role(request)
+        )
         if mid:
             request.session["active_module"] = mid
         else:
@@ -546,6 +562,7 @@ def launch_module(request: Request, module_id: str):
             user_id=user.id,
             enabled=enabled,
             extra_module_ids=extra,
+            active_role=acting_role(request),
         )
         if allowed is not None and module_id not in allowed:
             raise HTTPException(status_code=403, detail="module not permitted")

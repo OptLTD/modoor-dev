@@ -14,6 +14,7 @@ SEED_MODULES := $(filter-out seed setup force,$(MAKECMDGOALS))
 # make image <tag> <module> [module...] → $(IMAGE_REPO):<tag>
 # Tag is not a module name, so swallow unknown goals only for this command.
 IMAGE_REPO ?= optltd/modoor
+IMAGE_PLATFORM ?= linux/amd64
 ifeq ($(firstword $(MAKECMDGOALS)),image)
   IMAGE_ARGS := $(filter-out image,$(MAKECMDGOALS))
   IMAGE_TAG := $(word 1,$(IMAGE_ARGS))
@@ -34,7 +35,7 @@ export PIP_DISABLE_PIP_VERSION_CHECK := 1
 help: ## Show targets
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-10s %s\n", $$1, $$2}'
 	@echo ""
-	@echo "  make db                      # 可选：没有本机 Postgres 时才用 compose 起一份"
+	@echo "  make db                      # compose 不再起 Postgres，DATABASE_URL 指向已有库"
 	@echo "  make worker                  # job queue (optional; API 默认带进程内 worker)"
 	@echo "  make seed                    # 手动写入 demo（sale/fleet/dispatch）"
 	@echo "  make seed fleet              # 只 seed 车队；可加 FORCE=1"
@@ -64,9 +65,9 @@ setup: ## Create venv and install package (skips pip if up to date)
 	@test -f .env || cp .env.example .env
 	@echo "setup ok"
 
-db: ## Optional: start Compose Postgres if you do not already have one
-	docker compose up -d --wait db
-	@echo "Only needed when DATABASE_URL does not already point at a running Postgres."
+db: ## Postgres is external; compose.yaml does not start a database
+	@echo "compose.yaml does not start Postgres. Point DATABASE_URL at an existing server."
+	@exit 1
 
 build: setup ## Build module dist: make build base [wiki] [sale] [skill]
 	@if [ -z "$(BUILD_MODULES)" ]; then \
@@ -84,12 +85,12 @@ image: ## Pack image: make image <tag> <module> [module...]
 	@if [ -z "$(IMAGE_TAG)" ] || [ -z "$(IMAGE_MODULES)" ]; then \
 		echo "usage: make image <tag> <module> [module...]"; \
 		echo "  example: make image lyghh fleet freight"; \
-		echo "  result:  $(IMAGE_REPO):<tag>"; \
+		echo "  result:  $(IMAGE_REPO):<tag> ($(IMAGE_PLATFORM))"; \
 		echo "  override repo: make image lyghh fleet IMAGE_REPO=registry.example/optltd/modoor"; \
 		exit 1; \
 	fi
 	@chmod +x "$(ROOT)/scripts/build_image.sh"
-	@"$(ROOT)/scripts/build_image.sh" "$(IMAGE_REPO)" "$(IMAGE_TAG)" $(IMAGE_MODULES)
+	@IMAGE_PLATFORM="$(IMAGE_PLATFORM)" "$(ROOT)/scripts/build_image.sh" "$(IMAGE_REPO)" "$(IMAGE_TAG)" $(IMAGE_MODULES)
 
 dev: setup ## Start API + vite HMR: make dev base [wiki] [sale] [skill]
 	@if [ -z "$(DEV_MODULES)" ]; then \

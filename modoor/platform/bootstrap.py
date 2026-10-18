@@ -80,12 +80,21 @@ def bootstrap(settings: Settings | None = None) -> dict:
                     .order_by(SystemUser.id)
                 )
                 if row is None:
-                    raise AppError(
-                        "bootstrap_error",
-                        f"Tenant {tenant_id} exists but has no users; "
-                        "cannot continue bootstrap without admin",
-                    ) from None
-                admin = base_domain.get_user(session, bootstrap_ctx, user_id=row.id)
+                    # MCP tool registration can commit the tenant before this
+                    # runs. Finish first-run admin creation instead of stopping.
+                    admin = base_domain.create_user(
+                        session,
+                        bootstrap_ctx,
+                        team_id=team_id,
+                        realname="Administrator",
+                        username=admin_username,
+                        password=admin_password,
+                    )
+                    created["admin_user"] = True
+                else:
+                    admin = base_domain.get_user(
+                        session, bootstrap_ctx, user_id=row.id
+                    )
         else:
             try:
                 admin = base_domain.get_user(
@@ -118,13 +127,13 @@ def bootstrap(settings: Settings | None = None) -> dict:
         ctx = Ctx(tenant=tenant_id, user_id=admin_id, team_id=team_id)
 
         try:
-            role = base_domain.get_role(session, ctx, code="admin")
+            role = base_domain.get_role(session, ctx, code="SUPERUSER")
         except AppError:
             role = base_domain.create_role(
                 session,
                 ctx,
-                code="admin",
-                name="Administrator",
+                code="SUPERUSER",
+                name="超级管理员",
                 description="Full access",
             )
             created["admin_role"] = True

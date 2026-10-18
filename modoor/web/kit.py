@@ -92,7 +92,14 @@ class ShellKit:
     def enabled(self, session, tenant: int | None = None) -> set[str]:
         return enabled_module_ids(session, tenant if tenant is not None else self.tenant())
 
-    def allowed_modules_for(self, session, user: SystemUser, enabled: set[str] | None = None) -> set[str] | None:
+    def allowed_modules_for(
+        self,
+        session,
+        user: SystemUser,
+        enabled: set[str] | None = None,
+        *,
+        active_role: str | None = None,
+    ) -> set[str] | None:
         enabled = enabled if enabled is not None else self.enabled(session, user.tenant)
         from modoor.platform.services import list_services
 
@@ -107,6 +114,7 @@ class ShellKit:
             user_id=user.id,
             enabled=enabled,
             extra_module_ids=extra,
+            active_role=active_role,
         )
 
     def first_usable_module(
@@ -116,11 +124,14 @@ class ShellKit:
         *,
         enabled: set[str] | None = None,
         allowed_modules: set[str] | None = ...,  # type: ignore[assignment]
+        active_role: str | None = None,
     ) -> str:
         """First module in shell switcher order that the user may open."""
         enabled = enabled if enabled is not None else self.enabled(session, user.tenant)
         if allowed_modules is ...:
-            allowed_modules = self.allowed_modules_for(session, user, enabled)
+            allowed_modules = self.allowed_modules_for(
+                session, user, enabled, active_role=active_role
+            )
         items = switcher_items(enabled, allowed_modules=allowed_modules)
         if items:
             return str(items[0]["id"])
@@ -132,6 +143,7 @@ class ShellKit:
         user: SystemUser,
         *,
         next_url: str | None = None,
+        active_role: str | None = None,
     ) -> tuple[str | None, str]:
         """Pick (module_id, href) after login.
 
@@ -140,7 +152,9 @@ class ShellKit:
         from urllib.parse import urlparse
 
         enabled = self.enabled(session, user.tenant)
-        allowed = self.allowed_modules_for(session, user, enabled)
+        allowed = self.allowed_modules_for(
+            session, user, enabled, active_role=active_role
+        )
 
         raw = (next_url or "").strip()
         href = raw
@@ -184,10 +198,14 @@ class ShellKit:
         self,
         session,
         user: SystemUser,
+        *,
+        active_role: str | None = None,
     ) -> list[dict[str, Any]]:
         """Permission-filtered module cards for the `/` workbench."""
         enabled = self.enabled(session, user.tenant)
-        allowed = self.allowed_modules_for(session, user, enabled)
+        allowed = self.allowed_modules_for(
+            session, user, enabled, active_role=active_role
+        )
         apps: list[dict[str, Any]] = []
         for item in switcher_items(enabled, allowed_modules=allowed):
             i18n = item.get("i18n") or {}
@@ -217,9 +235,15 @@ class ShellKit:
             )
         return apps
 
-    def workbench_groups(self, session, user: SystemUser) -> list[dict[str, Any]]:
+    def workbench_groups(
+        self,
+        session,
+        user: SystemUser,
+        *,
+        active_role: str | None = None,
+    ) -> list[dict[str, Any]]:
         """Workbench cards split into lightapp / builtin / addon."""
-        apps = self.workbench_apps(session, user)
+        apps = self.workbench_apps(session, user, active_role=active_role)
         buckets = {"lightapp": [], "builtin": [], "addon": []}
         for app in apps:
             origin = str(app.get("origin") or "addon")
@@ -264,6 +288,8 @@ class ShellKit:
             tenants: list[dict[str, Any]] = []
             tenant_label = self.tenant_name()
             allowed_modules: set[str] | None = None
+            switch_roles: list[dict[str, str]] = []
+            acting_code = ""
             if user is not None:
                 tenants = base_domain.list_login_tenants(session, base_id=user.base_id)
                 for tn in tenants:
@@ -274,7 +300,17 @@ class ShellKit:
                     row = session.get(base_domain.SystemTenant, active_tenant)
                     if row is not None:
                         tenant_label = row.name
-                allowed_modules = self.allowed_modules_for(session, user, enabled)
+                from modoor.web.acting import acting_role
+
+                acting_code = acting_role(request) or ""
+                held = base_domain.list_user_roles(
+                    session, self.ctx(user), user_id=user.id
+                )["roles"]
+                if base_domain.holds_superuser(held):
+                    switch_roles = base_domain.list_switch_roles(session, self.ctx(user))
+                allowed_modules = self.allowed_modules_for(
+                    session, user, enabled, active_role=acting_code or None
+                )
 
             current_module = detect_module(request.url.path) or request.session.get(
                 "active_module"
@@ -363,6 +399,14 @@ class ShellKit:
                 "tenant": tenant_label,
                 "tenant_id": active_tenant,
                 "tenants": tenants,
+                "switch_roles": switch_roles,
+                "acting_role": acting_code,
+                "acting_role_name": next(
+                    (item["name"] for item in switch_roles if item["code"] == acting_code),
+                    "",
+                )
+                if acting_code
+                else "",
                 "flash": request.session.pop("flash", None),
                 "enabled_modules": enabled,
                 "current_module": current_module,

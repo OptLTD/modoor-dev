@@ -559,8 +559,15 @@ def _register_oplog_writer() -> None:
 _register_oplog_writer()
 
 
+# 切换角色和不受限只认这个代号。其它角色代号仍收成小写。
+SUPERUSER_CODE = "SUPERUSER"
+
+
 def _norm_code(code: str, *, field: str = "code") -> str:
-    value = (code or "").strip().lower()
+    raw = (code or "").strip()
+    if raw == SUPERUSER_CODE:
+        return raw
+    value = raw.lower()
     if not _CODE_RE.match(value):
         raise AppError(
             "validation_error",
@@ -1690,38 +1697,109 @@ def list_user_roles(session: Session, ctx: Ctx, *, user_id: int) -> dict[str, An
     return {"user_id": user.id, "roles": roles, "count": len(roles)}
 
 
-def list_user_abilities(
-    session: Session, ctx: Ctx, *, user_id: int
-) -> dict[str, Any]:
-    """Effective abilities for a user = union of held role.nodes.
+def holds_superuser(roles: list[dict[str, Any]]) -> bool:
+    """True when the user holds a live ``SUPERUSER`` role. Lowercase and ``admin`` do not count."""
+    for role in roles:
+        if str(role.get("code") or "") != SUPERUSER_CODE:
+            continue
+        if int(role.get("state") or 0) != STATE_ON:
+            continue
+        if not role.get("active"):
+            continue
+        return True
+    return False
 
-    Role code ``admin`` is unrestricted (sees all enabled modules) even when nodes are empty.
+
+def _live_role_by_code(session: Session, ctx: Ctx, code: str) -> SystemRole | None:
+    return session.scalar(
+        select(SystemRole).where(
+            SystemRole.tenant == ctx.tenant,
+            SystemRole.code == code,
+            SystemRole.state == STATE_ON,
+            SystemRole.enable == STATE_ON,
+        )
+    )
+
+
+def list_switch_roles(session: Session, ctx: Ctx) -> list[dict[str, str]]:
+    """Every enabled role in the tenant, for the superuser role switcher."""
+    rows = list(
+        session.scalars(
+            select(SystemRole)
+            .where(
+                SystemRole.tenant == ctx.tenant,
+                SystemRole.state == STATE_ON,
+                SystemRole.enable == STATE_ON,
+            )
+            .order_by(SystemRole.code)
+        )
+    )
+    return [{"code": row.code, "name": row.name or row.code} for row in rows]
+
+
+def _ability_payload(
+    user_id: int,
+    roles: list[dict[str, Any]],
+    *,
+    unrestricted: bool,
+    abilities: list[str],
+) -> dict[str, Any]:
+    return {
+        "user_id": user_id,
+        "unrestricted": unrestricted,
+        "abilities": abilities,
+        "roles": [r["code"] for r in roles],
+    }
+
+
+def list_user_abilities(
+    session: Session,
+    ctx: Ctx,
+    *,
+    user_id: int,
+    active_role: str | None = None,
+) -> dict[str, Any]:
+    """Effective abilities for a user.
+
+    Holding ``SUPERUSER`` is unrestricted when ``active_role`` is empty or ``SUPERUSER``.
+    A chosen other role uses only that role's nodes, even if this user is not assigned it.
+    Users without ``SUPERUSER`` ignore ``active_role`` and keep the union of roles they hold.
     """
     roles = list_user_roles(session, ctx, user_id=user_id)["roles"]
-    if any(str(r.get("code") or "") == "admin" for r in roles):
-        return {
-            "user_id": user_id,
-            "unrestricted": True,
-            "abilities": [],
-            "roles": [r["code"] for r in roles],
-        }
+    chosen = (active_role or "").strip()
+    if holds_superuser(roles) and chosen:
+        if chosen == SUPERUSER_CODE:
+            return _ability_payload(user_id, roles, unrestricted=True, abilities=[])
+        target = _live_role_by_code(session, ctx, chosen)
+        if target is None:
+            return _ability_payload(user_id, roles, unrestricted=False, abilities=[])
+        return _ability_payload(
+            user_id, roles, unrestricted=False, abilities=_role_nodes(target)
+        )
+    if holds_superuser(roles):
+        return _ability_payload(user_id, roles, unrestricted=True, abilities=[])
     abilities: set[str] = set()
     for role in roles:
         for node in role.get("nodes") or []:
             code = str(node).strip()
             if code:
                 abilities.add(code)
-    return {
-        "user_id": user_id,
-        "unrestricted": False,
-        "abilities": sorted(abilities),
-        "roles": [r["code"] for r in roles],
-    }
+    return _ability_payload(
+        user_id, roles, unrestricted=False, abilities=sorted(abilities)
+    )
 
 
-def access_gate(session: Session, ctx: Ctx, *, user_id: int) -> dict[str, Any]:
-    """Ability gate for shell menus and schema clicks. Admin is unrestricted."""
-    info = list_user_abilities(session, ctx, user_id=user_id)
+def access_gate(
+    session: Session,
+    ctx: Ctx,
+    *,
+    user_id: int,
+    active_role: str | None = None,
+) -> dict[str, Any]:
+    """Ability gate for shell menus and schema clicks."""
+    info = list_user_abilities(
+        session, ctx, user_id=user_id, active_role=active_role
+    )
     return {
         "unrestricted": bool(info.get("unrestricted")),
         "abilities": [str(a) for a in (info.get("abilities") or [])],
@@ -1749,9 +1827,12 @@ def allowed_modules_for_user(
     user_id: int,
     enabled: set[str],
     extra_module_ids: set[str] | None = None,
+    active_role: str | None = None,
 ) -> set[str] | None:
     """Return module ids visible in the shell, or None when unrestricted (no filter)."""
-    access = list_user_abilities(session, ctx, user_id=user_id)
+    access = list_user_abilities(
+        session, ctx, user_id=user_id, active_role=active_role
+    )
     if access["unrestricted"]:
         return None
     abilities = set(access["abilities"])

@@ -1,3 +1,4 @@
+import { readActingRole } from './actingRole'
 import { t } from './i18n'
 
 async function request<T>(method: string, url: string, body?: unknown): Promise<T> {
@@ -5,6 +6,10 @@ async function request<T>(method: string, url: string, body?: unknown): Promise<
     method,
     credentials: 'include',
     headers: { Accept: 'application/json' },
+  }
+  const acting = readActingRole()
+  if (acting) {
+    init.headers = { ...init.headers, 'X-Modoor-Role': acting }
   }
   if (body !== undefined) {
     init.headers = {

@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from fastapi import APIRouter, Body, HTTPException, Request
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 from modoor.core.ctx import Ctx
@@ -14,6 +15,7 @@ from modoor.core.settings import get_settings
 from modoor.engine.service import get_engine
 from builtin.base import domain as base_domain
 from builtin.base.domain import SystemUser
+from modoor.web.acting import acting_role, clear_acting_role_cookie
 
 router = APIRouter()
 
@@ -31,7 +33,10 @@ def _bootstrap_tenant_id() -> int:
 
 
 def _user_payload(
-    user: SystemUser, *, tenants: list[dict[str, Any]] | None = None
+    user: SystemUser,
+    *,
+    tenants: list[dict[str, Any]] | None = None,
+    switch_roles: list[dict[str, str]] | None = None,
 ) -> dict[str, Any]:
     payload: dict[str, Any] = {
         "id": user.id,
@@ -48,6 +53,8 @@ def _user_payload(
     }
     if tenants is not None:
         payload["tenants"] = tenants
+    if switch_roles is not None:
+        payload["switch_roles"] = switch_roles
     return payload
 
 
@@ -89,8 +96,10 @@ def _ctx(user: SystemUser) -> Ctx:
     return Ctx(tenant=user.tenant, user_id=user.id, team_id=user.team_id)
 
 
-def _access_gate(session, user: SystemUser) -> dict[str, Any]:
-    return base_domain.access_gate(session, _ctx(user), user_id=user.id)
+def _access_gate(session, user: SystemUser, request: Request) -> dict[str, Any]:
+    return base_domain.access_gate(
+        session, _ctx(user), user_id=user.id, active_role=acting_role(request)
+    )
 
 
 def _err(exc: Exception) -> HTTPException:
@@ -135,7 +144,9 @@ def api_login(request: Request, body: LoginBody) -> dict[str, Any]:
             )
             tenants = base_domain.list_login_tenants(session, base_id=user.base_id)
             request.session["user_id"] = user.id
-            mid, href = shell.landing_for_user(session, user)
+            mid, href = shell.landing_for_user(
+                session, user, active_role=acting_role(request)
+            )
             if mid:
                 request.session["active_module"] = mid
             else:
@@ -158,7 +169,12 @@ def api_profile(request: Request) -> dict[str, Any]:
         if row is None or not row.active:
             raise HTTPException(status_code=401, detail="login required")
         tenants = base_domain.list_login_tenants(session, base_id=row.base_id)
-        return {"user": _user_payload(row, tenants=tenants)}
+        ctx = _ctx(row)
+        held = base_domain.list_user_roles(session, ctx, user_id=row.id)["roles"]
+        switch_roles = None
+        if base_domain.holds_superuser(held):
+            switch_roles = base_domain.list_switch_roles(session, ctx)
+        return {"user": _user_payload(row, tenants=tenants, switch_roles=switch_roles)}
 
 
 @router.post("/api/auth/password")
@@ -290,7 +306,9 @@ def api_switch(request: Request, body: SwitchTenantBody) -> dict[str, Any]:
             )
             tenants = base_domain.list_login_tenants(session, base_id=switched.base_id)
             request.session["user_id"] = switched.id
-            mid, href = shell.landing_for_user(session, switched)
+            mid, href = shell.landing_for_user(
+                session, switched, active_role=acting_role(request)
+            )
             if mid:
                 request.session["active_module"] = mid
             else:
@@ -306,9 +324,9 @@ def api_switch(request: Request, body: SwitchTenantBody) -> dict[str, Any]:
 
 
 @router.post("/api/auth/logout")
-def api_logout(request: Request) -> dict[str, Any]:
+def api_logout(request: Request) -> JSONResponse:
     request.session.clear()
-    return {"ok": True}
+    return clear_acting_role_cookie(JSONResponse({"ok": True}))
 
 @router.post("/api/record/schema")
 def api_schema(request: Request, body: dict[str, Any] = Body(default_factory=dict)) -> Any:
@@ -316,7 +334,7 @@ def api_schema(request: Request, body: dict[str, Any] = Body(default_factory=dic
     try:
         with session_scope() as session:
             payload = get_engine().table_schema(session, _ctx(user), body)
-            payload["access"] = _access_gate(session, user)
+            payload["access"] = _access_gate(session, user, request)
             return payload
     except Exception as exc:  # noqa: BLE001
         raise _err(exc) from exc
@@ -328,7 +346,7 @@ def api_input(request: Request, body: dict[str, Any] = Body(default_factory=dict
     try:
         with session_scope() as session:
             payload = get_engine().input_schema(session, _ctx(user), body)
-            payload["access"] = _access_gate(session, user)
+            payload["access"] = _access_gate(session, user, request)
             return payload
     except Exception as exc:  # noqa: BLE001
         raise _err(exc) from exc

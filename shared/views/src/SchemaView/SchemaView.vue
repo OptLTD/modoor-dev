@@ -166,7 +166,9 @@
  */
 import { computed, defineAsyncComponent, nextTick, ref, watch } from 'vue'
 import {
+  accessAllows,
   appToast,
+  cachedAccess,
   entityLabel,
   fetchSchema,
   resolveModelTitle,
@@ -174,6 +176,7 @@ import {
   invokeRecordHandles,
   rowUUKey,
   useI18n,
+  type AccessGate,
   type SchemaClick,
   type SchemaRequest,
   type SchemaTable as SchemaTableData,
@@ -310,7 +313,13 @@ const sheetCaps = computed(() => {
   const list = Array.isArray(raw) ? raw.map(String) : []
   return new Set(list.map((s) => s.trim().toLowerCase()))
 })
-const showBatchEdit = computed(() => sheetCaps.value.has('update'))
+const accessGate = ref<AccessGate | undefined>()
+const showBatchEdit = computed(() => {
+  if (!sheetCaps.value.has('update')) return false
+  const model = String(table.value?.model || activeModel.value || '').trim()
+  if (!model) return false
+  return accessAllows([`${model}.edit`], accessGate.value ?? cachedAccess())
+})
 const showBatchImport = computed(() => sheetCaps.value.has('insert'))
 
 const actionOpen = ref(false)
@@ -421,6 +430,7 @@ async function boot(model: string, usingKey: string) {
   if (!model) return
   bootError.value = ''
   viewMode.value = 'table'
+  accessGate.value = undefined
   table.value = null
   sheetSchema.value = null
   listRequest.value = { page: 1, size: 50 }
@@ -428,6 +438,7 @@ async function boot(model: string, usingKey: string) {
   closeDrawer()
   try {
     const res = await fetchSchema(model, usingKey)
+    accessGate.value = res.access
     const fixed = props.query || {}
     table.value = {
       ...res.table,
@@ -474,6 +485,7 @@ async function loadSheetSchema() {
 }
 
 async function enterSheet(mode: 'modify' | 'import') {
+  if (mode === 'modify' && !showBatchEdit.value) return
   await loadSheetSchema()
   viewMode.value = mode
 }

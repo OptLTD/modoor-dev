@@ -414,7 +414,8 @@ body,
   font-weight: 700;
 }
 
-.tenant-label {
+.tenant-label,
+.role-label {
   max-width: 8rem;
   overflow: hidden;
   text-overflow: ellipsis;

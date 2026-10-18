@@ -421,6 +421,7 @@ def registry_catalog(
     *,
     user: Any | None = None,
     allowed_modules: set[str] | None = None,
+    active_role: str | None = None,
 ) -> dict[str, Any]:
     """Catalog: tenant + profile + modules + aggregated MODULE_CONTRACT exports."""
     from modoor.platform.services import aggregated_exports
@@ -448,6 +449,7 @@ def registry_catalog(
                         team_id=getattr(user, "team_id", None),
                     ),
                     user_id=int(user.id),
+                    active_role=active_role,
                 )
     else:
         from modoor.core.db import session_scope

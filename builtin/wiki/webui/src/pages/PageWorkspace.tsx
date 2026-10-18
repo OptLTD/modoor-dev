@@ -19,6 +19,7 @@ import { BlockEditor, type BlockEditorHandle } from '../components/BlockEditor'
 import { PageTree } from '../components/PageTree'
 import { ProjectModal } from '../components/ProjectModal'
 import { Shell } from '../components/Shell'
+import { setContentDocumentTitle } from '@modoor/hooks/documentTitle'
 import { useI18n } from '../useI18n'
 
 export function PageWorkspace() {
@@ -165,6 +166,12 @@ export function PageWorkspace() {
     window.addEventListener('keydown', onKeyDown, true)
     return () => window.removeEventListener('keydown', onKeyDown, true)
   }, [saveNow])
+
+  useEffect(() => {
+    if (!page) return
+    setContentDocumentTitle(title.trim() || t('wiki.untitled'))
+    return () => setContentDocumentTitle(null)
+  }, [page, title, t])
 
   useEffect(() => {
     return () => {

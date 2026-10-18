@@ -1,0 +1,60 @@
+# Modoor app. Postgres is external (DATABASE_URL).
+# Demo: no certs, HTTP on :8765. MODOOR_WEBUI_URL stays http://...
+# TLS: put fullchain.pem and privkey.pem in ./certs (or MODOOR_SSL_DIR),
+# then set MODOOR_WEBUI_URL=https://<host>. Do not mount the pem paths themselves;
+# a missing file is created as a directory and uvicorn exits with "Is a directory".
+
+services:
+  modoor:
+    image: ${MODOOR_IMAGE:-optltd/modoor:lyghh}
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL}
+      MODOOR_WEBUI_URL: ${MODOOR_WEBUI_URL:-http://127.0.0.1:8765}
+      MODOOR_STORAGE_ROOT: /data/storage
+      MODOOR_PY_CACHE: /var/cache/modoor/py
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "${MODOOR_PORT:-8765}:8765"
+    volumes:
+      - ${MODOOR_SSL_DIR:-./certs}:/certs:ro
+      - modoor-storage:/data/storage
+      - modoor-pycache:/var/cache/modoor/py
+    command:
+      - sh
+      - -c
+      - |
+        set -eu
+        set -- python -m uvicorn modoor.web.app:app --host 0.0.0.0 --port 8765 --proxy-headers --forwarded-allow-ips=*
+        if [ -f /certs/fullchain.pem ] && [ -f /certs/privkey.pem ]; then
+          echo ">> TLS on :8765"
+          exec "$$@" --ssl-certfile=/certs/fullchain.pem --ssl-keyfile=/certs/privkey.pem
+        fi
+        echo ">> no certs, HTTP on :8765"
+        exec "$$@"
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - |
+          import urllib.request, ssl
+          ctx = ssl._create_unverified_context()
+          for url in ("https://127.0.0.1:8765/health", "http://127.0.0.1:8765/health"):
+              try:
+                  urllib.request.urlopen(url, context=ctx, timeout=3)
+              except Exception:
+                  continue
+              raise SystemExit(0)
+          raise SystemExit(1)
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+volumes:
+  modoor-storage:
+  modoor-pycache:

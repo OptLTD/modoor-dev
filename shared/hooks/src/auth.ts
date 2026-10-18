@@ -1,3 +1,4 @@
+import { clearActingRole, type SwitchRole } from './actingRole'
 import { get, post } from './http'
 
 export type AuthTenant = {
@@ -18,6 +19,8 @@ export type AuthUser = {
   current?: number | string | null
   base_id?: number | string
   tenants?: AuthTenant[]
+  /** Present when this user holds SUPERUSER: every enabled role in the tenant. */
+  switch_roles?: SwitchRole[]
 }
 
 export type AgentConnectInfo = {
@@ -39,6 +42,7 @@ export type AgentConnectInfo = {
 }
 
 export async function login(username: string, password: string) {
+  clearActingRole()
   return post<{ ok: boolean; user: AuthUser; module?: string; home?: string }>(
     '/api/auth/login',
     {
@@ -79,5 +83,6 @@ export async function switchTenant(tenantId: number | string) {
 }
 
 export async function logout() {
+  clearActingRole()
   return post<{ ok: boolean }>('/api/auth/logout', {})
 }

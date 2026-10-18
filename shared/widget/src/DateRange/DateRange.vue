@@ -14,12 +14,15 @@ const props = withDefaults(
     placeholder?: string
     /** 展示用短年份：2026-07-01 → 26-07-01 */
     shortYear?: boolean
+    /** 只填了一端时，另一端的展示文案 */
+    openLabel?: string
   }>(),
   {
     start: '',
     end: '',
     placeholder: '',
     shortYear: true,
+    openLabel: '…',
   },
 )
 
@@ -35,15 +38,15 @@ const hasValue = computed(() => !!props.start || !!props.end)
 const placeholderText = computed(() => props.placeholder || t('widget.dateRangePh'))
 
 function formatDisplay(v: string) {
-  if (!v || v === '…') return v || '…'
+  if (!v || v === '…') return props.openLabel || '…'
   if (props.shortYear && /^\d{4}-\d{2}-\d{2}/.test(v)) return v.slice(2, 10)
   return v
 }
 
 const display = computed(() => {
   if (!hasValue.value) return ''
-  const s = formatDisplay(props.start || '…')
-  const e = formatDisplay(props.end || '…')
+  const s = formatDisplay(props.start || '')
+  const e = formatDisplay(props.end || '')
   return `${s} ~ ${e}`
 })
 

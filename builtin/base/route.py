@@ -9,6 +9,7 @@ from pydantic import BaseModel
 
 from modoor.core.db import session_scope
 from modoor.platform.module_state import list_modules, set_module_enabled, sync_discovered_modules
+from modoor.web.acting import acting_role
 from modoor.web.api_util import ctx_of, http_error, kit, require_user
 from modoor.web.nav import clear_ui_cache
 from builtin.base import domain as base_domain
@@ -371,7 +372,7 @@ class GlobalSettingsBody(BaseModel):
     defaultModule: str = ""
 
 
-def _global_payload(session, user, ctx) -> dict[str, Any]:
+def _global_payload(session, user, ctx, request: Request) -> dict[str, Any]:
     from builtin.base.global_settings import (
         TIME_FORMATS,
         TIMEZONES,
@@ -381,7 +382,9 @@ def _global_payload(session, user, ctx) -> dict[str, Any]:
 
     return {
         "settings": get_global_settings(session, ctx),
-        "canEdit": user_can_edit_global(session, ctx, user_id=int(user.id)),
+        "canEdit": user_can_edit_global(
+            session, ctx, user_id=int(user.id), active_role=acting_role(request)
+        ),
         "timezones": [
             {"id": zone, "labelZh": zh, "labelEn": en} for zone, zh, en in TIMEZONES
         ],
@@ -394,7 +397,7 @@ def api_get_global(request: Request) -> dict[str, Any]:
     user = require_user(request)
     try:
         with session_scope() as session:
-            return _global_payload(session, user, ctx_of(user))
+            return _global_payload(session, user, ctx_of(user), request)
     except Exception as exc:  # noqa: BLE001
         raise http_error(exc) from exc
 
@@ -407,7 +410,9 @@ def api_put_global(request: Request, body: GlobalSettingsBody) -> dict[str, Any]
             ctx = ctx_of(user)
             from builtin.base.global_settings import save_global_settings, user_can_edit_global
 
-            if not user_can_edit_global(session, ctx, user_id=int(user.id)):
+            if not user_can_edit_global(
+                session, ctx, user_id=int(user.id), active_role=acting_role(request)
+            ):
                 raise base_domain.AppError("permission_denied", "global settings require an administrator")
             save_global_settings(
                 session,
@@ -415,7 +420,7 @@ def api_put_global(request: Request, body: GlobalSettingsBody) -> dict[str, Any]
                 body.model_dump(),
                 enabled=kit().enabled(session, user.tenant),
             )
-            return _global_payload(session, user, ctx)
+            return _global_payload(session, user, ctx, request)
     except Exception as exc:  # noqa: BLE001
         raise http_error(exc) from exc
 

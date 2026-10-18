@@ -9,7 +9,7 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { useI18n } from '@modoor/hooks'
+import { setContentDocumentTitle, useI18n } from '@modoor/hooks'
 import { getAsset, type DocAsset } from '../api/doc'
 import PreviewPane from '../components/PreviewPane.vue'
 
@@ -41,9 +41,15 @@ watch(
   () => route.params.id,
   () => {
     asset.value = null
+    setContentDocumentTitle(null)
     void load()
   },
 )
+watch(
+  () => asset.value?.title,
+  (title) => setContentDocumentTitle(title || null),
+)
+onUnmounted(() => setContentDocumentTitle(null))
 onMounted(() => {
   void load()
   timer = setInterval(() => {

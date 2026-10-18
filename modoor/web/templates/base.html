@@ -287,7 +287,8 @@
       font-weight: 700;
     }
 
-    .tenant-label {
+    .tenant-label,
+    .role-label {
       max-width: 8rem;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -1009,6 +1010,26 @@
         </div>
       </div>
 
+      {% if switch_roles is defined and switch_roles|length > 1 %}
+      <div class="systray-item" data-dropdown>
+        <button type="button" class="systray-btn" aria-haspopup="true" aria-expanded="false" data-i18n-aria="role"
+          data-i18n-title="role" aria-label="角色" title="角色">
+          <svg class="systray-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+            aria-hidden="true">
+            <path d="M12 3l7 3v6c0 4.2-2.8 7.4-7 9-4.2-1.6-7-4.8-7-9V6l7-3z" />
+            <path d="M9 12l2 2 4-4" />
+          </svg>
+          <span class="role-label"{% if not acting_role_name %} data-i18n="switchRole"{% endif %}>{{ acting_role_name or '切换角色' }}</span>
+        </button>
+        <div class="systray-menu" role="menu">
+          {% for role in switch_roles %}
+          <button type="button" class="menu-link js-switch-role {% if role.code == acting_role %}active{% endif %}"
+            data-role-code="{{ role.code }}" data-user-id="{{ current_user.id }}" role="menuitem">{{ role.name }}</button>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+
       {% if tenants is defined and tenants|length > 1 %}
       <div class="systray-item" data-dropdown>
         <button type="button" class="systray-btn" aria-haspopup="true" aria-expanded="false" data-i18n-aria="tenant"
@@ -1117,6 +1138,8 @@
           inboxEmpty: "暂无消息",
           tenant: "租户",
           tenantSub: "当前工作区",
+          role: "角色",
+          switchRole: "切换角色",
           logout: "退出登录",
           login: "登录",
           language: "语言",
@@ -1184,6 +1207,8 @@
           inboxEmpty: "No messages",
           tenant: "Tenant",
           tenantSub: "Current workspace",
+          role: "Role",
+          switchRole: "Switch role",
           logout: "Log out",
           login: "Log in",
           language: "Language",
@@ -1344,6 +1369,27 @@
           brandBtn.setAttribute("aria-expanded", open ? "true" : "false");
         });
       }
+      document.querySelectorAll(".js-switch-role").forEach(function (btn) {
+        btn.addEventListener("click", function (e) {
+          e.stopPropagation();
+          var code = btn.getAttribute("data-role-code") || "";
+          var userId = btn.getAttribute("data-user-id") || "";
+          if (!code || !userId) return;
+          var active = btn.classList.contains("active");
+          var secure = location.protocol === "https:" ? "; Secure" : "";
+          try {
+            localStorage.setItem("modoor.activeRoleUser", userId);
+            localStorage.setItem("modoor.activeRoleChosen:" + userId, "1");
+            localStorage.setItem("modoor.activeRole:" + userId, active ? "" : code);
+          } catch (err) { }
+          if (active) {
+            document.cookie = "modoor_role=; Path=/; Max-Age=0; SameSite=Lax" + secure;
+          } else {
+            document.cookie = "modoor_role=" + encodeURIComponent(code) + "; Path=/; SameSite=Lax" + secure;
+          }
+          location.reload();
+        });
+      });
       document.querySelectorAll("[data-dropdown]").forEach(function (item) {
         var btn = item.querySelector(".systray-btn");
         if (!btn) return;

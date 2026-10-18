@@ -89,21 +89,14 @@
           <component :is="sysTrayWidget" v-if="sysTrayWidget" @click.stop />
           <div class="systray-item" @click.stop>
             <button
+              v-if="false"
               type="button"
               class="systray-btn"
               :aria-label="t('shell.agentGuide')"
               :title="t('shell.agentGuide')"
               @click="openAgentGuide"
             >
-              <svg class="systray-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <rect x="5" y="9" width="14" height="10" rx="2" />
-                <path d="M9 9V7a3 3 0 0 1 6 0v2" />
-                <circle cx="9.5" cy="14" r="1" fill="currentColor" stroke="none" />
-                <circle cx="14.5" cy="14" r="1" fill="currentColor" stroke="none" />
-                <path d="M12 3v2" />
-                <path d="M8 19v2" />
-                <path d="M16 19v2" />
-              </svg>
+              <SvgIcon class="systray-icon" name="agent" />
             </button>
           </div>
 
@@ -121,10 +114,7 @@
               :title="t('shell.inbox')"
               @click="toggleMenu('inbox')"
             >
-              <svg class="systray-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <path d="M6 9a6 6 0 1 1 12 0c0 3.2 1.2 4.8 2 6H4c.8-1.2 2-2.8 2-6" />
-                <path d="M10 19a2 2 0 0 0 4 0" />
-              </svg>
+              <SvgIcon class="systray-icon" name="bell" />
               <span v-if="inboxCount > 0" class="systray-badge">{{ inboxCount }}</span>
             </button>
             <div v-if="openMenu === 'inbox'" class="systray-menu wide" role="menu">
@@ -145,6 +135,39 @@
           </div>
 
           <div
+            v-if="switchRoles.length > 1"
+            class="systray-item"
+            :class="{ open: openMenu === 'role' }"
+            @click.stop
+          >
+            <button
+              type="button"
+              class="systray-btn"
+              aria-haspopup="true"
+              :aria-expanded="openMenu === 'role'"
+              :aria-label="t('shell.role')"
+              :title="t('shell.role')"
+              @click="toggleMenu('role')"
+            >
+              <SvgIcon class="systray-icon" name="shield" />
+              <span class="role-label">{{ roleName }}</span>
+            </button>
+            <div v-if="openMenu === 'role'" class="systray-menu" role="menu">
+              <button
+                v-for="role in switchRoles"
+                :key="role.code"
+                type="button"
+                class="menu-link"
+                :class="{ active: role.code === activeRole }"
+                role="menuitem"
+                @click="selectRole(role)"
+              >
+                {{ role.name }}
+              </button>
+            </div>
+          </div>
+
+          <div
             v-if="tenants.length > 1"
             class="systray-item"
             :class="{ open: openMenu === 'tenant' }"
@@ -159,11 +182,7 @@
               :title="t('shell.tenant')"
               @click="toggleMenu('tenant')"
             >
-              <svg class="systray-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
-                <path d="M3 21h18" />
-                <path d="M5 21V8l7-4 7 4v13" />
-                <path d="M9 21v-6h6v6" />
-              </svg>
+              <SvgIcon class="systray-icon" name="building" />
               <span class="tenant-label">{{ tenantName }}</span>
             </button>
             <div v-if="openMenu === 'tenant'" class="systray-menu" role="menu">
@@ -463,10 +482,15 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import SvgIcon from '@modoor/widget/SvgIcon'
 import { resolveSysTrayWidget } from './sysTray'
 import { provideRecordGateway } from '../recordGateway'
 import {
   fetchProfile,
+  readRoleCookie,
+  writeActingRole,
+  clearActingRole,
+  resolveActingRole,
   fetchAgentConnect,
   rotateAgentKey,
   setAgentReadonly,
@@ -480,7 +504,9 @@ import {
   useUserPrefs,
   localizedAppLabel,
   localizedEntityLabel,
+  setShellDocumentTitle,
   type AuthUser,
+  type SwitchRole,
   type AgentConnectInfo,
   type ShellModule,
   type MenuLayout,
@@ -490,7 +516,7 @@ provideRecordGateway()
 
 type InboxMessage = { id: string; title: string; href?: string }
 type TenantOption = { id: string; name: string }
-type OpenMenu = 'brand' | 'inbox' | 'tenant' | 'avatar' | null
+type OpenMenu = 'brand' | 'inbox' | 'tenant' | 'role' | 'avatar' | null
 type NavMenu = {
   id: string
   label: string
@@ -511,6 +537,8 @@ const user = ref<AuthUser | null>(null)
 const modules = ref<ShellModule[]>([])
 const tenantId = ref('')
 const tenants = ref<TenantOption[]>([])
+const switchRoles = ref<SwitchRole[]>([])
+const activeRole = ref('')
 const inbox = ref<InboxMessage[]>([])
 const openMenu = ref<OpenMenu>(null)
 const openNavGroup = ref<string | null>(null)
@@ -616,6 +644,39 @@ const tenantName = computed(() => {
   return hit?.name || tenantId.value || '—'
 })
 
+function pageNameForPath(path: string) {
+  let best = ''
+  let bestLen = -1
+  const walk = (item: NavMenu) => {
+    const menuPath = item.path || ''
+    if (menuPath && (path === menuPath || path.startsWith(menuPath + '/'))) {
+      if (menuPath.length >= bestLen) {
+        bestLen = menuPath.length
+        best = item.label
+      }
+    }
+    for (const child of item.items || []) walk(child)
+  }
+  for (const item of menus.value) walk(item)
+  return best || currentLabel.value
+}
+
+watch(
+  () => [route.fullPath, pageNameForPath(route.path), tenantName.value] as const,
+  ([, page, tenant]) => {
+    if (!page) return
+    setShellDocumentTitle(page, tenant === '—' ? '' : tenant)
+  },
+  { immediate: true },
+)
+const roleName = computed(() => {
+  if (!activeRole.value) return t('shell.switchRole')
+  const hit = switchRoles.value.find((role) => {
+    return role.code === activeRole.value
+  })
+  return hit?.name || activeRole.value
+})
+
 const inboxCount = computed(() => inbox.value.length)
 
 const userInitials = computed(() => {
@@ -701,6 +762,27 @@ async function refresh() {
   try {
     const profile = await fetchProfile()
     user.value = profile.user
+    const roles = profile.user.switch_roles || []
+    if (roles.length && profile.user.id != null) {
+      const before = readRoleCookie()
+      const next = resolveActingRole(profile.user.id, roles)
+      writeActingRole(profile.user.id, next)
+      switchRoles.value = roles
+      activeRole.value = next
+      if (before !== next) {
+        location.reload()
+        return
+      }
+    } else if (readRoleCookie()) {
+      clearActingRole()
+      switchRoles.value = []
+      activeRole.value = ''
+      location.reload()
+      return
+    } else {
+      switchRoles.value = []
+      activeRole.value = ''
+    }
     const cat = await fetchShellCatalog()
     modules.value = cat.modules || []
     const tid = String(profile.user.tenant ?? cat.tenant?.id ?? '')
@@ -732,8 +814,21 @@ async function refresh() {
     user.value = null
     modules.value = []
     tenants.value = []
+    switchRoles.value = []
+    activeRole.value = ''
     inbox.value = []
   }
+}
+
+function selectRole(role: SwitchRole) {
+  if (!user.value) {
+    closeMenus()
+    return
+  }
+  const next = role.code === activeRole.value ? '' : role.code
+  writeActingRole(user.value.id, next)
+  closeMenus()
+  location.reload()
 }
 
 function goModule(m: ShellModule) {

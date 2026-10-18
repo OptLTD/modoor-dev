@@ -83,6 +83,52 @@ def test_bootstrap_login_and_module_toggle():
         assert welcome["title"]
 
 
+def test_bootstrap_strips_quoted_admin_and_uses_superuser_role(monkeypatch):
+    configure_test_db(
+        monkeypatch,
+        MODOOR_TENANT='"1001|Acme"',
+        MODOOR_ADMIN='"superuser|pass@word"',
+    )
+    settings = get_settings()
+    assert settings.modoor_tenant_id == 1001
+    assert settings.modoor_tenant == "Acme"
+    assert settings.modoor_admin_username == "superuser"
+    assert settings.modoor_admin_password == "pass@word"
+
+    result = bootstrap(settings)
+    assert result["admin_username"] == "superuser"
+    assert result["tenant_id"] == 1001
+    with session_scope() as session:
+        user = base_domain.authenticate_user(
+            session, tenant=1001, username="superuser", password="pass@word"
+        )
+        assert user.team_id == result["team_id"]
+        ctx = Ctx(tenant=1001, user_id=user.id, team_id=result["team_id"])
+        role = base_domain.get_role(session, ctx, code="SUPERUSER")
+        assert role["code"] == "SUPERUSER"
+        abilities = base_domain.list_user_abilities(session, ctx, user_id=user.id)
+        assert abilities["unrestricted"] is True
+
+
+def test_bootstrap_creates_admin_when_tenant_has_no_users():
+    settings = get_settings()
+    with session_scope() as session:
+        ensured = base_domain.ensure_tenant(
+            session, settings.modoor_tenant, tenant_id=settings.modoor_tenant_id
+        )
+        tenant_id = int(ensured["tenant"]["id"])
+
+    result = bootstrap(settings)
+    assert result["tenant_id"] == tenant_id
+    assert result["created"]["admin_user"] is True
+
+    with session_scope() as session:
+        user = base_domain.authenticate_user(
+            session, tenant=tenant_id, username="admin", password="admin123"
+        )
+        assert user.team_id == result["team_id"]
+
+
 def test_bootstrap_tenant_id_pipe_and_skip_existing(monkeypatch):
     configure_test_db(
         monkeypatch,

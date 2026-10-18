@@ -31,9 +31,17 @@ def ensure_addon_import_path(addon_root: Path) -> None:
     sys.path.insert(0, parent)
 
 
+def _strip_wrapping_quotes(raw: str) -> str:
+    """Drop one pair of matching quotes. Podman env-file keeps them in the value."""
+    text = (raw or "").strip()
+    if len(text) >= 2 and text[0] == text[-1] and text[0] in {'"', "'"}:
+        return text[1:-1].strip()
+    return text
+
+
 def _split_pipe(raw: str) -> tuple[str, str | None]:
     """Split `left|right`; returns (left, right_or_None)."""
-    text = (raw or "").strip()
+    text = _strip_wrapping_quotes(raw)
     if "|" not in text:
         return text, None
     left, right = text.split("|", 1)
@@ -160,7 +168,7 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def _normalize_tenant_admin_webui(self) -> Settings:
-        raw_tenant = (self.modoor_tenant or "").strip() or "demo"
+        raw_tenant = _strip_wrapping_quotes(self.modoor_tenant or "") or "demo"
         left, right = _split_pipe(raw_tenant)
         tenant_id = self.modoor_tenant_id
         name = raw_tenant
@@ -175,7 +183,7 @@ class Settings(BaseSettings):
         object.__setattr__(self, "modoor_tenant", name)
         object.__setattr__(self, "modoor_tenant_id", tenant_id)
 
-        raw_admin = (self.modoor_admin or "").strip()
+        raw_admin = _strip_wrapping_quotes(self.modoor_admin or "")
         if raw_admin:
             user, password = _split_pipe(raw_admin)
             if password is not None:

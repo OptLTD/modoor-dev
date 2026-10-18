@@ -51,6 +51,21 @@ function formatWithPattern(
     .replace(/ss/g, parts.second)
 }
 
+const HAS_OFFSET = /[zZ]$|[+-]\d{2}:?\d{2}$/
+
+/** 带时区的日期折到公司时区的日历日。裸 YYYY-MM-DD 原样截断。 */
+function calendarInCompanyZone(raw: string, pattern: 'YYYY-MM-DD' | 'YYYY-MM'): string | null {
+  if (!HAS_OFFSET.test(raw)) return null
+  const date = new Date(raw)
+  if (Number.isNaN(date.getTime())) return null
+  try {
+    const prefs = readGlobalSettings()
+    return formatInTimeZone(date, prefs.timezone || 'Asia/Shanghai', pattern)
+  } catch {
+    return null
+  }
+}
+
 function formatInTimeZone(date: Date, timeZone: string, pattern: string): string {
   const bits = new Intl.DateTimeFormat('en-US', {
     timeZone,
@@ -88,14 +103,14 @@ export function formatDateTimeDisplay(
   const kind: DateTimeKind = mode === true
     ? 'ONLYDATE' : mode === false
     ? 'DATETIME' : mode
-  if (kind === 'ONLYMONTH') return s.slice(0, 7)
-  if (kind === 'ONLYDATE') return s.slice(0, 10)
+  if (kind === 'ONLYMONTH') return calendarInCompanyZone(s, 'YYYY-MM') || s.slice(0, 7)
+  if (kind === 'ONLYDATE') return calendarInCompanyZone(s, 'YYYY-MM-DD') || s.slice(0, 10)
   if (!/^\d{4}-\d{2}-\d{2}/.test(s)) {
     return /^\d{4}-\d{2}/.test(s) ? s.slice(0, 7) : s
   }
   const prefs = readGlobalSettings()
   const pattern = prefs.timeFormat || 'YYYY-MM-DD HH:mm:ss'
-  if (/[zZ]$|[+-]\d{2}:?\d{2}$/.test(s)) {
+  if (HAS_OFFSET.test(s)) {
     const date = new Date(s)
     if (!Number.isNaN(date.getTime())) {
       try {
@@ -122,12 +137,14 @@ export function formatDateTimeDisplay(
 
 export function formatDateInputValue(raw: unknown): string {
   if (raw == null || raw === '') return ''
-  return String(raw).slice(0, 10)
+  const s = String(raw).trim()
+  return calendarInCompanyZone(s, 'YYYY-MM-DD') || s.slice(0, 10)
 }
 
 export function formatMonthInputValue(raw: unknown): string {
   if (raw == null || raw === '') return ''
-  return String(raw).slice(0, 7)
+  const s = String(raw).trim()
+  return calendarInCompanyZone(s, 'YYYY-MM') || s.slice(0, 7)
 }
 
 export function formatDateTimeInputValue(raw: unknown): string {

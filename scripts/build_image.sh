@@ -2,6 +2,7 @@
 # Stage core + named addons, build their webui dist, then docker build.
 # Usage: scripts/build_image.sh <repo> <tag> <module> [module...]
 # Example: scripts/build_image.sh optltd/modoor lyghh fleet freight
+# Platform defaults to linux/amd64 (override with IMAGE_PLATFORM).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -201,11 +202,14 @@ path.write_text(path.read_text().replace(', "external"', ""))
 PY
 
 IMAGE="${REPO}:${TAG}"
-echo ">> docker build -t ${IMAGE}"
+# Host is often arm64 (Apple Silicon). Deploy targets are linux/amd64.
+PLATFORM="${IMAGE_PLATFORM:-linux/amd64}"
+echo ">> docker build --platform ${PLATFORM} -t ${IMAGE}"
 echo "   addons: ${ADDON_NAMES[*]:-none}"
 echo "   static: ${STATIC_CSV}"
 
 docker build \
+  --platform "${PLATFORM}" \
   --build-arg "MODOOR_WEBUI_STATIC_MODULES=${STATIC_CSV}" \
   -f "${STAGE}/Dockerfile" \
   -t "${IMAGE}" \

@@ -88,6 +88,80 @@ def test_shell_modules_filtered_by_role_nodes(client: TestClient):
         assert "wiki.page.read" in access["abilities"]
 
 
+def test_superuser_acting_role_uses_that_roles_nodes(client: TestClient):
+    ctx = resolve_ctx(get_settings())
+    with session_scope() as session:
+        role = base_domain.create_role(session, ctx, name="Docs Only", code="docs-only")
+        base_domain.set_role_nodes(
+            session, ctx, role_id=role["id"], nodes=["doc.asset.read"]
+        )
+        user = base_domain.authenticate_user(
+            session, username="admin", password="admin123"
+        )
+        abilities = base_domain.list_user_abilities(session, ctx, user_id=user.id)
+        assert abilities["unrestricted"] is True
+        limited = base_domain.list_user_abilities(
+            session, ctx, user_id=user.id, active_role="docs-only"
+        )
+        assert limited["unrestricted"] is False
+        assert limited["abilities"] == ["doc.asset.read"]
+        missing = base_domain.list_user_abilities(
+            session, ctx, user_id=user.id, active_role="missing"
+        )
+        assert missing["unrestricted"] is False
+        assert missing["abilities"] == []
+        still = base_domain.list_user_abilities(
+            session, ctx, user_id=user.id, active_role="SUPERUSER"
+        )
+        assert still["unrestricted"] is True
+
+    logged = client.post(
+        "/api/auth/login", json={"username": "admin", "password": "admin123"}
+    )
+    assert logged.status_code == 200
+    profile = client.get("/api/auth/profile")
+    codes = {item["code"] for item in profile.json()["user"]["switch_roles"]}
+    assert "SUPERUSER" in codes
+    assert "docs-only" in codes
+
+    plain = client.get("/api/shell/modules")
+    plain_ids = {m["id"] for m in plain.json()["modules"]}
+    assert "doc" in plain_ids and "freight" in plain_ids
+
+    acted = client.get("/api/shell/modules", headers={"X-Modoor-Role": "docs-only"})
+    assert {m["id"] for m in acted.json()["modules"]} == {"doc"}
+    assert acted.json()["access"]["unrestricted"] is False
+
+    full = client.get("/api/shell/modules", headers={"X-Modoor-Role": "SUPERUSER"})
+    assert full.json()["access"]["unrestricted"] is True
+    assert "freight" in {m["id"] for m in full.json()["modules"]}
+
+
+def test_non_superuser_ignores_acting_role_header(client: TestClient):
+    ctx = resolve_ctx(get_settings())
+    with session_scope() as session:
+        limited = base_domain.create_user(
+            session, ctx, username="clerk", realname="Clerk", password="pw"
+        )
+        role = base_domain.create_role(session, ctx, name="Docs", code="docs")
+        base_domain.set_role_nodes(
+            session, ctx, role_id=role["id"], nodes=["doc.asset.read"]
+        )
+        base_domain.assign_role(session, ctx, user_id=limited["id"], role_id=role["id"])
+        other = base_domain.create_role(session, ctx, name="Wiki Only", code="wiki-only")
+        base_domain.set_role_nodes(
+            session, ctx, role_id=other["id"], nodes=["wiki.page.read"]
+        )
+
+    logged = client.post("/api/auth/login", json={"username": "clerk", "password": "pw"})
+    assert logged.status_code == 200
+    assert "switch_roles" not in logged.json()["user"]
+    profile = client.get("/api/auth/profile")
+    assert "switch_roles" not in profile.json()["user"]
+    shell = client.get("/api/shell/modules", headers={"X-Modoor-Role": "wiki-only"})
+    assert {m["id"] for m in shell.json()["modules"]} == {"doc"}
+
+
 def test_admin_role_sees_all_enabled_modules(client: TestClient):
     logged = client.post(
         "/api/auth/login", json={"username": "admin", "password": "admin123"}

@@ -32,8 +32,11 @@ function toUploaded(asset: AssetPayload, fallbackName = ''): UploadedFile {
   }
 }
 
+/** 文档编号走附件接口；已经是 http(s) 地址的旧图直接用，不再套 /api/doc/assets。 */
 export function assetContentUrl(id: string) {
-  return `/api/doc/assets/${encodeURIComponent(id)}/content`
+  const raw = String(id || '').trim()
+  if (/^https?:\/\//i.test(raw)) return raw
+  return `/api/doc/assets/${encodeURIComponent(raw)}/content`
 }
 
 export async function uploadAsset(
@@ -64,7 +67,12 @@ export async function uploadAsset(
 }
 
 export async function fetchAsset(id: string): Promise<UploadedFile> {
-  const url = `/api/doc/assets/${encodeURIComponent(id)}`
+  const raw = String(id || '').trim()
+  if (/^https?:\/\//i.test(raw)) {
+    const name = decodeURIComponent(raw.split('/').pop() || raw)
+    return { id: raw, filename: name, title: name, mime_type: '' }
+  }
+  const url = `/api/doc/assets/${encodeURIComponent(raw)}`
   const data = await get<{ asset: AssetPayload }>(url)
-  return toUploaded(data.asset || { id }, id)
+  return toUploaded(data.asset || { id: raw }, raw)
 }

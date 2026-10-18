@@ -5,6 +5,7 @@ import {
   localizedEntityLabel,
   type ManifestI18n,
 } from '@modoor/hooks/shell'
+import { setShellDocumentTitle } from '@modoor/hooks/documentTitle'
 import {
   fetchProfile,
   fetchShellModules,
@@ -58,11 +59,12 @@ export function Shell({
   sidebarPagesHead,
 }: Props) {
   const navigate = useNavigate()
-  const { t, locale, setLocale, SUPPORTED_LOCALES } = useI18n()
+  const { t, locale } = useI18n()
   const [user, setUser] = useState<{ login: string; display_name?: string } | null>(null)
   const [modules, setModules] = useState<ShellModule[]>([])
   const [projects, setProjects] = useState<WikiProject[]>(projectsProp || [])
   const [openMenu, setOpenMenu] = useState<OpenMenu>(null)
+  const [tenantName, setTenantName] = useState('')
 
   const wikiModule = useMemo(
     () => modules.find((m) => m.id === 'wiki') || { id: 'wiki', label: 'Wiki', menus: [] },
@@ -102,6 +104,7 @@ export function Shell({
         const cat = await fetchShellModules()
         if (cancelled) return
         setModules(cat.modules || [])
+        setTenantName(String(cat.tenant?.name || ''))
         if (!projectsProp) {
           const list = await listProjects()
           if (!cancelled) setProjects(list.items)
@@ -114,6 +117,11 @@ export function Shell({
       cancelled = true
     }
   }, [projectsProp])
+
+  useEffect(() => {
+    if (!wikiBrand) return
+    setShellDocumentTitle(wikiBrand, tenantName)
+  }, [wikiBrand, tenantName])
 
   function closeMenus() {
     setOpenMenu(null)
@@ -277,29 +285,6 @@ export function Shell({
     </button>
   )
 
-  const languageMenu = (
-    <>
-      <div className="systray-menu-header lang-head">
-        <div className="sub">{t('wiki.language')}</div>
-      </div>
-      {SUPPORTED_LOCALES.map((loc) => (
-        <button
-          key={loc.code}
-          type="button"
-          className={`menu-link${locale === loc.code ? ' active' : ''}`}
-          role="menuitem"
-          onClick={() => {
-            setLocale(loc.code)
-            closeMenus()
-          }}
-        >
-          {loc.label}
-        </button>
-      ))}
-      <div className="sep" />
-    </>
-  )
-
   const avatarBlock = user ? (
     <div
       className={`sidebar-user ${openMenu === 'avatar' ? 'open' : ''}`}
@@ -316,15 +301,15 @@ export function Shell({
         <span className="avatar">{initials(userLabel)}</span>
         <span className="sidebar-user-meta">
           <span className="sidebar-user-name">{userLabel}</span>
+          {tenantName ? <span className="sidebar-user-tenant">{tenantName}</span> : null}
         </span>
       </button>
       {openMenu === 'avatar' ? (
         <div className="systray-menu sidebar-user-menu" role="menu">
           <div className="systray-menu-header">
             <div className="name">{userLabel}</div>
-            <div className="sub">{user.login}</div>
+            {tenantName ? <div className="sub">{tenantName}</div> : null}
           </div>
-          {languageMenu}
           <button type="button" className="menu-link" role="menuitem" onClick={onLogout}>
             {t('wiki.logout')}
           </button>
@@ -428,9 +413,8 @@ export function Shell({
                   <div className="systray-menu" role="menu">
                     <div className="systray-menu-header">
                       <div className="name">{userLabel}</div>
-                      <div className="sub">{user.login}</div>
+                      {tenantName ? <div className="sub">{tenantName}</div> : null}
                     </div>
-                    {languageMenu}
                     <button type="button" className="menu-link" role="menuitem" onClick={onLogout}>
                       {t('wiki.logout')}
                     </button>

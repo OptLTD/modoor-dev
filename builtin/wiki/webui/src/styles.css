@@ -622,9 +622,9 @@ a {
 }
 
 .sidebar-foot .avatar {
-  width: 1.35rem;
-  height: 1.35rem;
-  font-size: 0.58rem;
+  width: 2.25rem;
+  height: 2.25rem;
+  font-size: 0.78rem;
   flex-shrink: 0;
 }
 
@@ -643,7 +643,8 @@ a {
   white-space: nowrap;
 }
 
-.sidebar-user-login {
+.sidebar-user-login,
+.sidebar-user-tenant {
   font-size: 0.72rem;
   color: var(--muted);
   overflow: hidden;
@@ -712,6 +713,7 @@ a {
 }
 
 .tree-item {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 4px;
@@ -728,6 +730,53 @@ a {
 .tree-item.active {
   /* background: var(--accent-soft); */
   color: #115e59;
+}
+
+.tree-item.drop-before::before,
+.tree-item.drop-after::after {
+  content: '';
+  position: absolute;
+  left: 14px;
+  right: 8px;
+  height: 3px;
+  border-radius: 2px;
+  background: #0f766e;
+  box-shadow: -10px 0 0 0 #0f766e;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.tree-item.drop-before::before {
+  top: -2px;
+}
+
+.tree-item.drop-after::after {
+  bottom: -2px;
+}
+
+.tree-item.drop-inside {
+  background: #ccfbf1;
+  box-shadow: inset 4px 0 0 #0f766e;
+}
+
+.tree-item.drop-before .title,
+.tree-item.drop-after .title,
+.tree-item.drop-inside .title {
+  flex: 0 1 auto;
+}
+
+.tree-drop-label {
+  flex: none;
+  margin-left: 6px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: #0f766e;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 650;
+  line-height: 1.5;
+  pointer-events: none;
+  white-space: nowrap;
 }
 
 .tree-item .title {
