@@ -401,15 +401,43 @@
               }"
             >
               <div class="row-actions">
-                <button
-                  v-for="c in api.toolbar.actionClicks"
-                  :key="c.uukey"
-                  type="button"
-                  class="link"
-                  @click="onActionClick(c, row)"
-                >
-                  {{ c.label || c.uukey }}
-                </button>
+                <template v-for="(cluster, i) in api.toolbar.actionClusters" :key="cluster.key + '-' + i">
+                  <Dropdown
+                    v-if="cluster.group && cluster.clicks.length > 1"
+                    align="start"
+                    :min-width="112"
+                  >
+                    <template #trigger="{ open }">
+                      <button
+                        type="button"
+                        class="link"
+                        :aria-expanded="open"
+                        aria-haspopup="true"
+                      >
+                        {{ clusterLabel(cluster) }}
+                        <span aria-hidden="true">▾</span>
+                      </button>
+                    </template>
+                    <button
+                      v-for="c in cluster.clicks"
+                      :key="c.uukey"
+                      type="button"
+                      class="dropdown-item"
+                      role="menuitem"
+                      @click="onActionClick(c, row)"
+                    >
+                      {{ c.label || c.uukey }}
+                    </button>
+                  </Dropdown>
+                  <button
+                    v-else
+                    type="button"
+                    class="link"
+                    @click="onActionClick(cluster.clicks[0], row)"
+                  >
+                    {{ cluster.clicks[0].label || cluster.clicks[0].uukey }}
+                  </button>
+                </template>
                 <slot name="row-actions" :row="row" />
               </div>
             </td>
@@ -1192,6 +1220,10 @@ defineExpose({
   gap: 6px;
   align-items: center;
   justify-content: center;
+}
+.row-actions :deep(.dropdown-trigger) {
+  display: inline-flex;
+  align-items: center;
 }
 .list-totals .sticky-action {
   z-index: 13;

@@ -96,8 +96,6 @@ export function useSchemaTable(
   const filterHidden = ref<string[] | null>(null)
 
   const colWidths = reactive<Record<string, number>>({})
-  const actionResizeMin = computed(() => Math.max(ACTION_MIN, props.actionMin ?? 48))
-  const actionWidth = ref(actionResizeMin.value)
 
   const fields = computed(() => props.table.fields || [])
   const using = computed(() => props.using || props.table.using || 'default')
@@ -170,16 +168,9 @@ export function useSchemaTable(
     return String(c.ctype || 'button').toLowerCase() === 'action' ? 'action' : 'button'
   }
 
-  const buttonClicks = computed(() =>
-    (props.table.clicks || []).filter((c) => clickCtype(c) === 'button'),
-  )
-  const actionClicks = computed(() =>
-    (props.table.clicks || []).filter((c) => clickCtype(c) === 'action'),
-  )
-
-  const toolbarClusters = computed(() => {
+  function clusterClicks(clicks: SchemaClick[]) {
     const out: { key: string; group?: string; clicks: SchemaClick[] }[] = []
-    for (const c of buttonClicks.value) {
+    for (const c of clicks) {
       const g = String(c.group || '').trim() || undefined
       const last = out[out.length - 1]
       if (g && last?.group === g) {
@@ -189,7 +180,30 @@ export function useSchemaTable(
       out.push({ key: g ? `g:${g}` : c.uukey, group: g, clicks: [c] })
     }
     return out
+  }
+
+  const buttonClicks = computed(() =>
+    (props.table.clicks || []).filter((c) => clickCtype(c) === 'button'),
+  )
+  const actionClicks = computed(() =>
+    (props.table.clicks || []).filter((c) => clickCtype(c) === 'action'),
+  )
+
+  const toolbarClusters = computed(() => clusterClicks(buttonClicks.value))
+  const actionClusters = computed(() => clusterClicks(actionClicks.value))
+
+  const actionResizeMin = computed(() => {
+    const floor = Math.max(ACTION_MIN, props.actionMin ?? 48)
+    const clusters = actionClusters.value
+    const grouped = clusters.some((c) => c.group && c.clicks.length > 1)
+    if (!grouped) return floor
+    const estimate = clusters.reduce(
+      (n, c) => n + (c.group && c.clicks.length > 1 ? 56 : 40),
+      16,
+    )
+    return Math.max(floor, estimate)
   })
+  const actionWidth = ref(actionResizeMin.value)
 
   const stickyKeys = computed(() => {
     const sticky = props.table.sticky
@@ -1172,8 +1186,9 @@ export function useSchemaTable(
     },
     /** 工具栏 clicks */
     toolbar: {
-      toolbarClusters,
       actionClicks,
+      actionClusters,
+      toolbarClusters,
     },
     /** 行选择 */
     selection: {

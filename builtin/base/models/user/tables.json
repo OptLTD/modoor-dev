@@ -18,11 +18,11 @@
     ],
     "clicks": [
       "create",
+      "modify",
       "set_role",
       "set_pswd",
       "enable",
-      "disable",
-      "modify"
+      "disable"
     ],
     "query": {},
     "extra": {}

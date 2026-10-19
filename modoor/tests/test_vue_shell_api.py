@@ -99,7 +99,9 @@ def test_vue_shell_apis(client: TestClient):
     assert "delete" not in click_ids
     assert {"set_role", "set_pswd", "enable", "disable"} <= click_ids
     grouped = {c["uukey"]: c.get("group") for c in schema.json()["table"]["clicks"]}
-    assert grouped["set_role"] == grouped["set_pswd"] == grouped["enable"] == grouped["disable"] == "account"
+    assert grouped["set_role"] == grouped["set_pswd"] == grouped["enable"] == grouped["disable"] == "more"
+    ctypes = {c["uukey"]: c.get("ctype") for c in schema.json()["table"]["clicks"]}
+    assert ctypes["set_role"] == ctypes["set_pswd"] == ctypes["enable"] == ctypes["disable"] == "action"
     assert not grouped.get("create")
 
     admin = users.json()["items"][0]

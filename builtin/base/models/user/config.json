@@ -211,33 +211,33 @@
       "uukey": "set_role",
       "label": "设置角色",
       "action": "user.set_role",
-      "group": "更多",
-      "seqno": 2,
-      "ctype": "button"
+      "group": "more",
+      "seqno": 91,
+      "ctype": "action"
     },
     "set_pswd": {
       "uukey": "set_pswd",
       "label": "设置密码",
       "action": "user.set_pswd",
-      "group": "更多",
-      "seqno": 3,
-      "ctype": "button"
+      "group": "more",
+      "seqno": 92,
+      "ctype": "action"
     },
     "enable": {
       "uukey": "enable",
       "label": "启用账号",
       "action": "user.enable",
-      "group": "更多",
-      "seqno": 4,
-      "ctype": "button"
+      "group": "more",
+      "seqno": 93,
+      "ctype": "action"
     },
     "disable": {
       "uukey": "disable",
       "label": "停用账号",
       "action": "user.disable",
-      "group": "更多",
-      "seqno": 5,
-      "ctype": "button"
+      "group": "more",
+      "seqno": 94,
+      "ctype": "action"
     },
     "modify": {
       "uukey": "modify",

@@ -99,21 +99,47 @@
       :model="drawerModel"
       :uukey="drawerUukey || undefined"
       @close="closeDrawer"
-    >      <RecordFlatDetail
+    > 
+      <RecordFlatDetail
         :model="drawerModel"
         :uukey="drawerUukey || undefined"
         :lookup="drawerLookup"
       />
     </RecordDrawer>
 
-    <div v-if="pwdOpen" class="modal-mask" @click.self="closePassword">
-      <div class="modal pwd-modal">
+    <div v-if="activeOpen" class="modal-mask" @click.self="closeActive">
+      <div class="modal account-modal">
         <header class="modal-head">
-          <strong>{{ t('base.changePassword') }}</strong>
+          <strong>{{
+            accountTitle(
+              activeNext ? t('base.enableAccount') : t('base.disableAccount'),
+              activeName,
+            )
+          }}</strong>
+          <button type="button" class="link" @click="closeActive">{{ t('widget.close') }}</button>
+        </header>
+        <form class="form account-form" @submit.prevent="submitActive">
+          <p class="confirm-copy">
+            {{ activeNext ? t('base.confirmEnable') : t('base.confirmDisable') }}
+          </p>
+          <p v-if="activeError" class="error">{{ activeError }}</p>
+          <div class="modal-actions">
+            <button type="button" class="btn" @click="closeActive">{{ t('widget.cancel') }}</button>
+            <button type="submit" class="btn primary" :disabled="activeSaving">
+              {{ activeSaving ? t('widget.saving') : t('widget.confirm') }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div v-if="pwdOpen" class="modal-mask" @click.self="closePassword">
+      <div class="modal account-modal">
+        <header class="modal-head">
+          <strong>{{ accountTitle(t('base.changePassword'), pwdUserName) }}</strong>
           <button type="button" class="link" @click="closePassword">{{ t('widget.close') }}</button>
         </header>
-        <form class="form" @submit.prevent="submitPassword">
-          <p v-if="pwdUserName" class="muted">{{ pwdUserName }}</p>
+        <form class="form account-form" @submit.prevent="submitPassword">
           <label>
             {{ t('base.newPassword') }}
             <input v-model="pwd1" type="password" autocomplete="new-password" />
@@ -123,7 +149,7 @@
             <input v-model="pwd2" type="password" autocomplete="new-password" />
           </label>
           <p v-if="pwdError" class="error">{{ pwdError }}</p>
-          <div class="modal-actions pwd-actions">
+          <div class="modal-actions">
             <button type="button" class="btn" @click="closePassword">{{ t('widget.cancel') }}</button>
             <button type="submit" class="btn primary" :disabled="pwdSaving">
               {{ pwdSaving ? t('widget.saving') : t('widget.save') }}
@@ -134,25 +160,26 @@
     </div>
 
     <div v-if="roleOpen" class="modal-mask" @click.self="closeRoles">
-      <div class="modal pwd-modal">
+      <div class="modal account-modal">
         <header class="modal-head">
-          <strong>{{ t('base.setRole') }}</strong>
+          <strong>{{ accountTitle(t('base.setRole'), roleUserName) }}</strong>
           <button type="button" class="link" @click="closeRoles">{{ t('widget.close') }}</button>
         </header>
-        <form class="form" @submit.prevent="submitRoles">
-          <p v-if="roleUserName" class="muted">{{ roleUserName }}</p>
+        <form class="form account-form" @submit.prevent="submitRoles">
           <p v-if="!allRoles.length" class="muted">{{ t('base.noRolesToAssign') }}</p>
-          <label v-for="r in allRoles" :key="r.id" class="role-check">
-            <input
-              type="checkbox"
-              :checked="pickedRoleIds.includes(r.id)"
-              @change="togglePickedRole(r.id, ($event.target as HTMLInputElement).checked)"
-            />
-            <span>{{ r.name }}</span>
-            <code>{{ r.code }}</code>
-          </label>
+          <div v-else class="role-list">
+            <label v-for="r in allRoles" :key="r.id" class="role-check">
+              <input
+                type="checkbox"
+                :checked="pickedRoleIds.includes(r.id)"
+                @change="togglePickedRole(r.id, ($event.target as HTMLInputElement).checked)"
+              />
+              <span>{{ r.name }}</span>
+              <code>{{ r.code }}</code>
+            </label>
+          </div>
           <p v-if="roleError" class="error">{{ roleError }}</p>
-          <div class="modal-actions pwd-actions">
+          <div class="modal-actions">
             <button type="button" class="btn" @click="closeRoles">{{ t('widget.cancel') }}</button>
             <button type="submit" class="btn primary" :disabled="roleSaving">
               {{ roleSaving ? t('widget.saving') : t('widget.save') }}
@@ -211,6 +238,13 @@ const drawerModel = ref('base.user')
 const drawerUukey = ref('')
 const drawerLookup = ref<Record<string, unknown> | undefined>()
 const drawerTitle = ref('')
+
+const activeOpen = ref(false)
+const activeNext = ref(true)
+const activeName = ref('')
+const activeId = ref<string | null>(null)
+const activeSaving = ref(false)
+const activeError = ref('')
 
 const pwdOpen = ref(false)
 const pwdUserId = ref<string | null>(null)
@@ -289,11 +323,9 @@ function rowUserName(row: Record<string, unknown>) {
   return String(row['basic.name'] || row['basic.realname'] || row['basic.username'] || '')
 }
 
-function isRowActive(row: Record<string, unknown>) {
-  const v = row['basic.active'] ?? row['basic.enable']
-  if (v === true || v === 'true' || v === 1 || v === '1') return true
-  if (v === false || v === 'false' || v === 0 || v === '0') return false
-  return true
+function accountTitle(action: string, name: string) {
+  const who = name.trim()
+  return who ? `${action} · ${who}` : action
 }
 
 function isCurrentUser(row: Record<string, unknown>) {
@@ -410,19 +442,22 @@ function onButtonClick(payload: {
     formOpen.value = true
     return
   }
-  const row = payload.records[0]
-  switch (payload.click.uukey) {
+}
+
+function onAccountClick(uukey: string, row: Record<string, unknown> | undefined) {
+  if (!row) return
+  switch (uukey) {
     case 'set_role':
-      if (row) void onOpenRoles(row)
+      void onOpenRoles(row)
       return
     case 'set_pswd':
-      if (row) onOpenPassword(row)
+      onOpenPassword(row)
       return
     case 'enable':
-      void onSetActiveRows(payload.records, true)
+      void onSetActiveRows([row], true)
       return
     case 'disable':
-      void onSetActiveRows(payload.records, false)
+      void onSetActiveRows([row], false)
       return
   }
 }
@@ -446,7 +481,9 @@ function onActionClick(payload: {
     formMode.value = 'modify'
     formRow.value = payload.record
     formOpen.value = true
+    return
   }
+  onAccountClick(uk, payload.record)
 }
 
 async function onRecordClick(payload: {
@@ -480,30 +517,44 @@ function closeDrawer() {
   drawerTitle.value = ''
 }
 
-async function onSetActiveRows(targets: Record<string, unknown>[], next: boolean) {
-  const rows = targets.filter((row) => {
-    if (isCurrentUser(row) && !next) return false
-    return next !== isRowActive(row)
-  })
-  if (!rows.length) {
-    if (targets.some((row) => isCurrentUser(row) && !next)) {
-      error.value = t('base.cannotDisableSelf')
-    }
+function onSetActiveRows(targets: Record<string, unknown>[], next: boolean) {
+  const row = targets[0]
+  if (!row) return
+  if (isCurrentUser(row) && !next) {
+    error.value = t('base.cannotDisableSelf')
     return
   }
-  const name = rows.length === 1 ? rowUserName(rows[0]) : String(rows.length)
-  const ok = confirm(
-    next ? t('base.confirmEnable', { name }) : t('base.confirmDisable', { name }),
-  )
-  if (!ok) return
+  const id = rowUserKey(row)
+  if (!id) return
+  error.value = ''
+  activeId.value = id
+  activeName.value = rowUserName(row)
+  activeNext.value = next
+  activeError.value = ''
+  activeOpen.value = true
+}
+
+function closeActive() {
+  if (activeSaving.value) return
+  activeOpen.value = false
+  activeId.value = null
+  activeName.value = ''
+  activeError.value = ''
+}
+
+async function submitActive() {
+  const id = activeId.value
+  if (!id) return
+  activeSaving.value = true
+  activeError.value = ''
   try {
-    for (const row of rows) {
-      const id = rowUserKey(row)
-      if (id) await updateUser(id, { active: next })
-    }
+    await updateUser(id, { active: activeNext.value })
+    activeSaving.value = false
+    closeActive()
     await tableRef.value?.reload()
   } catch (e) {
-    error.value = e instanceof Error ? e.message : String(e)
+    activeError.value = e instanceof Error ? e.message : String(e)
+    activeSaving.value = false
   }
 }
 
@@ -790,24 +841,79 @@ onMounted(async () => {
   flex-direction: column;
 }
 
-.pwd-modal {
-  width: min(420px, 100%);
+.account-modal {
+  width: min(440px, 100%);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
-.pwd-actions {
-  padding-bottom: 4px;
+.account-modal .modal-head strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.account-form {
+  margin-top: 0;
+}
+
+.account-form .modal-actions {
+  margin-top: 4px;
+}
+
+.confirm-copy {
+  margin: 4px 0 12px;
+  color: var(--ink);
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.role-list {
+  display: flex;
+  flex-direction: column;
+  max-height: min(420px, 55vh);
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
 }
 
 .role-check {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 0;
+  gap: 10px;
+  margin: 0;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--line);
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.role-check:last-child {
+  border-bottom: 0;
+}
+
+.role-check:hover {
+  background: #f4f7f6;
+}
+
+.role-check input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  flex: 0 0 auto;
+}
+
+.role-check span {
+  flex: 1;
+  min-width: 0;
 }
 
 .role-check code {
-  margin-left: auto;
-  font-size: 0.78rem;
+  margin: 0;
+  flex: 0 0 auto;
+  font-size: 0.75rem;
   color: var(--muted);
 }
 
