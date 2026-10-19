@@ -32,6 +32,8 @@ export type ShellModule = {
   online?: boolean
   /** Sort order in module switcher / workbench (smaller first). */
   seqno?: number
+  /** Nav position set on the module. */
+  menuLayout?: 'top' | 'side'
   /** Flat i18n from module.yaml; `app.label` + keys matching entity id|key. */
   i18n?: ManifestI18n
   menus?: ShellMenu[]

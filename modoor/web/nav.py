@@ -431,6 +431,7 @@ def registry_catalog(
     tenant_id = getattr(user, "tenant", None)
     tenant_name = settings.modoor_tenant
     access = {"unrestricted": False, "abilities": []}
+    menu_layouts: dict[str, str] = {}
     if tenant_id is not None:
         from modoor.core.ctx import Ctx
         from modoor.core.db import session_scope
@@ -451,7 +452,14 @@ def registry_catalog(
                     user_id=int(user.id),
                     active_role=active_role,
                 )
+            from builtin.base.global_settings import get_menu_layouts
+
+            menu_layouts = get_menu_layouts(
+                session,
+                Ctx(tenant=int(tenant_id), user_id=0, team_id=0),
+            )
     else:
+        from modoor.core.ctx import Ctx
         from modoor.core.db import session_scope
         from builtin.base.domain import ensure_tenant
 
@@ -461,6 +469,15 @@ def registry_catalog(
                     session, tenant_name, tenant_id=settings.modoor_tenant_id
                 )["tenant"]["id"]
             )
+            from builtin.base.global_settings import get_menu_layouts
+
+            menu_layouts = get_menu_layouts(
+                session,
+                Ctx(tenant=int(tenant_id), user_id=0, team_id=0),
+            )
+    modules = switcher_items(enabled, allowed_modules=allowed_modules)
+    for item in modules:
+        item["menuLayout"] = menu_layouts.get(str(item.get("id") or ""), "top")
     return {
         "tenant": {
             "id": tenant_id,
@@ -469,7 +486,7 @@ def registry_catalog(
         "profile": profile_dict(user),
         "modoor_url": base,
         "logout_url": f"{base}/logout",
-        "modules": switcher_items(enabled, allowed_modules=allowed_modules),
+        "modules": modules,
         "exports": aggregated_exports(),
         "access": access,
     }

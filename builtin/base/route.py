@@ -70,6 +70,10 @@ class ModuleToggle(BaseModel):
     enabled: bool
 
 
+class ModuleMenuLayout(BaseModel):
+    layout: str = "top"
+
+
 class ConfigUpsert(BaseModel):
     mod: str
     type: str
@@ -335,12 +339,30 @@ def api_revoke_role(request: Request, body: RoleAssign) -> dict[str, Any]:
 
 @router.get("/modules")
 def api_list_modules(request: Request) -> dict[str, Any]:
-    require_user(request)
+    user = require_user(request)
     clear_ui_cache()
     with session_scope() as session:
         sync_discovered_modules(session, kit().tenant())
         modules = list_modules(session, kit().tenant())
+        from builtin.base.global_settings import get_menu_layouts
+
+        layouts = get_menu_layouts(session, ctx_of(user))
+    for item in modules:
+        item["menuLayout"] = layouts.get(str(item.get("id") or ""), "top")
     return {"modules": modules}
+
+
+@router.post("/modules/{module_id}/menu")
+def api_module_menu(request: Request, module_id: str, body: ModuleMenuLayout) -> dict[str, Any]:
+    user = require_user(request)
+    try:
+        with session_scope() as session:
+            from builtin.base.global_settings import save_module_menu_layout
+
+            layout = save_module_menu_layout(session, ctx_of(user), module_id, body.layout)
+        return {"ok": True, "module_id": module_id, "layout": layout}
+    except Exception as exc:  # noqa: BLE001
+        raise http_error(exc) from exc
 
 
 @router.post("/modules/{module_id}/toggle")

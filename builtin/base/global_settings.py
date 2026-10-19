@@ -16,6 +16,7 @@ from builtin.base import domain as base_domain
 
 GLOBAL_MOD = "base"
 GLOBAL_TYPE = "global.settings"
+MENU_LAYOUT = "menu.layout"
 
 LOCALES = ("zh-CN", "en-US")
 TIMEZONES: tuple[tuple[str, str, str], ...] = (
@@ -109,6 +110,51 @@ def user_can_edit_global(
         return True
     abilities = set(access.get("abilities") or [])
     return "base.app.write" in abilities or "base.user.write" in abilities
+
+
+def normalize_menu_layouts(raw: Any) -> dict[str, str]:
+    """Per-module nav position. Only ``side`` is stored; missing means top."""
+    if not isinstance(raw, dict):
+        return {}
+    out: dict[str, str] = {}
+    for key, value in raw.items():
+        mid = str(key or "").strip()
+        if not mid or not _MODULE_RE.match(mid):
+            continue
+        if str(value or "").strip() == "side":
+            out[mid] = "side"
+    return out
+
+
+def get_menu_layouts(session: Session, ctx: Ctx) -> dict[str, str]:
+    row = base_domain.get_config(session, ctx, mod=GLOBAL_MOD, type=MENU_LAYOUT)
+    data = row.data if row is not None else None
+    return normalize_menu_layouts(data)
+
+
+def save_module_menu_layout(
+    session: Session,
+    ctx: Ctx,
+    module_id: str,
+    layout: str,
+) -> str:
+    mid = str(module_id or "").strip()
+    if not _MODULE_RE.match(mid):
+        raise AppError("validation_error", "invalid module")
+    choice = "side" if str(layout or "").strip() == "side" else "top"
+    current = get_menu_layouts(session, ctx)
+    if choice == "side":
+        current[mid] = "side"
+    else:
+        current.pop(mid, None)
+    base_domain.upsert_config(
+        session, ctx,
+        mod=GLOBAL_MOD,
+        type=MENU_LAYOUT,
+        data=current,
+        title="菜单样式",
+    )
+    return choice
 
 
 def landing_module(

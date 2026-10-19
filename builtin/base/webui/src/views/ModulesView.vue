@@ -126,18 +126,30 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { useI18n, useUserPrefs, type MenuLayout } from '@modoor/hooks'
-import { listModules, toggleModule, type ModuleItem } from '../api/base'
+import { useI18n, type MenuLayout } from '@modoor/hooks'
+import { listModules, setModuleMenu, toggleModule, type ModuleItem } from '../api/base'
 
 const { t } = useI18n()
-const { prefs, setModuleMenuLayout } = useUserPrefs()
 
 function menuOf(moduleId: string): MenuLayout {
-  return prefs.value.moduleMenus[moduleId] === 'side' ? 'side' : 'top'
+  const hit = modules.value.find((item) => item.id === moduleId)
+  return hit?.menuLayout === 'side' ? 'side' : 'top'
 }
 
-function onMenuLayout(moduleId: string, layout: MenuLayout) {
-  setModuleMenuLayout(moduleId, layout)
+async function onMenuLayout(moduleId: string, layout: MenuLayout) {
+  const prev = menuOf(moduleId)
+  if (prev === layout) return
+  modules.value = modules.value.map((item) =>
+    item.id === moduleId ? { ...item, menuLayout: layout } : item,
+  )
+  try {
+    await setModuleMenu(moduleId, layout)
+  } catch (err) {
+    modules.value = modules.value.map((item) =>
+      item.id === moduleId ? { ...item, menuLayout: prev } : item,
+    )
+    error.value = err instanceof Error ? err.message : String(err)
+  }
 }
 const error = ref('')
 const keyword = ref('')

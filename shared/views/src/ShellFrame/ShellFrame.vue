@@ -341,19 +341,15 @@
             <span class="settings-hint">{{ t('shell.menuLayoutHint') }}</span>
             <div class="settings-options">
               <label class="settings-option">
-                <input
-                  v-model="draftMenuLayout"
-                  type="radio"
-                  value="top"
-                />
+                <input v-model="draftMenuLayout" type="radio" value="" />
+                <span>{{ t('shell.menuLayoutFollow') }}</span>
+              </label>
+              <label class="settings-option">
+                <input v-model="draftMenuLayout" type="radio" value="top" />
                 <span>{{ t('shell.menuLayoutTop') }}</span>
               </label>
               <label class="settings-option">
-                <input
-                  v-model="draftMenuLayout"
-                  type="radio"
-                  value="side"
-                />
+                <input v-model="draftMenuLayout" type="radio" value="side" />
                 <span>{{ t('shell.menuLayoutSide') }}</span>
               </label>
             </div>
@@ -553,7 +549,10 @@ const openSideGroups = ref<Set<string>>(new Set())
 const activeModule = ref(props.moduleId)
 const menuLayout = computed(() => {
   const mid = String(activeModule.value || props.moduleId || '').trim()
-  return mid && prefs.value.moduleMenus[mid] === 'side' ? 'side' : 'top'
+  const personal = mid ? prefs.value.moduleMenus[mid] : undefined
+  if (personal === 'side' || personal === 'top') return personal
+  const hit = modules.value.find((item) => item.id === mid)
+  return hit?.menuLayout === 'side' ? 'side' : 'top'
 })
 const sysTrayWidget = computed(() => resolveSysTrayWidget(activeModule.value || props.moduleId))
 const logoSrc = '/logo.png'
@@ -565,7 +564,7 @@ const agentConnectError = ref('')
 const agentConnect = ref<AgentConnectInfo | null>(null)
 const agentGuideOpen = ref(false)
 const userSettingsOpen = ref(false)
-const draftMenuLayout = ref<MenuLayout>('top')
+const draftMenuLayout = ref<MenuLayout | ''>('')
 const agentGuideTitleId = 'shell-agent-guide-title'
 const agentConnectTitleId = 'shell-agent-connect-title'
 const userSettingsTitleId = 'shell-user-settings-title'
@@ -866,12 +865,15 @@ async function selectTenant(tn: TenantOption) {
 
 function openUserSettings() {
   closeMenus()
-  draftMenuLayout.value = menuLayout.value
+  const mid = String(activeModule.value || props.moduleId || '').trim()
+  const personal = mid ? prefs.value.moduleMenus[mid] : undefined
+  draftMenuLayout.value = personal === 'side' || personal === 'top' ? personal : ''
   userSettingsOpen.value = true
 }
 
 function applyUserSettings() {
-  setModuleMenuLayout(activeModule.value || props.moduleId, draftMenuLayout.value)
+  const mid = String(activeModule.value || props.moduleId || '').trim()
+  setModuleMenuLayout(mid, draftMenuLayout.value || null)
   userSettingsOpen.value = false
 }
 

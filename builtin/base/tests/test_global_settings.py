@@ -2,7 +2,11 @@
 
 from __future__ import annotations
 
-from builtin.base.global_settings import landing_module, normalize_global_settings
+from builtin.base.global_settings import (
+    landing_module,
+    normalize_global_settings,
+    normalize_menu_layouts,
+)
 
 
 def test_normalize_keeps_known_values_and_drops_unknown():
@@ -27,6 +31,13 @@ def test_normalize_keeps_known_values_and_drops_unknown():
     assert bad["timezone"] == "Asia/Shanghai"
     assert bad["timeFormat"] == "YYYY-MM-DD HH:mm:ss"
     assert bad["defaultModule"] == ""
+
+
+def test_menu_layout_keeps_side_and_drops_top():
+    assert normalize_menu_layouts({"fleet": "side", "base": "top", "../x": "side"}) == {
+        "fleet": "side"
+    }
+    assert normalize_menu_layouts(None) == {}
 
 
 def test_landing_module_respects_permission_and_workbench():

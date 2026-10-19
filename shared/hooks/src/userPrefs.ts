@@ -6,7 +6,7 @@ export type MenuLayout = 'top' | 'side'
 export type ThemePref = 'system' | 'light' | 'dark'
 
 export type UserPrefs = {
-  /** Per-module overrides. Missing key = top (default). */
+  /** Per-module overrides. A missing key follows the tenant module setting. */
   moduleMenus: Record<string, MenuLayout>
   /** Reserved — UI only for now */
   theme: ThemePref
@@ -34,8 +34,7 @@ function normalizeModuleMenus(raw: unknown): Record<string, MenuLayout> {
   for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
     const mid = String(key || '').trim()
     if (!mid) continue
-    const layout = normalizeMenuLayout(value)
-    if (layout !== 'top') out[mid] = layout
+    out[mid] = normalizeMenuLayout(value)
   }
   return out
 }
@@ -71,27 +70,32 @@ export function getUserPrefs(): UserPrefs {
   }
 }
 
-export function menuLayoutFor(moduleId: string): MenuLayout {
+export function moduleMenuOverride(moduleId: string): MenuLayout | null {
   const mid = String(moduleId || '').trim()
-  if (!mid) return 'top'
-  return normalizeMenuLayout(prefsRef.value.moduleMenus[mid])
+  if (!mid) return null
+  const raw = prefsRef.value.moduleMenus[mid]
+  return raw === 'side' || raw === 'top' ? raw : null
 }
 
-export function setModuleMenuLayout(moduleId: string, layout: MenuLayout): MenuLayout {
+export function menuLayoutFor(moduleId: string): MenuLayout {
+  return moduleMenuOverride(moduleId) || 'top'
+}
+
+export function setModuleMenuLayout(moduleId: string, layout: MenuLayout | null): MenuLayout | null {
   const mid = String(moduleId || '').trim()
-  const next = normalizeMenuLayout(layout)
-  if (!mid) return next
+  if (!mid) return layout == null ? null : normalizeMenuLayout(layout)
   const current = { ...prefsRef.value.moduleMenus }
-  if (next === 'top') {
-    if (!(mid in current)) return next
+  if (layout == null) {
+    if (!(mid in current)) return null
     delete current[mid]
   } else {
+    const next = normalizeMenuLayout(layout)
     if (current[mid] === next) return next
     current[mid] = next
   }
   prefsRef.value = { ...prefsRef.value, moduleMenus: current }
   writeStored(prefsRef.value)
-  return next
+  return layout == null ? null : current[mid]
 }
 
 /** @deprecated Use setModuleMenuLayout — global layout is no longer used. */
@@ -110,5 +114,13 @@ export function setThemePref(theme: ThemePref): ThemePref {
 export function useUserPrefs() {
   const prefs = computed(() => prefsRef.value)
   const theme = computed(() => prefsRef.value.theme)
-  return { prefs, theme, menuLayoutFor, setModuleMenuLayout, setMenuLayout, setThemePref }
+  return {
+    prefs,
+    theme,
+    menuLayoutFor,
+    moduleMenuOverride,
+    setModuleMenuLayout,
+    setMenuLayout,
+    setThemePref,
+  }
 }

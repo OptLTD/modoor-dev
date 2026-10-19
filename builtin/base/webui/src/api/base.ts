@@ -185,6 +185,7 @@ export type ModuleItem = {
   tags?: string[]
   risk_default?: string
   enabled: boolean
+  menuLayout?: 'top' | 'side'
   online?: boolean
   source?: string
   origin?: 'lightapp' | 'builtin' | 'addon' | string
@@ -199,4 +200,11 @@ export async function listModules() {
 
 export async function toggleModule(moduleId: string, enabled: boolean) {
   return post(`/api/base/modules/${moduleId}/toggle`, { enabled })
+}
+
+export async function setModuleMenu(moduleId: string, layout: 'top' | 'side') {
+  return post<{ ok: boolean; module_id: string; layout: 'top' | 'side' }>(
+    `/api/base/modules/${moduleId}/menu`,
+    { layout },
+  )
 }
