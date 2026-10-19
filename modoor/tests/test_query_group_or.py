@@ -41,6 +41,18 @@ def test_parse_named_or_groups_stay_separate():
     assert {t.field for t in terms if t.group == "or:total"} == {"extra.total"}
 
 
+def test_nil_treats_blank_string_as_empty():
+    blank = QueryTerm(field="basic.trailer", op="NIL", value=True)
+    filled = QueryTerm(field="basic.trailer", op="NIL", value=False)
+    assert match_term_value(None, blank)
+    assert match_term_value("", blank)
+    assert match_term_value("   ", blank)
+    assert not match_term_value("TRL00001", blank)
+    assert match_term_value("TRL00001", filled)
+    assert not match_term_value("", filled)
+    assert not match_term_value(None, QueryTerm(field="basic.trailer", op="NNL", value=True))
+
+
 def test_in_matches_any_item_of_a_list():
     term = QueryTerm(field="basic.tags", op="IN", value=["night", "cold"])
     assert match_term_value(["night"], term)

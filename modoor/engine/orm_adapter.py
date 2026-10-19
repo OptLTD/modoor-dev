@@ -11,7 +11,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Any, Callable
 
-from sqlalchemy import Float, JSON, String, and_, asc, case, cast, desc, distinct, func, literal, or_, select
+from sqlalchemy import Float, JSON, String, Text, and_, asc, case, cast, desc, distinct, func, literal, or_, select
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Session
 
@@ -99,6 +99,15 @@ def to_float(val: Decimal | float | int | None) -> float | None:
     if val is None:
         return None
     return float(val)
+
+
+def _nil_wanted(op: str, val: Any) -> bool | None:
+    """前端把「为空 / 不为空」都写成 NIL：true 为空，false 不为空。NNL 同样是不为空。"""
+    if op == "NNL":
+        return False
+    if op == "NIL":
+        return val in (True, "true", 1, "1")
+    return None
 
 
 class ColsOrmAdapter(ModelAdapter):
@@ -260,13 +269,15 @@ class ColsOrmAdapter(ModelAdapter):
             op = term.op
             val = self._coerce_query_val(term.field, op, term.value)
             text = self._json_text_expr(group, field)
-            if op == "NIL" and term.field in self.NUM_KEYS:
+            blank = _nil_wanted(op, val)
+            if blank is not None and term.field in self.NUM_KEYS:
                 element = self._json_element(getattr(cls, group), field)
                 missing = or_(element.is_(None), func.jsonb_typeof(element) != "number")
-                return missing if val in (True, "true", 1, "1") else ~missing
-            if op == "NIL":
-                missing = or_(text.is_(None), text == "", text == "null")
-                return missing if val in (True, "true", 1, "1") else ~missing
+                return missing if blank else ~missing
+            if blank is not None:
+                trimmed = func.btrim(text)
+                missing = or_(text.is_(None), trimmed == "", trimmed == "null")
+                return missing if blank else ~missing
             if term.field in self.NUM_KEYS and op not in ("LIKE", "IN"):
                 num = self._json_num_expr(group, field)
                 if op == "EQ":
@@ -317,8 +328,9 @@ class ColsOrmAdapter(ModelAdapter):
             return col.in_(vals)
         if op == "LIKE":
             return col.ilike(f"%{val}%") if hasattr(col, "ilike") else col.like(f"%{val}%")
-        if op == "NIL":
-            return col.is_(None) if val in (True, "true", 1, "1") else col.is_not(None)
+        blank = _nil_wanted(op, val)
+        if blank is not None:
+            return self._blank_clause(col, term.field, blank)
         if op == "BTW" and isinstance(val, (list, tuple)) and len(val) >= 2:
             return and_(col >= val[0], col <= val[1])
         if op == "GT":
@@ -527,22 +539,12 @@ class ColsOrmAdapter(ModelAdapter):
         size: int,
         field_keys: list[str],
     ) -> tuple[list[dict[str, Any]], int, dict[str, Any] | None]:
-        cls = self.entity_cls
         page = max(int(page or 1), 1)
         size = min(max(int(size or 50), 1), 500)
         terms = parse_query(query)
         base = self._scoped_select(ctx, terms)
         count = session.scalar(select(func.count()).select_from(base.subquery())) or 0
-        resolved = resolve_list_order(order)
-        order_field = resolved["field"]
-        order_dir = resolved["order"]
-        col_name = self.COLS.get(order_field)
-        col = getattr(cls, col_name, None) if col_name else None
-        if col is None and order_field == "basic.utime":
-            col = getattr(cls, "utime", None)
-        if col is None:
-            col = getattr(cls, self.COLS.get("basic.uukey", "uukey"), getattr(cls, "uukey", cls.id))
-        ordered = base.order_by(desc(col) if order_dir == "desc" else asc(col))
+        ordered = base.order_by(self._order_by(None, order))
         rows = session.scalars(ordered.offset((page - 1) * size).limit(size)).all()
         values = [self._to_values(r, field_keys) for r in rows]
         totals = self._search_totals(session, ctx, terms, field_keys, int(count))
@@ -861,10 +863,9 @@ class ColsOrmAdapter(ModelAdapter):
             for index, spec in enumerate(extra_specs):
                 facets[spec["sk"]] = self._facet_payload(extra[index], spec, lim)
 
-        order_col, order_fn = self._order_piece(None, order)
         rows = session.scalars(
             self._scoped_select(ctx, terms)
-            .order_by(order_fn(order_col))
+            .order_by(self._order_by(None, order))
             .offset((page - 1) * size)
             .limit(size)
         ).all()
@@ -912,17 +913,40 @@ class ColsOrmAdapter(ModelAdapter):
             agg = agg.filter(clause)
         return func.coalesce(agg, 0)
 
-    def _order_piece(self, source: Any, order: dict[str, Any] | None) -> tuple[Any, Any]:
+    def _order_by(self, source: Any, order: dict[str, Any] | None) -> Any:
         resolved = resolve_list_order(order)
-        name = self.COLS.get(resolved["field"])
-        col = self._named_col(source, name)
-        if col is None and resolved["field"] == "basic.utime":
-            col = self._named_col(source, "utime")
-        if col is None:
-            col = self._named_col(source, self.COLS.get("basic.uukey", "uukey"))
-        if col is None:
-            col = self._named_col(source, "id")
-        return col, desc if resolved["order"] == "desc" else asc
+        field = resolved["field"]
+        expr = self._value_expr(field, source=source)
+        if expr is None and field == "basic.utime":
+            expr = self._named_col(source, "utime")
+        if expr is None:
+            expr = self._named_col(source, self.COLS.get("basic.uukey", "uukey"))
+        if expr is None:
+            expr = self._named_col(source, "id")
+        expr = self._blank_sort_expr(field, expr)
+        fn = desc if resolved["order"] == "desc" else asc
+        return fn(expr).nulls_last()
+
+    def _text_column(self, field: str) -> bool:
+        attr = self.COLS.get(field)
+        col = getattr(self.entity_cls, attr, None) if attr else None
+        return isinstance(getattr(col, "type", None), (String, Text))
+
+    def _blank_clause(self, col: Any, field: str, want_blank: bool) -> Any:
+        """文本列里 NULL 和空白都算空；数字和日期只认 NULL。"""
+        if self._text_column(field):
+            blank = or_(col.is_(None), func.btrim(col) == "")
+        else:
+            blank = col.is_(None)
+        return blank if want_blank else ~blank
+
+    def _blank_sort_expr(self, field: str, expr: Any) -> Any:
+        """空白字符串跟 NULL 排在一起，否则空值会拆到排序的两端。"""
+        if expr is None or field in self.NUM_KEYS or field in self.LIST_KEYS:
+            return expr
+        if self._json_path(field) or (field not in self.DT_KEYS and self._text_column(field)):
+            return func.nullif(func.btrim(expr), "")
+        return expr
 
     def _stat_expr(self, spec: dict[str, Any]) -> Any | None:
         if not spec["as_date"] and not spec["as_month"] and not self._plain_text(spec["sk"]):
@@ -1056,10 +1080,11 @@ class ColsOrmAdapter(ModelAdapter):
                 return None
             # 没打标签的也算「不包含」，否则 NULL 会被 NOT 滤掉
             return or_(col.is_(None), ~hit)
-        if op == "NIL":
+        blank = _nil_wanted(op, val)
+        if blank is not None:
             text = cast(col, String)
             empty = or_(col.is_(None), text.in_(["[]", "null", ""]))
-            return empty if val in (True, "true", 1, "1") else ~empty
+            return empty if blank else ~empty
         if op == "LIKE":
             return cast(col, String).ilike(f"%{val}%")
         return None

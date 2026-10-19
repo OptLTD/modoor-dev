@@ -3,7 +3,7 @@
  * Date range picker — presets + start/end inputs (worth DateRange pattern).
  */
 import { computed } from 'vue'
-import { rangeLastNMonths, useI18n } from '@modoor/hooks'
+import { getTermStart, rangeLastNMonths, useI18n } from '@modoor/hooks'
 import Dropdown from '../Dropdown/Dropdown.vue'
 import SvgIcon from '../SvgIcon/SvgIcon.vue'
 
@@ -97,12 +97,12 @@ function applyPreset(start: Date, end: Date) {
   commit(fmt(start), fmt(end))
 }
 
-/** 财务期间：26 日切。10 月 7 日属于本期 9/26–10/25。 */
-const TERM_START = 26
+/** 财务期间切日来自系统设置，默认 26。10 月 19 日属于本期 9/26–10/25。 */
 function termRange(anchor: Date, previous: boolean) {
+  const cut = getTermStart()
   let year = anchor.getFullYear()
   let month = anchor.getMonth()
-  if (anchor.getDate() >= TERM_START) month += 1
+  if (anchor.getDate() >= cut) month += 1
   if (month > 11) {
     month = 0
     year += 1
@@ -115,8 +115,8 @@ function termRange(anchor: Date, previous: boolean) {
     }
   }
   return {
-    start: new Date(year, month - 1, TERM_START),
-    end: new Date(year, month, TERM_START - 1),
+    start: new Date(year, month - 1, cut),
+    end: new Date(year, month, cut - 1),
   }
 }
 

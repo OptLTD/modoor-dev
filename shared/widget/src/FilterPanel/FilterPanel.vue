@@ -33,7 +33,6 @@ const refers = computed(() => props.refers || {})
 const filterFields = computed(() =>
   props.fields.filter(
     (f) =>
-      f.shown !== false &&
       f.field &&
       f.field !== 'model' &&
       f.field !== 'state' &&

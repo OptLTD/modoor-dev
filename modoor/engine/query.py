@@ -324,6 +324,13 @@ def _dateish_key(val: Any) -> str | None:
     return s
 
 
+def _stored_empty(val: Any) -> bool:
+    """NULL 和空白字符串在列表里都显示为空。"""
+    if val is None:
+        return True
+    return isinstance(val, str) and val.strip() == ""
+
+
 def match_term_value(val: Any, term: QueryTerm) -> bool:
     """In-memory match for JSON-document adapters (freight etc.)."""
     op = term.op
@@ -343,10 +350,9 @@ def match_term_value(val: Any, term: QueryTerm) -> bool:
     if op == "LIKE":
         return str(want).lower() in str(val or "").lower()
     if op == "NIL":
-        empty = val in (None, "")
-        return empty if want in (True, "true", 1, "1") else not empty
+        return _stored_empty(val) if want in (True, "true", 1, "1") else not _stored_empty(val)
     if op == "NNL":
-        return val not in (None, "")
+        return not _stored_empty(val)
     if op in ("GT", "GTE", "LT", "LTE", "BTW"):
         left = _dateish_key(val)
         if left is None:

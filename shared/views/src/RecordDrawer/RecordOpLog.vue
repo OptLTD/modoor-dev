@@ -37,6 +37,7 @@ const CRUD_OPS = new Set(['INSERT', 'UPDATE', 'DELETE', 'UPSERT'])
 const opLabel: Record<string, string> = {
   INSERT: 'widget.opInsert',
   UPDATE: 'widget.opUpdate',
+  UPSERT: 'widget.opUpdate',
   DELETE: 'widget.opDelete',
 }
 const actionLabel: Record<string, string> = {
@@ -166,17 +167,20 @@ async function load() {
       map[k] = plainLabel(f.label, k)
       meta[k] = f
     }
+    const rememberField = (key: unknown, f: SchemaField | undefined) => {
+      if (!f) return
+      remember(key, f)
+      remember(f.uukey, f)
+      remember(f.index, f)
+      if (f.group && f.field) remember(`${f.group}.${f.field}`, f)
+    }
     const source = sk?.source?.fields
     if (source) {
-      for (const [key, f] of Object.entries(source)) {
-        remember(key, f)
-        remember(f?.uukey, f)
-        remember(f?.index, f)
-      }
+      for (const [key, f] of Object.entries(source)) rememberField(key, f)
     }
     for (const f of (sk?.table?.fields || []) as SchemaField[]) {
-      if (f?.uukey && !map[f.uukey]) remember(f.uukey, f)
-      if (f?.index && !map[f.index]) remember(f.index, f)
+      rememberField(f?.uukey, f)
+      rememberField(f?.index, f)
     }
     fieldLabel.value = map
     fieldMeta.value = meta

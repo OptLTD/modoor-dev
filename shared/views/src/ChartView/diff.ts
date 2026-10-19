@@ -1,11 +1,10 @@
+import { getTermStart } from '@modoor/hooks'
 import type { ChartValue } from './types'
 
 export type DiffScope = 'current' | 'previous' | 'earlier'
 
-const TERM_START = 26
-
-export function utermOf(day: Date, start = TERM_START): number {
-  const cut = start >= 1 && start <= 28 ? start : TERM_START
+export function utermOf(day: Date, start = getTermStart()): number {
+  const cut = start >= 1 && start <= 28 ? start : getTermStart()
   let y = day.getFullYear()
   let m = day.getMonth() + 1
   if (day.getDate() >= cut) {
@@ -28,7 +27,7 @@ export function prevUterm(uterm: number): number {
   return y * 100 + m
 }
 
-export function scopeUterm(scope: DiffScope, now = new Date(), start = TERM_START): number {
+export function scopeUterm(scope: DiffScope, now = new Date(), start = getTermStart()): number {
   let term = utermOf(now, start)
   const back = scope === 'previous' ? 1 : scope === 'earlier' ? 2 : 0
   for (let i = 0; i < back; i += 1) term = prevUterm(term)

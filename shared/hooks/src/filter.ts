@@ -1,5 +1,6 @@
 import type { SchemaField } from './record'
 import type { FilterDraft } from './recordPayload'
+import { getTermStart } from './termStart'
 
 export type { FilterDraft } from './recordPayload'
 
@@ -87,6 +88,28 @@ export function fmtDate(d: Date): string {
   return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`
 }
 
+function termBounds(anchor: Date, previous: boolean): { start: string; end: string } {
+  const cut = getTermStart()
+  let year = anchor.getFullYear()
+  let month = anchor.getMonth()
+  if (anchor.getDate() >= cut) month += 1
+  if (month > 11) {
+    month = 0
+    year += 1
+  }
+  if (previous) {
+    month -= 1
+    if (month < 0) {
+      month = 11
+      year -= 1
+    }
+  }
+  return {
+    start: fmtDate(new Date(year, month - 1, cut)),
+    end: fmtDate(new Date(year, month, cut - 1)),
+  }
+}
+
 /** 含当月共 n 个自然月（与 DateRange「近 N 月」一致） */
 export function rangeLastNMonths(n: number): { start: string; end: string } {
   const months = Math.max(1, Math.floor(n) || 1)
@@ -151,6 +174,8 @@ export function expandRctToken(token: string): { start: string; end: string } {
     const y = t0.getFullYear() - 1
     return { start: fmtDate(new Date(y, 0, 1)), end: fmtDate(new Date(y, 11, 31)) }
   }
+  if (upper === 'CURRENT_TERM') return termBounds(t0, false)
+  if (upper === 'PREVIOUS_TERM') return termBounds(t0, true)
 
   const recentDays: Record<string, number> = {
     RECENT_3_DAYS: 3,

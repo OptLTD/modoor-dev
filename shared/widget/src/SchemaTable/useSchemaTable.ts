@@ -120,26 +120,25 @@ export function useSchemaTable(
       (f) => fieldKey(f) === k || f.uukey === k || `basic.${f.field}` === k,
     )
   }
-  /** 侧栏 FilterPanel：有 filters 声明时只用这些；否则用展示列并优先 origin */
+  /** 条件筛选：表头能筛的列（含列设置里关掉的），不限于快捷筛选声明的几项。 */
   const panelFilterFields = computed((): SchemaField[] => {
-    const keys = props.table.filters || []
-    if (keys.length) {
-      const out: SchemaField[] = []
-      const seen = new Set<string>()
-      for (const key of keys) {
-        const f = fieldForFilter(String(key))
-        if (!f || !isQueryFilterable(f)) continue
-        const fk = fieldKey(f)
-        if (seen.has(fk)) continue
-        seen.add(fk)
-        out.push(f)
-      }
-      return out
+    const byId = new Map(fields.value.filter((f) => f.field).map((f) => [fieldId(f), f]))
+    const out: SchemaField[] = []
+    const seen = new Set<string>()
+    for (const item of columnItems.value) {
+      const col = byId.get(item.id)
+      if (!col || col.field === 'model' || col.field === 'state' || !isHeaderFilterable(col)) continue
+      const origin = originMap.value[fieldKey(col)] || originMap.value[col.uukey]
+      const f = origin
+        ? { ...origin, label: col.label || origin.label, gname: col.gname || origin.gname }
+        : col
+      if (!isQueryFilterable(f)) continue
+      const fk = fieldKey(f)
+      if (!fk || seen.has(fk)) continue
+      seen.add(fk)
+      out.push(f)
     }
-    return fields.value
-      .filter((f) => f.shown !== false && f.field && f.field !== 'model' && f.field !== 'state')
-      .filter((f) => isHeaderFilterable(f))
-      .map((f) => originMap.value[fieldKey(f)] || originMap.value[f.uukey] || f)
+    return out
   })
   const digestMetricKeys = computed(() => {
     const d = digestMeta.value
