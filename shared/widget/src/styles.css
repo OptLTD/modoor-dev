@@ -273,6 +273,8 @@ body,
 
 .nav-group {
   position: relative;
+  padding-bottom: 10px;
+  margin-bottom: -10px;
 }
 
 .nav-group-btn {
@@ -300,9 +302,14 @@ body,
   opacity: 0.7;
 }
 
+.nav-group.open .nav-group-menu {
+  display: block;
+}
+
 .nav-group-menu {
+  display: none;
   position: absolute;
-  top: calc(100% + 8px);
+  top: 100%;
   left: 0;
   z-index: 9999;
   min-width: 10rem;

@@ -51,6 +51,25 @@ def test_login_page_is_split_layout(client: TestClient):
     assert client.get("/login/assets/nope.png").status_code == 404
 
 
+def test_login_without_password_asks_for_captcha(client: TestClient):
+    from modoor.core.db import session_scope
+    from modoor.runtime.auth import resolve_ctx
+    from builtin.base import domain as base_domain
+
+    ctx = resolve_ctx(get_settings())
+    with session_scope() as session:
+        base_domain.create_user(session, ctx, username="nopass", realname="No Pass")
+
+    bad = client.post(
+        "/login",
+        data={"username": "nopass", "password": "anything"},
+        follow_redirects=False,
+    )
+    assert bad.status_code == 400
+    assert "请使用验证码登录,然后去个人中心设置密码" in bad.text
+    assert "用户名或密码错误" not in bad.text
+
+
 def test_password_login_and_remember_cookie(client: TestClient):
     bad = client.post(
         "/login",

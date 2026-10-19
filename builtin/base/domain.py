@@ -559,7 +559,7 @@ def _register_oplog_writer() -> None:
 _register_oplog_writer()
 
 
-# 切换角色和不受限只认这个代号。其它角色代号仍收成小写。
+# 切换角色和不受限只认这个代号。
 SUPERUSER_CODE = "SUPERUSER"
 
 
@@ -1761,7 +1761,8 @@ def list_user_abilities(
 ) -> dict[str, Any]:
     """Effective abilities for a user.
 
-    Holding ``SUPERUSER`` is unrestricted when ``active_role`` is empty or ``SUPERUSER``.
+    Holding ``SUPERUSER`` is unrestricted only when ``active_role`` is ``SUPERUSER``.
+    An empty role uses the nodes checked on the roles this user holds.
     A chosen other role uses only that role's nodes, even if this user is not assigned it.
     Users without ``SUPERUSER`` ignore ``active_role`` and keep the union of roles they hold.
     """
@@ -1776,8 +1777,6 @@ def list_user_abilities(
         return _ability_payload(
             user_id, roles, unrestricted=False, abilities=_role_nodes(target)
         )
-    if holds_superuser(roles):
-        return _ability_payload(user_id, roles, unrestricted=True, abilities=[])
     abilities: set[str] = set()
     for role in roles:
         for node in role.get("nodes") or []:
@@ -2001,7 +2000,10 @@ def authenticate_user(
     allow_fallback: bool = False,
 ) -> SystemUser:
     login = _get_login_by_username(session, username)
-    if login is None or not login.password or not verify_password(password, login.password):
+    if login is not None and not (login.password or "").strip():
+        log(Ctx(tenant=int(tenant or 0), user_id=0, team_id=0), "login.fail", username=username)
+        raise AppError("permission_denied", "请使用验证码登录,然后在个人中心设置密码")
+    if login is None or not verify_password(password, login.password):
         log(Ctx(tenant=int(tenant or 0), user_id=0, team_id=0), "login.fail", username=username)
         raise AppError("permission_denied", "Invalid username or password")
     user = _choose_login_user(

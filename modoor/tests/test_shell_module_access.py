@@ -99,7 +99,8 @@ def test_superuser_acting_role_uses_that_roles_nodes(client: TestClient):
             session, username="admin", password="admin123"
         )
         abilities = base_domain.list_user_abilities(session, ctx, user_id=user.id)
-        assert abilities["unrestricted"] is True
+        assert abilities["unrestricted"] is False
+        assert abilities["abilities"] == []
         limited = base_domain.list_user_abilities(
             session, ctx, user_id=user.id, active_role="docs-only"
         )
@@ -114,6 +115,13 @@ def test_superuser_acting_role_uses_that_roles_nodes(client: TestClient):
             session, ctx, user_id=user.id, active_role="SUPERUSER"
         )
         assert still["unrestricted"] is True
+        super_role = base_domain.get_role(session, ctx, code="SUPERUSER")
+        base_domain.set_role_nodes(
+            session, ctx, role_id=super_role["id"], nodes=["wiki.page.read"]
+        )
+        held = base_domain.list_user_abilities(session, ctx, user_id=user.id)
+        assert held["unrestricted"] is False
+        assert held["abilities"] == ["wiki.page.read"]
 
     logged = client.post(
         "/api/auth/login", json={"username": "admin", "password": "admin123"}
@@ -125,8 +133,9 @@ def test_superuser_acting_role_uses_that_roles_nodes(client: TestClient):
     assert "docs-only" in codes
 
     plain = client.get("/api/shell/modules")
-    plain_ids = {m["id"] for m in plain.json()["modules"]}
-    assert "doc" in plain_ids and "freight" in plain_ids
+    assert plain.json()["access"]["unrestricted"] is False
+    assert plain.json()["access"]["abilities"] == ["wiki.page.read"]
+    assert "freight" not in {m["id"] for m in plain.json()["modules"]}
 
     acted = client.get("/api/shell/modules", headers={"X-Modoor-Role": "docs-only"})
     assert {m["id"] for m in acted.json()["modules"]} == {"doc"}
@@ -167,7 +176,7 @@ def test_admin_role_sees_all_enabled_modules(client: TestClient):
         "/api/auth/login", json={"username": "admin", "password": "admin123"}
     )
     assert logged.status_code == 200
-    shell = client.get("/api/shell/modules")
+    shell = client.get("/api/shell/modules", headers={"X-Modoor-Role": "SUPERUSER"})
     assert shell.status_code == 200
     ids = {m["id"] for m in shell.json()["modules"]}
     assert "base" in ids and "sale" in ids and "wiki" in ids

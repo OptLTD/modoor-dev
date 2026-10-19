@@ -46,4 +46,4 @@ RUN chmod +x /usr/local/bin/modoor-entrypoint
 EXPOSE 8765
 
 ENTRYPOINT ["modoor-entrypoint"]
-CMD ["python", "-m", "uvicorn", "modoor.web.app:app", "--host", "0.0.0.0", "--port", "8765", "--proxy-headers"]
+CMD ["python", "-m", "modoor.web.serve"]

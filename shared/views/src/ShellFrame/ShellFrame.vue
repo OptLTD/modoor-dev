@@ -34,19 +34,25 @@
           <div
             v-if="item.items?.length"
             class="nav-group"
-            :class="{ open: openNavGroup === item.id, active: isNavGroupActive(item) }"
+            :class="{ 
+              open: openNavGroup === item.id, 
+              active: isNavGroupActive(item) 
+            }"
+            @mouseenter="openNavGroup = item.id"
+            @mouseleave="openNavGroup = null"
+            @focusin="openNavGroup = item.id"
+            @focusout="onNavFocusOut($event, item.id)"
             @click.stop
           >
             <button
               type="button"
               class="nav-group-btn"
               :aria-expanded="openNavGroup === item.id"
-              @click="toggleNavGroup(item.id)"
             >
               {{ item.label }}
               <span class="caret">▾</span>
             </button>
-            <div v-if="openNavGroup === item.id" class="nav-group-menu" role="menu">
+            <div class="nav-group-menu" role="menu">
               <template v-for="sub in item.items" :key="sub.id">
                 <div v-if="sub.items?.length" class="nav-subgroup">
                   <RouterLink
@@ -711,9 +717,11 @@ function toggleMenu(name: Exclude<OpenMenu, null>) {
   openMenu.value = openMenu.value === name ? null : name
 }
 
-function toggleNavGroup(id: string) {
-  openMenu.value = null
-  openNavGroup.value = openNavGroup.value === id ? null : id
+function onNavFocusOut(event: FocusEvent, id: string) {
+  const next = event.relatedTarget
+  const host = event.currentTarget
+  if (host instanceof HTMLElement && next instanceof Node && host.contains(next)) return
+  if (openNavGroup.value === id) openNavGroup.value = null
 }
 
 function isSideGroupOpen(id: string) {

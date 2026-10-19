@@ -329,9 +329,8 @@ def login_submit(
         )
 
 
-@app.get("/")
-def root(request: Request):
-    """Entry: send a logged-in user to the company default module, or the workbench."""
+def _entry(request: Request):
+    """Send a logged-in user to the company default module, or the workbench."""
     user = kit.current_user(request)
     if not user:
         return RedirectResponse("/login", status_code=303)
@@ -344,6 +343,12 @@ def root(request: Request):
         else:
             request.session.pop("active_module", None)
     return RedirectResponse(href, status_code=303)
+
+
+@app.get("/")
+@app.get("/welcome")
+def root(request: Request):
+    return _entry(request)
 
 
 @app.get("/home", response_class=HTMLResponse)

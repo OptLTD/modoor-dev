@@ -2,6 +2,7 @@ import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { rollupOnwarn } from '../../../shared/vite/rollupOnwarn.mjs'
 
 const root = path.dirname(fileURLToPath(import.meta.url))
 const repo = path.resolve(root, '../../..')
@@ -43,6 +44,10 @@ export default defineConfig({
     host: true,
     strictPort: true,
   },
-  build: { outDir: 'dist', emptyOutDir: true },
+  build: {
+    outDir: 'dist',
+    emptyOutDir: true,
+    rollupOptions: { onwarn: rollupOnwarn },
+  },
   optimizeDeps: { exclude: ['@modoor/hooks', '@modoor/widget', '@modoor/views'] },
 })

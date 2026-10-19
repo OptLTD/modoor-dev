@@ -163,6 +163,8 @@ class ShellKit:
         else:
             path = (raw.split("?", 1)[0] or "/").strip() or "/"
             href = path
+        if path in ("/", "/welcome", "/login"):
+            path = "/"
         if path == "/home" or path.startswith("/home/") or path == "/profile":
             return None, path
         if path not in ("/", "/login"):

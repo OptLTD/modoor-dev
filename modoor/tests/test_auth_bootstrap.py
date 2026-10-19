@@ -107,7 +107,11 @@ def test_bootstrap_strips_quoted_admin_and_uses_superuser_role(monkeypatch):
         role = base_domain.get_role(session, ctx, code="SUPERUSER")
         assert role["code"] == "SUPERUSER"
         abilities = base_domain.list_user_abilities(session, ctx, user_id=user.id)
-        assert abilities["unrestricted"] is True
+        assert abilities["unrestricted"] is False
+        selected = base_domain.list_user_abilities(
+            session, ctx, user_id=user.id, active_role="SUPERUSER"
+        )
+        assert selected["unrestricted"] is True
 
 
 def test_bootstrap_creates_admin_when_tenant_has_no_users():

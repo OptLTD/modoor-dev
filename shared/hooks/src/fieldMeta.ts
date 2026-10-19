@@ -1,4 +1,4 @@
-import type { SchemaField } from './record'
+import { searchRecords, type SchemaField } from './record'
 import {
   dateTimeKindFromExtra,
   formatDateTimeDisplay,
@@ -181,7 +181,6 @@ export async function loadDropdownRefers(
   schemaRefers?: ReferDict,
   extra?: ReferDict,
 ): Promise<ReferDict> {
-  const { searchRecords } = await import('./record')
   let merged = mergeRefers(normalizeReferDict(schemaRefers), extra || {})
   const relationModels = new Set<string>()
   for (const f of fields) {

@@ -112,7 +112,7 @@ def test_vue_shell_apis(client: TestClient):
     wiki = client.get("/api/wiki/pages")
     assert wiki.status_code == 200
 
-    shell = client.get("/api/shell/modules")
+    shell = client.get("/api/shell/modules", headers={"X-Modoor-Role": "SUPERUSER"})
     assert shell.status_code == 200
     ids = {m["id"] for m in shell.json()["modules"]}
     assert "base" in ids and "sale" in ids

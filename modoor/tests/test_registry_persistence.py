@@ -38,6 +38,7 @@ def client(monkeypatch):
 def _login(client: TestClient) -> None:
     logged = client.post("/api/auth/login", json={"username": "admin", "password": "admin123"})
     assert logged.status_code == 200, logged.text
+    client.cookies.set("modoor_role", "SUPERUSER")
 
 
 def _register_iot(client: TestClient):
