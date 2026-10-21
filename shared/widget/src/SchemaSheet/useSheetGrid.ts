@@ -128,6 +128,7 @@ export type SheetGridDeps = {
   isRecalcApplying: () => boolean
   onSelection: (idxs: number[]) => void
   getAutoHeight?: () => boolean
+  getSheetMode: () => 'modify' | 'import'
   gateway: RecordGateway
 }
 
@@ -187,7 +188,7 @@ export function useSheetGrid(deps: SheetGridDeps) {
     return deps.getFields().map((f) => {
       const title = columnTitle(f)
       const width = resolveColWidth(f, deps.colWidths)
-      const readOnly = isSheetReadOnly(f)
+      const readOnly = isSheetReadOnly(f, deps.getSheetMode())
       if (isSerial(f)) {
         return { type: 'text' as const, title, width, readOnly: true, align: 'center' }
       }
@@ -253,7 +254,8 @@ export function useSheetGrid(deps: SheetGridDeps) {
     const fk = fieldKey(f)
     const applying = deps.isRecalcApplying()
     const pasting = deps.isPasteBurstActive()
-    const shouldRecalc = !applying && !pasting && canTriggerRecalc(f, deps.getDependsTriggers())
+    const shouldRecalc =
+      !applying && !pasting && canTriggerRecalc(f, deps.getDependsTriggers(), deps.getSheetMode())
 
     if (applying || pasting) {
       deps.markCellDirty(row, col, strVal, _cell)
@@ -307,7 +309,7 @@ export function useSheetGrid(deps: SheetGridDeps) {
       for (let ci = 0; ci < copiedText[ri].length; ci++) {
         const sheetCol = startCol + ci
         const f = fields[sheetCol]
-        if (!f) continue
+        if (!f || isSheetReadOnly(f, deps.getSheetMode())) continue
         let v = String(copiedText[ri][ci]?.value ?? '')
           .replace(/\r/g, '')
           .trim()

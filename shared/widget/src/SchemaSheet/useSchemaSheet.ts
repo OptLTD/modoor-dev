@@ -141,6 +141,7 @@ export function useSchemaSheet(props: ToRefs<SchemaSheetProps>) {
     isRecalcApplying: recalc.isRecalcApplying,
     onSelection: syncSelection,
     getAutoHeight: () => Boolean(props.autoHeight?.value),
+    getSheetMode: () => mode.value,
     gateway,
   })
   getWorksheet = grid.getWorksheet

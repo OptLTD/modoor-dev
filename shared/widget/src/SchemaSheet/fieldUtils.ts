@@ -1,6 +1,6 @@
 import jspreadsheet from 'jspreadsheet-ce'
 import type { SchemaField } from '@modoor/hooks'
-import { dateTimeKind, editableMode, isRequired } from '@modoor/hooks'
+import { dateTimeKind, isFieldEditable, isRequired } from '@modoor/hooks'
 import { fieldKey } from '@modoor/hooks'
 import { extraHasFormula } from './sheetFormula'
 import type { SheetRow, SheetWorksheet } from './types'
@@ -82,15 +82,21 @@ export function columnTitle(f: SchemaField) {
   return isRequired(f) ? `*${label}` : label
 }
 
-export function isSheetReadOnly(f: SchemaField) {
+export type SheetEditMode = 'modify' | 'import'
+
+/** import 是批量新增，对应表单 create。editable=INSERT 只在新增可改。 */
+export function isSheetReadOnly(f: SchemaField, mode: SheetEditMode = 'modify') {
   if (isSerial(f)) return true
-  if (editableMode(f) === 'NEVER') return true
   if (extraHasFormula(f.extra)) return true
-  return false
+  return !isFieldEditable(f, mode === 'import' ? 'create' : 'modify')
 }
 
-export function canTriggerRecalc(f: SchemaField, dependsTriggers: string[]) {
-  if (isSheetReadOnly(f)) return false
+export function canTriggerRecalc(
+  f: SchemaField,
+  dependsTriggers: string[],
+  mode: SheetEditMode = 'modify',
+) {
+  if (isSheetReadOnly(f, mode)) return false
   if (extraHasFormula(f.extra)) return false
   const key = fieldKey(f)
   return !!key && dependsTriggers.includes(key)
