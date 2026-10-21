@@ -1,6 +1,7 @@
 import { computed, nextTick, onBeforeUnmount, reactive, ref, toRefs, watch, type ToRefs } from 'vue'
 import { useRecordGateway } from '@modoor/hooks'
-import { isSerial, syncRequiredComments, validateRequiredRows } from './fieldUtils'
+import { isDropdownField, isSerial, syncRequiredComments, validateRequiredRows } from './fieldUtils'
+import { normalizeDropdownCellValue } from './dropdown'
 import { exportRows } from '@modoor/hooks'
 import { buildDependsTriggers } from './sheetFormula'
 import { appAlert, appConfirm, appToast } from '@modoor/hooks'
@@ -104,7 +105,8 @@ export function useSchemaSheet(props: ToRefs<SchemaSheetProps>) {
   function readSheetRows(): SheetRow[] {
     const worksheet = getWorksheet()
     if (!worksheet?.getData) return []
-    const data = worksheet.getData(false, true) as unknown[][]
+    // false：保留下拉的编号。加工值是展示名，重名时会指到另一条记录。
+    const data = worksheet.getData(false, false) as unknown[][]
     return matrixToRows(data || [], editableFields.value, referCache.value)
   }
 
@@ -328,7 +330,9 @@ export function useSchemaSheet(props: ToRefs<SchemaSheetProps>) {
       dataRows[i].forEach((cell, ci) => {
         const f = colFields[ci]
         if (!f || isSerial(f)) return
-        row[fieldKey(f)] = String(cell ?? '').trim()
+        let value = String(cell ?? '').trim()
+        if (isDropdownField(f)) value = normalizeDropdownCellValue(f, value, referCache.value)
+        row[fieldKey(f)] = value
       })
     }
     const matrix = rowsToMatrix(all, fields)
@@ -336,6 +340,8 @@ export function useSchemaSheet(props: ToRefs<SchemaSheetProps>) {
     dirty.resetSheetState(Array.from({ length: all.length }, () => ({})))
     await nextTick()
     dirty.syncAllDirtyClasses()
+    // 与粘贴相同：写入后按依赖列批量 autofill（如车牌带出能源类型）
+    recalc.schedulePasteBurstEnd()
     appToast(`已导入 ${Math.min(dataRows.length, all.length)} 行`)
   }
 
@@ -387,6 +393,7 @@ export function useSchemaSheet(props: ToRefs<SchemaSheetProps>) {
         title: (table.value.title || table.value.model || '').trim() || table.value.model,
         fields: editableFields.value,
         rows: rows as unknown as Record<string, unknown>[],
+        refers: referCache.value,
       })
       if (ok) appToast(`已导出 ${rows.length} 条`)
     } catch (e: unknown) {

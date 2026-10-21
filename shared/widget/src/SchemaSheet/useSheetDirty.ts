@@ -102,7 +102,9 @@ export function useSheetDirty(
   function syncAllDirtyClasses() {
     const worksheet = getWorksheet()
     if (!worksheet?.getData) return
-    const data = worksheet.getData(false, true) as unknown[][]
+    // 用未加工的单元格值。下拉的展示名可能重复（两辆车同一车牌），
+    // 加工后的名称会被归一到第一条，把没改过的格子标成脏。
+    const data = worksheet.getData(false, false) as unknown[][]
     const fields = getFields()
     for (let r = 0; r < data.length; r++) {
       for (let c = 0; c < fields.length; c++) {

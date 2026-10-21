@@ -19,6 +19,8 @@ import {
   pickFieldValue,
   referOptions,
   convertReferValue,
+  dateTimeKind,
+  readGlobalSettings,
   sortIndexField,
   type ReferDict,
 } from '@modoor/hooks'
@@ -197,7 +199,7 @@ export function useSchemaTable(
     const grouped = clusters.some((c) => c.group && c.clicks.length > 1)
     if (!grouped) return floor
     const estimate = clusters.reduce(
-      (n, c) => n + (c.group && c.clicks.length > 1 ? 56 : 40),
+      (n, c) => n + (c.group && c.clicks.length > 1 ? 45 : 40),
       16,
     )
     return Math.max(floor, estimate)
@@ -277,11 +279,31 @@ export function useSchemaTable(
 
   const pages = computed(() => Math.max(1, Math.ceil(count.value / size.value)))
 
+  /**
+   * 列表 0.9rem、IBM Plex Sans 下按最宽数字估算，含左右 10px 内边距。
+   * 月份 2026-10、日期 2026-10-11、到分、到秒宽度不同。
+   */
+  function dateTimeDefaultWidth(f: SchemaField): number {
+    const kind = dateTimeKind(f)
+    if (kind === 'ONLYMONTH') return 86
+    if (kind === 'ONLYDATE') return 112
+    const fmt = readGlobalSettings().timeFormat
+    const pattern = fmt || 'YYYY-MM-DD HH:mm:ss'
+    return pattern.includes('ss') ? 176 : 156
+  }
+
   function fieldWidth(f: SchemaField) {
     const id = fieldKey(f) || f.field
     if (id && colWidths[id]) return colWidths[id]
-    if (f.field && colWidths[f.field]) return colWidths[f.field]
-    return Math.max(80, Number(f.width) || 140)
+    if (f.field && colWidths[f.field]) {
+      return colWidths[f.field]
+    }
+    const configured = Number(f.width)
+    if (configured >= 60) return configured
+    if (ftypeOf(f) === 'DATETIME') {
+      return dateTimeDefaultWidth(f)
+    }
+    return 90
   }
 
   function applyWidthMap(map: Record<string, number>) {

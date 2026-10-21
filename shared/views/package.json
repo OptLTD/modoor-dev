@@ -21,6 +21,7 @@
   },
   "dependencies": {
     "@modoor/hooks": "workspace:*",
-    "@modoor/widget": "workspace:*"
+    "@modoor/widget": "workspace:*",
+    "xlsx": "^0.18.5"
   }
 }

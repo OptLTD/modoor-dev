@@ -43,11 +43,11 @@
     <p v-if="sheetMessage" class="muted pad-msg">{{ sheetMessage }}</p>
 
     <input
-      ref="csvInputRef"
+      ref="sheetFileRef"
       type="file"
-      accept=".csv,text/csv"
+      accept=".csv,.xls,.xlsx,.xlsm,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
       class="hidden-file"
-      @change="onCsvPicked"
+      @change="onSheetFilePicked"
     />
 
     <SchemaTable
@@ -185,6 +185,7 @@ import { SkmTblWithPrefs as SchemaTable } from '../SkmTblPrefs'
 import RecordDialog from '../RecordDialog/RecordDialog.vue'
 import RecordDrawer, { RecordFlatDetail, resolveRecordView } from '../RecordDrawer'
 import TableDrawer from '../TableDrawer'
+import { parseExcelGrid, sheetFileKind } from './parseSheetFile'
 
 export type SchemaViewTab = {
   model: string
@@ -298,7 +299,7 @@ const sheetRef = ref<{
   error: string
   message: string
 } | null>(null)
-const csvInputRef = ref<HTMLInputElement | null>(null)
+const sheetFileRef = ref<HTMLInputElement | null>(null)
 
 type ViewMode = 'table' | 'modify' | 'import'
 const viewMode = ref<ViewMode>('table')
@@ -552,23 +553,28 @@ async function onAddN() {
 
 function onImportExcel() {
   void ensureImportMode().then(() => {
-    csvInputRef.value?.click()
+    sheetFileRef.value?.click()
   })
 }
 
-async function onCsvPicked(ev: Event) {
+async function onSheetFilePicked(ev: Event) {
   const input = ev.target as HTMLInputElement
   const file = input.files?.[0]
   input.value = ''
   if (!file) return
   try {
-    const text = await file.text()
-    const { headers, rows } = parseCsv(text)
-    if (!rows.length) {
-      appToast(t('widget.noExportData'), 'error')
+    const kind = sheetFileKind(file.name, file.type)
+    if (kind === 'other') {
+      appToast(t('widget.importFormat'), 'error')
       return
     }
-    await sheetRef.value?.importMappedRows?.(headers, rows)
+    const parsed =
+      kind === 'excel' ? await parseExcelGrid(await file.arrayBuffer()) : parseCsv(await file.text())
+    if (!parsed.rows.length) {
+      appToast(t('widget.importEmpty'), 'error')
+      return
+    }
+    await sheetRef.value?.importMappedRows?.(parsed.headers, parsed.rows)
   } catch (e) {
     appToast(e instanceof Error ? e.message : String(e), 'error')
   }

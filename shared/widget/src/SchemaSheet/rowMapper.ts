@@ -37,6 +37,18 @@ function sheetRawValue(raw: Record<string, unknown>, f: SchemaField): string {
   return ''
 }
 
+/**
+ * 表格日历格式是 YYYY-MM-DD HH24:MI，但传入值必须带秒。
+ * 公司时间格式为 YYYY-MM-DD HH:mm 时，不带秒的字符串会被日历清空。
+ */
+function sheetDateTimeValue(raw: string, f: SchemaField): string {
+  const shown = formatDateTimeDisplay(raw, dateTimeKind(f)) || raw
+  if (dateTimeKind(f) === 'DATETIME' && /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/.test(shown)) {
+    return `${shown}:00`
+  }
+  return shown
+}
+
 export function fromSearchRow(
   raw: Record<string, unknown>,
   fields: SchemaField[],
@@ -47,9 +59,8 @@ export function fromSearchRow(
     const fk = fieldKey(f)
     let v = sheetRawValue(raw, f)
     if (isDropdownField(f)) v = normalizeDropdownCellValue(f, v, referCache)
-    // 与 sheet calendar 格式对齐：ONLYDATE→日期；完整 DATETIME→YYYY-MM-DD HH:mm
     if (String(f.ftype).toUpperCase() === 'DATETIME' && v) {
-      v = formatDateTimeDisplay(v, dateTimeKind(f)) || v
+      v = sheetDateTimeValue(v, f)
     }
     r[fk] = v
   }
@@ -74,7 +85,7 @@ export function emptyRow(
         if (v.length) r[fk] = v.join(',')
       } else if (String(v).trim()) {
         if (String(f.ftype).toUpperCase() === 'DATETIME') {
-          r[fk] = formatDateTimeDisplay(v, dateTimeKind(f)) || v
+          r[fk] = sheetDateTimeValue(v, f)
         } else {
           r[fk] = v
         }
