@@ -498,6 +498,21 @@ def _write_formula_result(objects: dict[str, Any], field: dict[str, Any], value:
         _set_path(objects, key, value)
 
 
+def stored_digits(extra: dict[str, Any] | None) -> int | None:
+    """小数位：公式结果按 scale 落库；未写 scale 时沿用 precision。precision 仍是展示位数。"""
+    if not isinstance(extra, dict):
+        return None
+    raw = extra.get("scale")
+    if raw in (None, ""):
+        raw = extra.get("precision")
+    if raw in (None, ""):
+        return None
+    try:
+        return int(raw)
+    except (TypeError, ValueError):
+        return None
+
+
 def apply_formulas(fields: list[dict[str, Any]], flat: dict[str, Any]) -> dict[str, Any]:
     """Evaluate all formula fields; return full flat map (input merged with formula outputs)."""
     work_fields = [dict(f) for f in fields]
@@ -522,14 +537,10 @@ def apply_formulas(fields: list[dict[str, Any]], flat: dict[str, Any]) -> dict[s
                 continue
             if isinstance(result, float) and (math.isnan(result) or math.isinf(result)):
                 continue
-            # precision
             extra = f.get("extra") if isinstance(f.get("extra"), dict) else {}
-            prec = extra.get("precision") if isinstance(extra, dict) else None
-            if prec is not None and isinstance(result, (int, float)):
-                try:
-                    result = round(float(result), int(prec))
-                except (TypeError, ValueError):
-                    pass
+            prec = stored_digits(extra)
+            if prec is not None and isinstance(result, (int, float)) and not isinstance(result, bool):
+                result = round(float(result), prec)
             _write_formula_result(objects, f, result)
 
     patch = _objects_to_flat_patch(items, objects)

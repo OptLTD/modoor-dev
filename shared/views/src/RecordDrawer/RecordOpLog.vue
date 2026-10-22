@@ -42,6 +42,7 @@ const opLabel: Record<string, string> = {
 }
 const actionLabel: Record<string, string> = {
   'freight.recalc': 'widget.opRecalc',
+  'mileage.recalc': 'widget.opRecalc',
 }
 
 function plainLabel(raw: unknown, fallback: string) {

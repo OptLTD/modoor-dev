@@ -1,4 +1,15 @@
-from modoor.engine.query import QueryTerm, match_term_value, parse_query
+from modoor.engine.query import (
+    QueryTerm,
+    clamp_page_size,
+    match_term_value,
+    parse_query,
+)
+
+
+def test_page_size_allows_1000_and_matches_the_response():
+    assert clamp_page_size(1000) == 1000
+    assert clamp_page_size(1001) == 1000
+    assert clamp_page_size(None) == 50
 
 
 def test_parse_group_or_marks_terms():

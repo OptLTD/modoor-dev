@@ -48,6 +48,26 @@ def test_apply_simple_product():
     assert float(out["basic.total"]) == 7.0
 
 
+def test_scale_keeps_stored_digits_apart_from_display_precision():
+    fields = [
+        {"uukey": "basic.price", "group": "basic", "field": "price", "ftype": "NUMERIC", "extra": {}},
+        {
+            "uukey": "basic.total",
+            "group": "basic",
+            "field": "total",
+            "ftype": "NUMERIC",
+            "extra": {
+                "formula": "basic.price",
+                "depends": ["basic.price"],
+                "precision": 2,
+                "scale": 3,
+            },
+        },
+    ]
+    out = apply_formulas(fields, {"basic.price": 309.2644})
+    assert out["basic.total"] == 309.264
+
+
 def test_apply_infers_depends_and_defaults():
     fields = [
         {"uukey": "basic.quantity", "group": "basic", "field": "quantity", "ftype": "NUMERIC", "extra": {}},

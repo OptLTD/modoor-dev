@@ -717,8 +717,8 @@ onBeforeUnmount(unbindCal)
   z-index: calc(var(--z-pop, 10120) + 20);
   display: flex;
   align-items: flex-start;
-  gap: 18px;
-  padding: 12px 14px 14px;
+  gap: 8px;
+  padding: 10px 10px 12px;
   border: 1px solid var(--line, #e2e6eb);
   border-radius: var(--radius-xl, 12px);
   background: var(--panel, #fff);
@@ -765,7 +765,7 @@ onBeforeUnmount(unbindCal)
 .dr-weekdays,
 .dr-grid {
   display: grid;
-  grid-template-columns: repeat(7, 36px);
+  grid-template-columns: repeat(7, 32px);
 }
 .dr-weekdays span {
   height: 22px;
@@ -819,8 +819,8 @@ onBeforeUnmount(unbindCal)
 .dr-day button {
   position: relative;
   z-index: 1;
-  width: 28px;
-  height: 28px;
+  width: 26px;
+  height: 26px;
   border: 0;
   border-radius: var(--radius-pill, 999px);
   padding: 0;

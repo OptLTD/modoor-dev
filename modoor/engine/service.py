@@ -13,6 +13,7 @@ from modoor.core.errors import AppError
 from modoor.engine.adapters import get_adapter
 from modoor.engine.formula import apply_formulas, ensure_fields_depends
 from modoor.engine.project import build_source, merge_dict_key_refers, project_input, project_table
+from modoor.engine.query import clamp_page_size
 from modoor.engine.registry import clear_bundle_cache, get_bundle, login_tabs
 
 
@@ -154,8 +155,8 @@ class EngineService:
             raise AppError("validation_error", "model required")
         using = str(body.get("using") or "default")
         scene = str(body.get("scene") or "SEARCH")
-        page = int(body.get("page") or 1)
-        size = int(body.get("size") or 50)
+        page = max(int(body.get("page") or 1), 1)
+        size = clamp_page_size(body.get("size"))
         bundle = get_bundle(model)
         table = project_table(
             bundle,

@@ -22,6 +22,7 @@ from modoor.engine.formula import (
     _set_path,
     _write_formula_result,
     formula_text,
+    stored_digits,
 )
 
 
@@ -382,12 +383,9 @@ def recalc_digest_rows(
             if isinstance(result, float) and (math.isnan(result) or math.isinf(result)):
                 continue
             extra = f.get("extra") if isinstance(f.get("extra"), dict) else {}
-            prec = extra.get("precision") if isinstance(extra, dict) else None
-            if prec is not None and isinstance(result, (int, float)):
-                try:
-                    result = round(float(result), int(prec))
-                except (TypeError, ValueError):
-                    pass
+            prec = stored_digits(extra)
+            if prec is not None and isinstance(result, (int, float)) and not isinstance(result, bool):
+                result = round(float(result), prec)
             _write_formula_result(objects, f, result)
             key = str(f.get("uukey") or "")
             if key:

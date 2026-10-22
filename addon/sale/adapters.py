@@ -17,7 +17,7 @@ from modoor.engine.adapters import (
     register_adapter,
 )
 from modoor.engine.oplog import diff_row_values, record_oplog
-from modoor.engine.query import QueryTerm, parse_query
+from modoor.engine.query import QueryTerm, clamp_page_size, parse_query
 
 
 def _as_sale_state(val: Any) -> int | list[int]:
@@ -104,7 +104,7 @@ class SaleOrderAdapter(ModelAdapter):
         from addon.sale.domain import SaleOrder
 
         page = max(int(page or 1), 1)
-        size = min(max(int(size or 50), 1), 500)
+        size = clamp_page_size(size)
         terms = parse_query(query)
         base = select(SaleOrder).where(SaleOrder.tenant == ctx.tenant)
         base = self._apply_terms(base, terms)

@@ -11,15 +11,19 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Any, Callable
 
-from sqlalchemy import Float, JSON, String, Text, and_, asc, case, cast, desc, distinct, func, literal, or_, select
+from sqlalchemy import Float, JSON, String, Text
+from sqlalchemy import and_, or_, asc, case, cast, desc
+from sqlalchemy import distinct, func, literal, select
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Session
 
 from modoor.core.ctx import Ctx
 from modoor.core.errors import AppError
-from modoor.engine.adapters import ModelAdapter, flatten_pick, normalize_batch_row
+from modoor.engine.adapters import ModelAdapter
+from modoor.engine.adapters import flatten_pick, normalize_batch_row
 from modoor.engine.query import BUSINESS_TZ
-from modoor.engine.query import QueryTerm, parse_query, resolve_list_order
+from modoor.engine.query import QueryTerm
+from modoor.engine.query import clamp_page_size, parse_query, resolve_list_order
 
 FACET_TYPES = frozenset(
     {
@@ -395,7 +399,7 @@ class ColsOrmAdapter(ModelAdapter):
         """GROUP BY + aggregate metrics; returns (rows, group_count, grand_totals)."""
         cls = self.entity_cls
         page = max(int(page or 1), 1)
-        size = min(max(int(size or 50), 1), 500)
+        size = clamp_page_size(size)
         terms = parse_query(query)
 
         g_exprs: list[Any] = []
@@ -540,7 +544,7 @@ class ColsOrmAdapter(ModelAdapter):
         field_keys: list[str],
     ) -> tuple[list[dict[str, Any]], int, dict[str, Any] | None]:
         page = max(int(page or 1), 1)
-        size = min(max(int(size or 50), 1), 500)
+        size = clamp_page_size(size)
         terms = parse_query(query)
         base = self._scoped_select(ctx, terms)
         count = session.scalar(select(func.count()).select_from(base.subquery())) or 0
@@ -773,7 +777,7 @@ class ColsOrmAdapter(ModelAdapter):
     ) -> tuple[list[dict[str, Any]], int, dict[str, Any] | None, dict[str, Any] | None]:
         """一次取出本页、条数、合计和筛选项。条件相同的统计共用一次扫描。"""
         page = max(int(page or 1), 1)
-        size = min(max(int(size or 50), 1), 500)
+        size = clamp_page_size(size)
         terms = parse_query(query)
         lim = 100
         stat_fields = self._stat_fields(fields)

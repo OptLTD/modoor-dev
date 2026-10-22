@@ -17,6 +17,16 @@ class QueryTerm:
 
 
 DEFAULT_LIST_ORDER = {"field": "basic.utime", "order": "desc"}
+MAX_PAGE_SIZE = 1000
+
+
+def clamp_page_size(size: Any, default: int = 50) -> int:
+    """列表每页条数。请求、查询和响应共用这个上限，避免 size 和实际行数不一致。"""
+    try:
+        n = int(default if size in (None, "") else size)
+    except (TypeError, ValueError):
+        n = default
+    return min(max(n, 1), MAX_PAGE_SIZE)
 
 # 列表日期、财务期间都按这个时区的自然日。不要用 UTC 日界，否则上海 0 点会落到前一天。
 BUSINESS_TZ = ZoneInfo("Asia/Shanghai")

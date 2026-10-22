@@ -14,14 +14,11 @@ from modoor.core.state import STATE_OFF, STATE_ON
 from modoor.engine.adapters import (
     ModelAdapter,
     flatten_pick,
-    normalize_batch_row,
     register_adapter,
+    normalize_batch_row,
 )
 from modoor.engine.oplog import diff_row_values, record_oplog
-from modoor.engine.query import QueryTerm, parse_query
-
-# Ensure SystemOplog writer is registered on modoor.engine.oplog.
-import builtin.base.domain  # noqa: F401
+from modoor.engine.query import QueryTerm, clamp_page_size, parse_query
 
 
 def _parse_datetime(val: Any) -> datetime | None:
@@ -153,7 +150,7 @@ class SystemUserAdapter(ModelAdapter):
         from builtin.base.domain import SystemLogin, SystemUser
 
         page = max(int(page or 1), 1)
-        size = min(max(int(size or 50), 1), 500)
+        size = clamp_page_size(size)
         terms = parse_query(query)
         base = (
             select(SystemUser)
