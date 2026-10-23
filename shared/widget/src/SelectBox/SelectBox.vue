@@ -19,7 +19,7 @@ const props = withDefaults(
     /** 面板内搜索过滤选项 */
     searchable?: boolean
     /** 嵌入外框时去掉自身边框 */
-    bare?: boolean
+    borderless?: boolean
   }>(),
   {
     modelValue: '',
@@ -28,7 +28,7 @@ const props = withDefaults(
     placeholder: '请选择',
     clearable: true,
     searchable: false,
-    bare: false,
+    borderless: false,
   },
 )
 
@@ -175,7 +175,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div ref="rootEl" class="select-box" :class="{ disabled, bare }">
+  <div ref="rootEl" class="select-box" :class="{ disabled, borderless }">
     <div
       ref="triggerEl"
       class="select-trigger"
@@ -276,7 +276,7 @@ onBeforeUnmount(() => {
   box-sizing: border-box;
   overflow: hidden;
 }
-.select-box.bare .select-trigger {
+.select-box.borderless .select-trigger {
   min-height: 28px;
   border: 0;
   border-radius: 0;
@@ -287,7 +287,7 @@ onBeforeUnmount(() => {
 .select-trigger:hover:not(.disabled) {
   border-color: color-mix(in srgb, var(--accent) 35%, var(--line));
 }
-.select-box.bare .select-trigger:hover:not(.disabled) {
+.select-box.borderless .select-trigger:hover:not(.disabled) {
   border-color: transparent;
 }
 .select-trigger:focus-visible {
@@ -295,7 +295,7 @@ onBeforeUnmount(() => {
   outline-offset: 0;
   border-color: var(--accent);
 }
-.select-box.bare .select-trigger:focus-visible {
+.select-box.borderless .select-trigger:focus-visible {
   outline: none;
   border-color: transparent;
 }
@@ -305,7 +305,7 @@ onBeforeUnmount(() => {
   background: #eef1f4;
   color: var(--muted);
 }
-.select-box.bare.disabled .select-trigger {
+.select-box.borderless.disabled .select-trigger {
   background: transparent;
 }
 .placeholder {

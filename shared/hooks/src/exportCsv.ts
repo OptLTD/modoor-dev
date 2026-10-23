@@ -27,7 +27,8 @@ export async function exportRows(opts: {
   rows: Record<string, unknown>[]
   refers?: ReferDict
 }): Promise<boolean> {
-  const cols = opts.fields.filter((f) => f.shown !== false && f.field)
+  // 调用方传入的就是当前表头（含列设置后的顺序和显隐）。schema 的 shown 只是默认列，不能再滤一次。
+  const cols = opts.fields.filter((f) => f.field)
   const header = cols.map((f) => f.label || f.field)
   const lines = [
     header.map(csvEscape).join(','),

@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 import threading
 import time
+from datetime import datetime
 
 from modoor.core.settings import get_settings
 
@@ -13,6 +14,15 @@ log = logging.getLogger("modoor.worker")
 _stop = threading.Event()
 _thread: threading.Thread | None = None
 _last_enqueue: dict[str, float] = {}
+_last_daily: dict[str, str] = {}
+
+
+def daily_job_due(now: datetime, clock: str, last_day: str | None) -> bool:
+    """True once on each local calendar day at or after ``HH:MM``."""
+    hour_s, minute_s = str(clock).split(":", 1)
+    if (now.hour, now.minute) < (int(hour_s), int(minute_s)):
+        return False
+    return last_day != now.date().isoformat()
 
 
 def _ensure_handlers() -> None:
@@ -27,13 +37,29 @@ def _enqueue_due_scheduled() -> None:
     from modoor.runtime import jobs as jobs_mod
     from modoor.runtime.jobs import enqueue
 
+    from modoor.engine.query import BUSINESS_TZ
+
     now = time.monotonic()
+    wall = datetime.now(BUSINESS_TZ)
+    today = wall.date().isoformat()
     for job in scheduled_jobs_from_manifests():
         kind = str(job.get("kind") or "")
-        every = float(job.get("every") or 0)
-        if not kind or every <= 0:
+        if not kind or kind not in jobs_mod._HANDLERS:
             continue
-        if kind not in jobs_mod._HANDLERS:
+        daily = str(job.get("daily") or "")
+        if daily:
+            if not daily_job_due(wall, daily, _last_daily.get(kind)):
+                continue
+            try:
+                with session_scope() as session:
+                    enqueue(session, kind=kind, payload={})
+            except Exception:  # noqa: BLE001
+                log.debug("scheduled enqueue skipped: %s", kind, exc_info=True)
+                continue
+            _last_daily[kind] = today
+            continue
+        every = float(job.get("every") or 0)
+        if every <= 0:
             continue
         last = _last_enqueue.get(kind, 0.0)
         if now - last < every:

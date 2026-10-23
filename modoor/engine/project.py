@@ -509,6 +509,22 @@ def project_input(
         if k in bundle.fields
     ]
     apply_view_labels(fields, view)
+    required = {str(key) for key in (view.get("required") or []) if str(key).strip()}
+    if required:
+        for field in fields:
+            if str(field.get("uukey") or "") not in required:
+                continue
+            extra = dict(field.get("extra") or {})
+            extra["required"] = True
+            field["extra"] = extra
+    disabled = {str(key) for key in (view.get("disabled") or []) if str(key).strip()}
+    if disabled:
+        for field in fields:
+            if str(field.get("uukey") or "") not in disabled:
+                continue
+            extra = dict(field.get("extra") or {})
+            extra["disabled"] = "ALWAYS"
+            field["extra"] = extra
     groups = []
     for gk in group_ids:
         g = groups_meta.get(gk)

@@ -15,6 +15,8 @@ const props = defineProps<{
   defer?: boolean
   /** Optional modal title; defaults to 新建/修改 + entity name. */
   title?: string
+  /** Shown under the fields. */
+  hint?: string
 }>()
 
 const emit = defineEmits<{
@@ -72,6 +74,7 @@ const { saving, error, form, formFields, repeatGroups, groupRows, canEdit, save,
           :repeat-groups="repeatGroups"
           :group-rows="groupRows"
         />
+        <p v-if="hint" class="form-hint">{{ hint }}</p>
       </div>
 
       <div class="modal-actions pad-actions">
@@ -99,6 +102,12 @@ const { saving, error, form, formFields, repeatGroups, groupRows, canEdit, save,
   overflow: auto;
   min-height: 0;
   flex: 1;
+}
+.form-hint {
+  margin: 12px 0 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--muted, #6b6458);
 }
 .pad-actions {
   padding: 12px 16px;

@@ -113,8 +113,11 @@
       :title="formTitle"
       :mode="formMode"
       :row="formRow"
+      :defer="formDefer"
+      :hint="formHint"
       @close="closeForm"
       @saved="onFormSaved"
+      @apply="onFormApply"
     />
 
     <RecordDrawer
@@ -328,6 +331,10 @@ const actionModel = ref('')
 const actionUsing = ref('default')
 const actionTitle = ref('')
 const actionDefaults = ref<Record<string, unknown> | null>(null)
+const actionMode = ref<'create' | 'modify'>('create')
+const actionDefer = ref(false)
+const actionHint = ref('')
+let actionApply: ((payload: Record<string, unknown>) => void | Promise<void>) | null = null
 
 /** Generic create/edit RecordDialog (table toolbar / row edit). Shares UI with domain actions. */
 const recordFormOpen = ref(false)
@@ -343,8 +350,10 @@ const formUsing = computed(() =>
 )
 const formTitle = computed(() => (actionOpen.value ? actionTitle.value : ''))
 const formMode = computed((): 'create' | 'modify' =>
-  actionOpen.value ? 'create' : recordFormMode.value,
+  actionOpen.value ? actionMode.value : recordFormMode.value,
 )
+const formDefer = computed(() => actionOpen.value && actionDefer.value)
+const formHint = computed(() => (actionOpen.value ? actionHint.value : ''))
 const formRow = computed(() =>
   actionOpen.value ? actionDefaults.value : recordFormRow.value,
 )
@@ -619,6 +628,10 @@ function closeAction() {
   actionUsing.value = 'default'
   actionTitle.value = ''
   actionDefaults.value = null
+  actionMode.value = 'create'
+  actionDefer.value = false
+  actionHint.value = ''
+  actionApply = null
 }
 
 function closeRecordForm() {
@@ -808,16 +821,30 @@ async function onFormSaved() {
   await tableRef.value?.reload()
 }
 
+function onFormApply(payload: Record<string, unknown>) {
+  const apply = actionApply
+  void apply?.(payload)
+}
+
 function openActionForm(form: {
   model: string
   using?: string
   title?: string
   defaults?: Record<string, unknown>
+  mode?: 'create' | 'modify'
+  row?: Record<string, unknown> | null
+  defer?: boolean
+  hint?: string
+  onApply?: (payload: Record<string, unknown>) => void | Promise<void>
 }) {
   actionModel.value = form.model
   actionUsing.value = form.using || 'default'
   actionTitle.value = form.title || ''
-  actionDefaults.value = form.defaults || {}
+  actionMode.value = form.mode === 'modify' ? 'modify' : 'create'
+  actionDefer.value = form.defer === true
+  actionHint.value = form.hint || ''
+  actionApply = form.onApply || null
+  actionDefaults.value = form.row || form.defaults || {}
   actionOpen.value = true
 }
 

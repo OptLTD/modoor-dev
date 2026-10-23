@@ -30,6 +30,14 @@ export type RecordView = {
     using?: string
     title?: string
     defaults?: Record<string, unknown>
+    /** modify 编辑当前行；create 用 defaults 预填。 */
+    mode?: 'create' | 'modify'
+    row?: Record<string, unknown> | null
+    /** 为 true 时不直接保存，把表单内容交给 onApply。 */
+    defer?: boolean
+    /** 显示在表单字段下方。 */
+    hint?: string
+    onApply?: (payload: Record<string, unknown>) => void | Promise<void>
   }) => void
   /** 下钻到另一模型的 TableDrawer（按 query 过滤）。 */
   openTable?: (table: {

@@ -372,12 +372,33 @@ def register_module_jobs(settings: Settings | None = None) -> list[str]:
     return registered
 
 
+def parse_daily_clock(raw: Any) -> str | None:
+    """``HH:MM`` in the business timezone. Invalid values are ignored."""
+    text = str(raw or "").strip()
+    if not text or ":" not in text:
+        return None
+    hour_s, minute_s = text.split(":", 1)
+    try:
+        hour = int(hour_s)
+        minute = int(minute_s)
+    except ValueError:
+        return None
+    if hour < 0 or hour > 23 or minute < 0 or minute > 59:
+        return None
+    return f"{hour:02d}:{minute:02d}"
+
+
 def scheduled_jobs_from_manifests(
     settings: Settings | None = None,
 ) -> list[dict[str, Any]]:
-    """Collect exports.jobs with ``every`` (seconds) from modules that should load."""
+    """Collect exports.jobs from yaml-active modules and domains already loaded.
+
+    Tenant-enabled modules (for example fleet, ``actived: false`` in yaml) are
+    imported during bootstrap and must still be scheduled. ``every`` is seconds.
+    ``daily`` is ``HH:MM`` in Asia/Shanghai.
+    """
     settings = settings or get_settings()
-    wanted = modules_to_load(settings)
+    wanted = modules_to_load(settings) | set(_loaded_domains)
     out: list[dict[str, Any]] = []
     seen: set[str] = set()
     for mid in _topo_order(wanted, settings):
@@ -401,15 +422,23 @@ def scheduled_jobs_from_manifests(
             kind = str(raw.get("kind") or "").strip()
             if not kind or kind in seen:
                 continue
+            daily = parse_daily_clock(raw.get("daily"))
             every_raw = raw.get("every")
-            if every_raw is None:
-                continue
-            try:
-                every = float(every_raw)
-            except (TypeError, ValueError):
-                continue
-            if every <= 0:
+            every: float | None = None
+            if every_raw is not None:
+                try:
+                    every = float(every_raw)
+                except (TypeError, ValueError):
+                    every = None
+                if every is not None and every <= 0:
+                    every = None
+            if not daily and every is None:
                 continue
             seen.add(kind)
-            out.append({"kind": kind, "every": every, "module_id": mid})
+            item: dict[str, Any] = {"kind": kind, "module_id": mid}
+            if daily:
+                item["daily"] = daily
+            if every is not None:
+                item["every"] = every
+            out.append(item)
     return out

@@ -49,7 +49,7 @@
             <span class="qf-label">{{ group.field.label || group.field.field }}</span>
             <SelectBox
               v-if="group.kind === 'select'"
-              bare
+              borderless
               searchable
               class="qf-select-ctl"
               :model-value="api.filter.quickSelectValue(group.field)"
@@ -59,7 +59,7 @@
             />
             <SelectBox
               v-else-if="group.kind === 'relation'"
-              bare
+              borderless
               searchable
               multiple
               class="qf-select-ctl qf-relation-ctl"
@@ -1194,9 +1194,11 @@ defineExpose({
 }
 .list-grid thead th.sticky-action {
   z-index: 9;
+  text-align: center!important;
 }
 .list-grid thead th.sticky-field {
   z-index: 9;
+  text-align: center!important;
 }
 .list-totals .sticky-col {
   /* background: #eef1f4; */

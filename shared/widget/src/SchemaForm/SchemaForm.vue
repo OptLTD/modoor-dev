@@ -109,7 +109,8 @@ function labelLines(f: SchemaField): string[] {
           :options="optionsOf(f)"
           :multiple="isMultiple(f)"
           :disabled="!editable(f)"
-          bare
+          searchable
+          borderless
         />
         <input
           v-else-if="isDateField(f)"
@@ -267,7 +268,7 @@ function labelLines(f: SchemaField): string[] {
   cursor: not-allowed;
   opacity: 1;
 }
-.field-control :deep(.select-box.bare .select-trigger) {
+.field-control :deep(.select-box.borderless .select-trigger) {
   min-height: 32px;
   border: 0;
   border-bottom: 1px solid #c5cad3;
@@ -277,13 +278,13 @@ function labelLines(f: SchemaField): string[] {
   box-shadow: none;
   cursor: pointer;
 }
-.field-control :deep(.select-box.bare .select-trigger:hover:not(.disabled)),
-.field-control :deep(.select-box.bare .select-trigger:focus-visible) {
+.field-control :deep(.select-box.borderless .select-trigger:hover:not(.disabled)),
+.field-control :deep(.select-box.borderless .select-trigger:focus-visible) {
   border-bottom-color: var(--accent, #0f6a5a);
   background: #fff;
 }
-.field-control :deep(.select-box.bare.disabled .select-trigger),
-.field-control :deep(.select-box.bare .select-trigger.disabled) {
+.field-control :deep(.select-box.borderless.disabled .select-trigger),
+.field-control :deep(.select-box.borderless .select-trigger.disabled) {
   background: #eef1f4;
   border-bottom-color: #d5dae2;
   color: var(--muted, #6b6458);

@@ -43,6 +43,28 @@ const TOAST_STYLE = `
   background: #fef2f2;
   color: var(--danger, #a33b2b);
 }
+.md-toast.sticky {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  max-width: min(92vw, 36rem);
+  border-radius: 12px;
+  text-align: left;
+  font-weight: 500;
+  white-space: pre-line;
+  pointer-events: auto;
+}
+.md-toast-x {
+  flex: 0 0 auto;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+}
 @keyframes md-toast-in {
   from { opacity: 0; transform: translateY(-8px); }
   to { opacity: 1; transform: translateY(0); }
@@ -54,12 +76,13 @@ let hideTimer = 0
 
 function ensureHost(): HTMLElement {
   if (host && document.body.contains(host)) return host
-  if (!document.getElementById('md-toast-style')) {
-    const style = document.createElement('style')
+  let style = document.getElementById('md-toast-style')
+  if (!style) {
+    style = document.createElement('style')
     style.id = 'md-toast-style'
-    style.textContent = TOAST_STYLE
     document.head.appendChild(style)
   }
+  if (style.textContent !== TOAST_STYLE) style.textContent = TOAST_STYLE
   host = document.createElement('div')
   host.className = 'md-toast-host'
   host.setAttribute('aria-live', 'polite')
@@ -67,7 +90,11 @@ function ensureHost(): HTMLElement {
   return host
 }
 
-export function appToast(message: string, kind: 'info' | 'error' = 'info'): void {
+export function appToast(
+  message: string,
+  kind: 'info' | 'error' = 'info',
+  persistent = false,
+): void {
   const text = (message || '').trim()
   if (!text) return
   const root = ensureHost()
@@ -75,10 +102,23 @@ export function appToast(message: string, kind: 'info' | 'error' = 'info'): void
   const el = document.createElement('div')
   el.className = kind === 'error' ? 'md-toast error' : 'md-toast'
   el.setAttribute('role', 'status')
-  el.textContent = text
-  root.appendChild(el)
+  const body = document.createElement('span')
+  body.textContent = text
+  el.appendChild(body)
   window.clearTimeout(hideTimer)
-  hideTimer = window.setTimeout(() => {
-    el.remove()
-  }, kind === 'error' ? 4200 : 1800)
+  if (persistent) {
+    el.classList.add('sticky')
+    const close = document.createElement('button')
+    close.type = 'button'
+    close.className = 'md-toast-x'
+    close.textContent = '×'
+    close.title = '关闭'
+    close.addEventListener('click', () => el.remove())
+    el.appendChild(close)
+  } else {
+    hideTimer = window.setTimeout(() => {
+      el.remove()
+    }, kind === 'error' ? 4200 : 1800)
+  }
+  root.appendChild(el)
 }

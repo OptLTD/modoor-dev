@@ -48,6 +48,12 @@ import {
 
 export const CHECK_W = 40
 export const ACTION_MIN = 36
+
+function textWidth(label: string) {
+  let px = 0
+  for (const ch of label) px += ch.charCodeAt(0) > 255 ? 15 : 8
+  return px
+}
 const ACTION_KEY = ACTION_WIDTH_KEY
 
 /**
@@ -196,13 +202,20 @@ export function useSchemaTable(
   const actionResizeMin = computed(() => {
     const floor = Math.max(ACTION_MIN, props.actionMin ?? 48)
     const clusters = actionClusters.value
-    const grouped = clusters.some((c) => c.group && c.clicks.length > 1)
-    if (!grouped) return floor
-    const estimate = clusters.reduce(
-      (n, c) => n + (c.group && c.clicks.length > 1 ? 45 : 40),
-      16,
-    )
-    return Math.max(floor, estimate)
+    if (!clusters.length) return floor
+    let content = 0
+    clusters.forEach((cluster, index) => {
+      const grouped = Boolean(cluster.group && cluster.clicks.length > 1)
+      const label = grouped
+        ? cluster.group && cluster.group !== 'more'
+          ? cluster.group
+          : t('widget.more')
+        : String(cluster.clicks[0]?.label || cluster.clicks[0]?.uukey || '')
+      content += textWidth(label) + (grouped ? 14 : 0)
+      if (index > 0) content += 6
+    })
+    // 单元格左右各 10px，再留一点避免末字被裁切
+    return Math.max(floor, 24 + Math.max(content, textWidth(t('widget.actions'))))
   })
   const actionWidth = ref(actionResizeMin.value)
 
@@ -259,7 +272,11 @@ export function useSchemaTable(
       keys = [...applyStickyOrder(shown, stickyKeys.value), ...rest]
     }
     const hidden = new Set(hiddenKeys ?? all.filter((f) => f.shown === false).map(fieldId))
-    return keys.map((id) => {
+    // 配置了 sticky 的列始终排在可见列最左，避免用户调过列顺序后冻结失效或错位
+    const visible = keys.filter((id) => !hidden.has(id))
+    const concealed = keys.filter((id) => hidden.has(id))
+    const ordered = [...applyStickyOrder(visible, stickyKeys.value), ...concealed]
+    return ordered.map((id) => {
       const f = byId.get(id)!
       return { id, label: columnLabel(f), visible: !hidden.has(id) }
     })
@@ -309,10 +326,7 @@ export function useSchemaTable(
   function applyWidthMap(map: Record<string, number>) {
     for (const [k, n] of Object.entries(map)) {
       if (!Number.isFinite(n)) continue
-      if (k === ACTION_KEY) {
-        if (n >= actionResizeMin.value) actionWidth.value = n
-        continue
-      }
+      if (k === ACTION_KEY) continue
       if (n >= 60) colWidths[k] = n
     }
   }
@@ -1109,7 +1123,7 @@ export function useSchemaTable(
   }
 
   watch(actionResizeMin, (min) => {
-    if (actionWidth.value < min) actionWidth.value = min
+    actionWidth.value = min
   })
 
   watch(
