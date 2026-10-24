@@ -132,12 +132,12 @@ const emit = defineEmits<{
   font-size: 13px;
 }
 .kanban-grid {
-  display: grid;
-  grid-template-columns: repeat(12, minmax(0, 1fr));
-  grid-auto-rows: 72px;
   gap: 12px;
-  padding: 12px 16px 24px;
+  display: grid;
   align-items: stretch;
+  grid-auto-rows: 64px;
+  padding: 12px 16px 24px;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
 }
 .kanban-slot {
   min-width: 0;

@@ -311,10 +311,15 @@ function pinUtime(list: SchemaField[]) {
   return [...utime, ...rest]
 }
 
-/** 表单可见字段：shown≠false，非隐式；utime 靠前，长文本排后 */
+/** 表单可见字段：shown≠false，非隐式、非内嵌；utime 靠前，长文本排后 */
 export function formVisibleFields(fields: SchemaField[]) {
   const visible = fields.filter(
-    (f) => f.field && f.field !== 'model' && f.shown !== false && !isImplicit(f),
+    (f) =>
+      f.field &&
+      f.field !== 'model' &&
+      f.shown !== false &&
+      !isImplicit(f) &&
+      !extraBool(f, 'embedded'),
   )
   const normal: SchemaField[] = []
   const longText: SchemaField[] = []
