@@ -16,6 +16,7 @@ from modoor.platform.bootstrap import bootstrap
 from modoor.core.db import init_db, session_scope
 from modoor.core.errors import AppError
 from modoor.engine.api import router as engine_router
+from modoor.web.mob import router as mob_router
 from modoor.platform.loader import register_module_web
 from modoor.platform import services as service_registry
 from modoor.platform.tickets import issue_ticket, verify_ticket
@@ -29,6 +30,7 @@ from modoor.web.login_auth import (
     LOGIN_ASSETS,
     LOGIN_NAME_COOKIE,
     LOGIN_REMEMBER_FLAG,
+    SessionCookieUnquoteMiddleware,
     SessionPersistMiddleware,
     apply_login_cookies,
     captcha_destination,
@@ -106,8 +108,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.add_middleware(SessionCookieUnquoteMiddleware)
 app.add_middleware(SessionPersistMiddleware)
 app.include_router(engine_router)
+app.include_router(mob_router)
 
 from modoor.runtime.mcp_http import mount_http_mcp
 
@@ -505,6 +509,7 @@ def _apps_catalog(request: Request, *, user):
         user=user,
         allowed_modules=allowed,
         active_role=acting_role(request),
+        public_base=str(request.base_url).rstrip("/"),
     )
 
 

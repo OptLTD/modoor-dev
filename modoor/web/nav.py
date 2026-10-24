@@ -449,6 +449,19 @@ def modoor_base_url() -> str:
     return f"http://{settings.modoor_web_host}:{settings.modoor_web_port}"
 
 
+def _href_on_gate(path: str) -> str:
+    """Prefix a public MODOOR_MODULE_GATE. Intranet or empty stays a path."""
+    from modoor.core.settings import public_module_gate
+
+    raw = str(path or "")
+    base = public_module_gate(get_settings().modoor_webui_url)
+    if not base or raw.startswith(("http://", "https://")):
+        return raw
+    if not raw.startswith("/"):
+        raw = f"/{raw}"
+    return f"{base}{raw}"
+
+
 def meta_from_service(rec: Any) -> dict[str, Any]:
     mfest = rec.manifest or {}
     ui = mfest.get("ui-web") or {}
@@ -551,7 +564,6 @@ def switcher_items(
     from modoor.web.mount import join_web_mount
 
     catalog = get_ui_catalog()
-    api_base = modoor_base_url()
     items: list[dict[str, Any]] = []
     seen: set[str] = set()
 
@@ -579,7 +591,7 @@ def switcher_items(
             href = home
         else:
             path = join_web_mount(str(home) or local_home)
-            href = f"{api_base}{path}"
+            href = _href_on_gate(path)
         menus = _map_menu_paths(
             list(meta.get("menus") or []),
             lambda p: join_web_mount(p),
@@ -610,7 +622,7 @@ def switcher_items(
             continue
         if allowed_modules is not None and mid not in allowed_modules:
             continue
-        href = f"{api_base}/go/{mid}"
+        href = _href_on_gate(f"/go/{mid}")
         exports = (svc.get("manifest") or {}).get("exports") or {}
         arts = svc.get("artifacts") or {}
         mfest = svc.get("manifest") or {}
@@ -623,6 +635,7 @@ def switcher_items(
                 "id": mid,
                 "label": svc.get("app_name") or ui.get("label") or mid,
                 "i18n": normalize_manifest_i18n(mfest.get("i18n")),
+                "path": f"/go/{mid}",
                 "href": href,
                 "kind": "external",
                 "seqno": order,
@@ -649,12 +662,15 @@ def registry_catalog(
     user: Any | None = None,
     allowed_modules: set[str] | None = None,
     active_role: str | None = None,
+    public_base: str | None = None,
 ) -> dict[str, Any]:
     """Catalog: tenant + profile + modules + aggregated MODULE_CONTRACT exports."""
     from modoor.platform.services import aggregated_exports
 
+    from modoor.core.settings import public_module_gate
+
     settings = get_settings()
-    base = modoor_base_url()
+    base = public_module_gate(settings.modoor_webui_url) or (public_base or "").rstrip("/")
     tenant_id = getattr(user, "tenant", None)
     tenant_name = settings.modoor_tenant
     access = {"unrestricted": False, "abilities": []}
@@ -721,7 +737,7 @@ def registry_catalog(
         },
         "profile": profile_dict(user),
         "modoor_url": base,
-        "logout_url": f"{base}/logout",
+        "logout_url": f"{base}/logout" if base else "/logout",
         "modules": modules,
         "exports": aggregated_exports(),
         "access": access,

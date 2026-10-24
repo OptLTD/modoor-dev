@@ -10,6 +10,7 @@ def migrate(conn) -> None:
     _fix_oplog_id_width(conn)
     _ensure_oplog_model_column(conn)
     _ensure_user_login_columns(conn)
+    _ensure_login_device(conn)
     _ensure_base_tbl(conn)
 
 
@@ -90,6 +91,15 @@ def _rename_user_column(conn, old: str, new: str) -> None:
         )
     if has_old:
         conn.execute(text(f"ALTER TABLE base_user DROP COLUMN {old}"))
+
+
+def _ensure_login_device(conn) -> None:
+    """App device snapshot on the login identity."""
+    if _col_type(conn, "base_login", "id") is None:
+        return
+    if _col_type(conn, "base_login", "device") is not None:
+        return
+    conn.execute(text("ALTER TABLE base_login ADD COLUMN device json"))
 
 
 def _ensure_base_tbl(conn) -> None:

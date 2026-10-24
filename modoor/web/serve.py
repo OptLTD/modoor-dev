@@ -226,7 +226,9 @@ def _serve_tls(cert: Path, key: Path, public_url: str) -> None:
 
 
 def serve() -> None:
-    public_url = os.environ.get("MODOOR_WEBUI_URL", "")
+    public_url = os.environ.get("MODOOR_MODULE_GATE") or os.environ.get(
+        "MODOOR_WEBUI_URL", ""
+    )
     found = cert_pair()
     if found is None:
         import uvicorn

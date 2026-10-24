@@ -71,6 +71,8 @@ class SystemLogin(Base):
         default=lambda: datetime.now(timezone.utc),
         onupdate=lambda: datetime.now(timezone.utc),
     )
+    # Last phone that signed in through the app.
+    device: Mapped[dict | None] = mapped_column(JSON, nullable=True)
 
     users: Mapped[list["SystemUser"]] = relationship(
         back_populates="login",

@@ -192,13 +192,13 @@ else
   MODOOR_WEBUI_PROXIES=""
 fi
 export MODOOR_WEBUI_PROXIES
-export MODOOR_WEBUI_URL
+export MODOOR_MODULE_GATE
 export MODOOR_MODULE_ROOT="${ADDON_ROOT}"
 
 echo ""
-echo "API / login  ${MODOOR_WEBUI_URL}/login"
-echo "same port    ${MODOOR_WEBUI_URL}/mod/<module>"
-echo "             ${MODOOR_WEBUI_URL}/mob/<module>"
+echo "API / login  ${MODOOR_MODULE_GATE}/login"
+echo "same port    ${MODOOR_MODULE_GATE}/mod/<module>"
+echo "             ${MODOOR_MODULE_GATE}/mob/<module>"
 for mid in "${MODULES[@]:-}"; do
   [[ -z "${mid}" ]] && continue
   printf "  /mod/%-6s → vite :%s\n" "${mid}" "$(module_port "${mid}")"

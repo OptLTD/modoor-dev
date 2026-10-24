@@ -1,20 +1,21 @@
 from __future__ import annotations
 
+import ipaddress
 import sys
 from functools import lru_cache
 from pathlib import Path
 from urllib.parse import urlparse
 
-from pydantic import Field, field_validator, model_validator
+from pydantic import AliasChoices, Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
-def _default_platform_root() -> Path:
+def _default_inbuilt_root() -> Path:
     # modoor/core/settings.py → repo root
     return Path(__file__).resolve().parents[2] / "inbuilt"
 
 
-def _default_addon_root() -> Path:
+def _default_module_root() -> Path:
     # modoor/core/settings.py → repo root
     return Path(__file__).resolve().parents[2] / "module"
 
@@ -46,6 +47,40 @@ def _split_pipe(raw: str) -> tuple[str, str | None]:
         return text, None
     left, right = text.split("|", 1)
     return left.strip(), right
+
+
+def _is_public_host(host: str) -> bool:
+    """A normal public origin. Loopback, private, and single-label names are not."""
+    name = (host or "").strip().lower().rstrip(".")
+    if not name or name in {"localhost", "localhost.localdomain"}:
+        return False
+    if name.endswith((".localhost", ".local", ".internal")):
+        return False
+    try:
+        ip = ipaddress.ip_address(name)
+    except ValueError:
+        return "." in name
+    return bool(ip.is_global)
+
+
+def public_module_gate(url: str) -> str:
+    """Public MODOOR_MODULE_GATE origin, or '' when empty or only an intranet address.
+
+    An empty or private value is the local listen address. Links then stay on
+    whatever host the browser used. A public URL is prefixed onto those links.
+    """
+    raw = (url or "").strip()
+    if not raw:
+        return ""
+    parsed = urlparse(raw if "://" in raw else f"http://{raw}")
+    host = parsed.hostname or ""
+    if not _is_public_host(host):
+        return ""
+    scheme = parsed.scheme or "http"
+    port = parsed.port
+    if port and port != (443 if scheme == "https" else 80):
+        return f"{scheme}://{host}:{port}"
+    return f"{scheme}://{host}"
 
 
 def _expand_module_urls(raw: str, *, host: str) -> str:
@@ -98,19 +133,19 @@ class Settings(BaseSettings):
         description="Log SQL slower than this many milliseconds as warning.",
     )
     modoor_builtin_root: Path = Field(
-        default_factory=_default_platform_root,
-        alias="MODOOR_PLATFORM_ROOT",
+        default_factory=_default_inbuilt_root,
+        validation_alias=AliasChoices("MODOOR_INBUILT_ROOT", "MODOOR_PLATFORM_ROOT"),
         description="Inbuilt platform modules (base/doc/wiki/skill).",
     )
     modoor_modules_root: Path = Field(
-        default_factory=_default_addon_root,
+        default_factory=_default_module_root,
         alias="MODOOR_MODULE_ROOT",
         description=(
             "Business package root (directory named module/ with one subdir per module). "
             "Default: repo ./module (sale demo). Point at another module/ tree to mount it."
         ),
     )
-    # Derived from MODOOR_WEBUI_URL (no separate env needed).
+    # Derived from MODOOR_MODULE_GATE (no separate env needed).
     modoor_web_host: str = Field(default="127.0.0.1")
     modoor_web_port: int = Field(default=8765)
     modoor_session_secret: str = Field(
@@ -133,10 +168,10 @@ class Settings(BaseSettings):
     modoor_aliyun_sms_template: str = Field(default="", alias="MODOOR_ALIYUN_SMS_TEMPLATE")
     modoor_webui_url: str = Field(
         default="http://127.0.0.1:8765",
-        alias="MODOOR_WEBUI_URL",
-        description="Public console / login host (template shell on API). Also sets listen host/port.",
+        validation_alias=AliasChoices("MODOOR_MODULE_GATE", "MODOOR_WEBUI_URL"),
+        description="Listen address when empty or intranet. A public URL is the link origin; listen stays local.",
     )
-    # Short form: base=5175,wiki=5176 (host from WEBUI_URL). Full URLs still accepted.
+    # Short form: base=5175,wiki=5176 (host from MODULE_GATE). Full URLs still accepted.
     modoor_module_urls: str = Field(
         default="base=5175,wiki=5176,sale=5177,skill=5178,doc=5179,fleet=5180,freight=5181,capacity=5182,dispatch=5183,flow=5184",
         alias="MODOOR_MODULE_URLS",
@@ -154,7 +189,9 @@ class Settings(BaseSettings):
     )
     # `username|password` (preferred). Falls back to USERNAME/PASSWORD fields.
     # Example: MODOOR_ADMIN=admin|ADMIN_PASSWORD
-    modoor_admin: str | None = Field(default=None, alias="MODOOR_ADMIN")
+    modoor_admin: str | None = Field(
+        default=None, alias="MODOOR_ADMIN"
+    )
     modoor_admin_username: str = Field(
         default="superuser", alias="MODOOR_ADMIN_USERNAME"
     )
@@ -193,12 +230,16 @@ class Settings(BaseSettings):
             elif user:
                 object.__setattr__(self, "modoor_admin_username", user)
 
-        parsed = urlparse((self.modoor_webui_url or "").strip() or "http://127.0.0.1:8765")
-        host = parsed.hostname or "127.0.0.1"
-        if parsed.port is not None:
-            port = parsed.port
+        raw_gate = (self.modoor_webui_url or "").strip()
+        if public_module_gate(raw_gate):
+            host, port = "127.0.0.1", 8765
         else:
-            port = 443 if parsed.scheme == "https" else 80
+            parsed = urlparse(raw_gate or "http://127.0.0.1:8765")
+            host = parsed.hostname or "127.0.0.1"
+            if parsed.port is not None:
+                port = parsed.port
+            else:
+                port = 443 if parsed.scheme == "https" else 80
         object.__setattr__(self, "modoor_web_host", host)
         object.__setattr__(self, "modoor_web_port", port)
 

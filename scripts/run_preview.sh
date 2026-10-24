@@ -123,10 +123,10 @@ modoor_load_webui_url
 unset MODOOR_WEBUI_PROXIES || true
 export MODOOR_WEBUI_PROXIES=""
 export MODOOR_WEBUI_STATIC_MODULES="$(IFS=,; echo "${MODULES[*]}")"
-export MODOOR_WEBUI_URL
+export MODOOR_MODULE_GATE
 
 echo ""
-echo "API / login  ${MODOOR_WEBUI_URL}/login"
+echo "API / login  ${MODOOR_MODULE_GATE}/login"
 echo "mode         preview (API mounts dist, no vite)"
 for i in "${!MODULES[@]}"; do
   [[ -z "${MODULES[$i]}" ]] && continue

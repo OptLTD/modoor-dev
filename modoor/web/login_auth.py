@@ -8,6 +8,7 @@ import re
 import secrets
 import time
 from pathlib import Path
+from urllib.parse import unquote_to_bytes
 
 from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
 from starlette.requests import Request
@@ -25,6 +26,42 @@ LOGIN_ASSETS: dict[str, tuple[Path, str]] = {
     "login-view.png": (_STATIC / "login-view.png", "image/png"),
     "login-view.webm": (_STATIC / "login-view.webm", "video/webm"),
 }
+
+def unquote_session_cookie(raw: bytes) -> bytes:
+    """Undo percent-encoding of modoor_session only.
+
+    Android WebView's cookie API encodes '=' in the value, so the session
+    signature no longer matches and /api/mob/profile returns 401.
+    """
+    parts: list[bytes] = []
+    for part in raw.split(b";"):
+        name, sep, value = part.partition(b"=")
+        if sep and name.strip() == b"modoor_session" and b"%" in value:
+            value = unquote_to_bytes(value.decode("latin1"))
+        parts.append(name + sep + value if sep else part)
+    return b";".join(parts)
+
+
+class SessionCookieUnquoteMiddleware:
+    """Decode a percent-encoded modoor_session before SessionMiddleware reads it."""
+
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope.get("type") == "http":
+            headers = []
+            changed = False
+            for key, value in scope["headers"]:
+                if key == b"cookie" and b"modoor_session=" in value and b"%" in value:
+                    value = unquote_session_cookie(value)
+                    changed = True
+                headers.append((key, value))
+            if changed:
+                scope = dict(scope)
+                scope["headers"] = headers
+        await self.app(scope, receive, send)
+
 
 REMEMBER_COOKIE = "modoor_remember"
 LOGIN_NAME_COOKIE = "modoor_login_name"
