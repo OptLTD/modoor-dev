@@ -14,6 +14,10 @@ export function isOptionalField(f: SchemaField) {
   return String(f.ftype).toUpperCase() === 'OPTIONAL'
 }
 
+export function isSwitchField(f: SchemaField) {
+  return String(f.extra?.dataType || '').toUpperCase() === 'SWITCH'
+}
+
 export function isDateField(f: SchemaField) {
   return String(f.ftype).toUpperCase() === 'DATETIME'
 }

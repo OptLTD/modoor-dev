@@ -12,6 +12,7 @@ import {
   isOptionalField,
   isRelationField,
   isSerialField,
+  isSwitchField,
   isTextareaField,
   isUploadField,
   uploadAccept,
@@ -103,8 +104,21 @@ function labelLines(f: SchemaField): string[] {
         <span v-if="isRequired(f)" class="req">*</span>
       </span>
       <span class="field-control">
+        <span v-if="isSwitchField(f)" class="switch" role="group" :aria-label="labelLines(f).join('')">
+          <button
+            v-for="opt in optionsOf(f)"
+            :key="opt.value"
+            type="button"
+            class="switch-btn"
+            :class="{ on: String(form[fieldKey(f)] || '') === opt.value }"
+            :disabled="!editable(f)"
+            @click="form[fieldKey(f)] = opt.value"
+          >
+            {{ opt.label }}
+          </button>
+        </span>
         <SelectBox
-          v-if="isRelationField(f) || isOptionalField(f)"
+          v-else-if="isRelationField(f) || isOptionalField(f)"
           v-model="form[fieldKey(f)]"
           :options="optionsOf(f)"
           :multiple="isMultiple(f)"
@@ -234,6 +248,35 @@ function labelLines(f: SchemaField): string[] {
   display: flex;
   align-items: stretch;
   min-width: 0;
+}
+.switch {
+  display: inline-flex;
+  align-items: stretch;
+  border: 1px solid var(--line, #e2e6eb);
+  border-radius: 6px;
+  overflow: hidden;
+  min-height: 32px;
+}
+.switch-btn {
+  appearance: none;
+  border: 0;
+  background: #fff;
+  padding: 4px 12px;
+  font: inherit;
+  font-size: 0.88rem;
+  color: var(--muted, #6b6458);
+  cursor: pointer;
+}
+.switch-btn + .switch-btn {
+  border-left: 1px solid var(--line, #e2e6eb);
+}
+.switch-btn.on {
+  background: var(--ink, #1c1914);
+  color: #fff;
+}
+.switch-btn:disabled {
+  cursor: default;
+  opacity: 0.6;
 }
 .field-control :deep(.select-box),
 .field-control input {
