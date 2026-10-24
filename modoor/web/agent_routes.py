@@ -12,7 +12,7 @@ from fastapi.responses import PlainTextResponse, RedirectResponse, Response
 
 from modoor.core.db import session_scope
 from modoor.core.settings import get_settings
-from builtin.skill import domain as skill_domain
+from inbuilt.skill import domain as skill_domain
 
 router = APIRouter(tags=["agent"])
 
@@ -65,7 +65,7 @@ def _skill_public_item(raw: dict[str, Any], *, base: str) -> dict[str, Any]:
 def _agent_tenant_ctx():
     """Bootstrap tenant ctx for public /agent skill pack (DB overrides)."""
     from modoor.core.ctx import Ctx
-    from builtin.base.domain import ensure_tenant
+    from inbuilt.base.domain import ensure_tenant
 
     settings = get_settings()
     with session_scope() as session:

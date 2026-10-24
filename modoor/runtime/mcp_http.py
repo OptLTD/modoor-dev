@@ -23,7 +23,7 @@ from modoor.runtime.mcp_oauth import (
     resource_metadata_url,
 )
 from modoor.runtime.mcp_server import ensure_tools_registered, mcp
-from builtin.base import domain as base_domain
+from inbuilt.base import domain as base_domain
 
 logger = logging.getLogger(__name__)
 

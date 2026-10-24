@@ -10,7 +10,7 @@ from modoor.core.ctx import Ctx
 from modoor.core.db import session_scope
 from modoor.core.errors import AppError
 from modoor.core.settings import Settings
-from builtin.base.domain import SystemUser, ensure_tenant, resolve_agent_auth, root_team_id
+from inbuilt.base.domain import SystemUser, ensure_tenant, resolve_agent_auth, root_team_id
 
 _request_ctx: ContextVar[Ctx | None] = ContextVar("modoor_request_ctx", default=None)
 

@@ -177,7 +177,7 @@ def waybill_from(asset: dict, chosen: list[dict], *, solver: str, reorder: bool)
 
 
 def plan_heuristic(demands: list[dict], assets: list[dict]) -> dict:
-    """Mirror addon.dispatch.domain.pack: largest vehicle first, nearest feasible order."""
+    """Mirror module.dispatch.domain.pack: largest vehicle first, nearest feasible order."""
     assets_sorted = sorted(
         assets,
         key=lambda a: (a["capacity_pallets"], a["capacity_kg"]),

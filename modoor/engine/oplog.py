@@ -1,4 +1,4 @@
-"""Thin oplog registry: pure diff + optional writer hook (no builtin.base import)."""
+"""Thin oplog registry: pure diff + optional writer hook (no inbuilt.base import)."""
 
 from __future__ import annotations
 
@@ -66,7 +66,7 @@ def diff_row_values(
 
 
 def record_oplog(session: Session, ctx: Ctx, **kwargs: Any) -> Any:
-    """Delegate to the registered writer (e.g. builtin.base.domain.record_oplog)."""
+    """Delegate to the registered writer (e.g. inbuilt.base.domain.record_oplog)."""
     if _writer is None:
         return None
     return _writer(session, ctx, **kwargs)

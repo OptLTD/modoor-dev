@@ -256,7 +256,7 @@ def mark_blend_listing(modules: list[dict[str, Any]]) -> list[dict[str, Any]]:
 def _tenant_menu_industry(session: Any, tenant_id: int) -> str:
     """Current tenant industry. Fleet stores it; other installs show every menu."""
     try:
-        from addon.fleet.domain.industry import active_industry
+        from module.fleet.domain.industry import active_industry
     except ImportError:
         return "all"
     from modoor.core.ctx import Ctx
@@ -392,12 +392,12 @@ def _load_ui_catalog() -> dict[str, dict[str, Any]]:
             continue
 
         pkg = text(meta.get("pkg"))
-        if pkg == "builtin":
-            origin = "builtin"
+        if pkg == "inbuilt":
+            origin = "inbuilt"
         elif pkg == "lightapp":
             origin = "lightapp"
         else:
-            origin = "addon"
+            origin = "module"
         blend = text(ui.get("blend"), strip=True)
         catalog[mid] = {
             "id": mid,
@@ -597,7 +597,7 @@ def switcher_items(
                 "exports": None, "online": True,
                 "exports_count": None,
                 "source": "module",
-                "origin": meta.get("origin") or "addon",
+                "origin": meta.get("origin") or "module",
             }
         )
         seen.add(mid)
@@ -635,7 +635,7 @@ def switcher_items(
                     "models": len(arts.get("models") or []),
                 },
                 "source": "external",
-                "origin": "addon",
+                "origin": "module",
             }
         )
         seen.add(mid)
@@ -663,7 +663,7 @@ def registry_catalog(
     if tenant_id is not None:
         from modoor.core.ctx import Ctx
         from modoor.core.db import session_scope
-        from builtin.base.domain import SystemTenant, access_gate
+        from inbuilt.base.domain import SystemTenant, access_gate
 
         with session_scope() as session:
             row = session.get(SystemTenant, int(tenant_id))
@@ -680,7 +680,7 @@ def registry_catalog(
                     user_id=int(user.id),
                     active_role=active_role,
                 )
-            from builtin.base.global_settings import get_menu_layouts
+            from inbuilt.base.global_settings import get_menu_layouts
 
             menu_layouts = get_menu_layouts(
                 session,
@@ -690,7 +690,7 @@ def registry_catalog(
     else:
         from modoor.core.ctx import Ctx
         from modoor.core.db import session_scope
-        from builtin.base.domain import ensure_tenant
+        from inbuilt.base.domain import ensure_tenant
 
         with session_scope() as session:
             tenant_id = int(
@@ -698,7 +698,7 @@ def registry_catalog(
                     session, tenant_name, tenant_id=settings.modoor_tenant_id
                 )["tenant"]["id"]
             )
-            from builtin.base.global_settings import get_menu_layouts
+            from inbuilt.base.global_settings import get_menu_layouts
 
             menu_layouts = get_menu_layouts(
                 session,

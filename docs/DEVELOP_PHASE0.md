@@ -62,7 +62,7 @@ Phase 0：一个进程绑定一套 ctx（由上述 env 决定）。多租户多 
 
 ## Skill
 
-- 路径：`addon/sale/skills/*.md`
+- 路径：`module/sale/skills/*.md`
 - Phase 0 不强制 HTTP；接入说明里写清「把该目录加入 Agent Skill / 上下文」。
 - MCP 可提供只读 resource：`skill://sale/...` 便于宿主拉取。
 

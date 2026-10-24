@@ -10,17 +10,17 @@ Copyright (c) 2026 Option.LTD.
 遵守 AGPL-3.0 和下列附加条款时，可以：
 
 - 使用、修改、分发本软件，包括向付费客户做私有化部署，并就此收费。
-- 不修改核心，而通过 addon 或其他模块提供网络服务。仅此一项不需要商业许可。
+- 不修改核心，而通过 module 或其他模块提供网络服务。仅此一项不需要商业许可。
 
 二、核心
 
 「核心」指本仓库以下目录中的全部内容：
 
 - modoor/
-- builtin/
+- inbuilt/
 - shared/
 
-「非核心」指 addon/、external/，以及你另行开发、不修改核心源码、只作为可替换模块与核心组合的代码。
+「非核心」指 module/，以及你另行开发、不修改核心源码、只作为可替换模块与核心组合的代码。
 
 三、非核心附加许可（AGPL 第 7 条）
 
@@ -68,9 +68,9 @@ Option.LTD. licenses this repository under the GNU Affero General Public License
 
 1. Core and Non-Core
 
-"Core" means all contents of the modoor/, builtin/, and shared/ directories of this repository.
+"Core" means all contents of the modoor/, inbuilt/, and shared/ directories of this repository.
 
-"Non-Core" means the addon/ and external/ directories, and any separately developed module that does not modify Core source code and is combined with Core only as a replaceable module.
+"Non-Core" means the module/ directory, and any separately developed module that does not modify Core source code and is combined with Core only as a replaceable module.
 
 2. Additional permission for Non-Core
 

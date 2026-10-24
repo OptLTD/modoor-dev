@@ -4,8 +4,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
     PYTHONPATH=/app \
-    MODOOR_ADDON_ROOT=/app/addon \
-    MODOOR_PLATFORM_ROOT=/app/builtin \
+    MODOOR_MODULE_ROOT=/app/module \
+    MODOOR_PLATFORM_ROOT=/app/inbuilt \
     MODOOR_WEBUI_URL=http://127.0.0.1:8765 \
     MODOOR_WEBUI_PROXIES= \
     MODOOR_DOC_OCR=0 \
@@ -16,8 +16,9 @@ WORKDIR /app
 
 COPY pyproject.toml README.md LICENSE ./
 COPY modoor modoor
-COPY builtin builtin
-COPY addon addon
+COPY inbuilt inbuilt
+COPY module module
+COPY mobile mobile
 
 RUN pip install --no-cache-dir --no-compile . \
  && python - <<'PY'
@@ -25,7 +26,7 @@ import pathlib, shutil
 root = pathlib.Path("/usr/local/lib/python3.12")
 sp = root / "site-packages"
 # App code is imported from /app. Drop the copy pip just installed.
-for name in ("modoor", "builtin", "addon", "external"):
+for name in ("modoor", "inbuilt", "module"):
     shutil.rmtree(sp / name, ignore_errors=True)
 for path in sp.glob("modoor-*.dist-info"):
     shutil.rmtree(path, ignore_errors=True)

@@ -9,7 +9,7 @@ from fastapi import HTTPException, Request
 from modoor.core.ctx import Ctx
 from modoor.core.errors import AppError
 from modoor.web.kit import ShellKit, get_kit
-from builtin.base.domain import SystemUser
+from inbuilt.base.domain import SystemUser
 
 log = logging.getLogger("modoor.api")
 

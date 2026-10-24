@@ -54,7 +54,7 @@ def test_login_page_is_split_layout(client: TestClient):
 def test_login_without_password_asks_for_captcha(client: TestClient):
     from modoor.core.db import session_scope
     from modoor.runtime.auth import resolve_ctx
-    from builtin.base import domain as base_domain
+    from inbuilt.base import domain as base_domain
 
     ctx = resolve_ctx(get_settings())
     with session_scope() as session:

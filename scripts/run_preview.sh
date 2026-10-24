@@ -21,7 +21,7 @@ if [[ -f "${ROOT}/.env" ]]; then
 fi
 
 addon_root() {
-  local root="${MODOOR_ADDON_ROOT:-${ROOT}/addon}"
+  local root="${MODOOR_MODULE_ROOT:-${ROOT}/module}"
   if [[ "${root}" != /* ]]; then
     root="${ROOT}/${root}"
   fi
@@ -37,22 +37,22 @@ ADDON_ROOT="$(addon_root)"
 default_modules() {
   local m
   for m in base doc wiki sale skill fleet freight capacity dispatch flow; do
-    if [[ -d "${ADDON_ROOT}/${m}/webui" || -d "${ROOT}/addon/${m}/webui" || -d "${ROOT}/builtin/${m}/webui" ]]; then
+    if [[ -d "${ADDON_ROOT}/${m}/webui" || -d "${ROOT}/module/${m}/webui" || -d "${ROOT}/inbuilt/${m}/webui" ]]; then
       echo "${m}"
     fi
   done
 }
 
-# First hit with index.html wins: external addon, in-repo addon, builtin.
+# First hit with index.html wins: external module, in-repo module, inbuilt.
 dist_for() {
   local name="$1"
   local candidate
   local -a candidates=()
   candidates+=("${ADDON_ROOT}/${name}/webui/dist")
-  if [[ "${ADDON_ROOT}" != "${ROOT}/addon" ]]; then
-    candidates+=("${ROOT}/addon/${name}/webui/dist")
+  if [[ "${ADDON_ROOT}" != "${ROOT}/module" ]]; then
+    candidates+=("${ROOT}/module/${name}/webui/dist")
   fi
-  candidates+=("${ROOT}/builtin/${name}/webui/dist")
+  candidates+=("${ROOT}/inbuilt/${name}/webui/dist")
   for candidate in "${candidates[@]}"; do
     if [[ -d "${candidate}" && -f "${candidate}/index.html" ]]; then
       (cd "${candidate}" && pwd)
@@ -92,7 +92,7 @@ if [[ ${#MODULES[@]} -eq 0 ]]; then
 fi
 
 if [[ ${#MODULES[@]} -eq 0 ]]; then
-  echo "!! no module webui found under builtin/*/webui or addon/*/webui" >&2
+  echo "!! no module webui found under inbuilt/*/webui or module/*/webui" >&2
   exit 1
 fi
 
@@ -106,10 +106,10 @@ for name in "${MODULES[@]}"; do
   if ! dist="$(dist_for "${name}")"; then
     echo "!! missing dist for ${name}" >&2
     echo "   looked in ${ADDON_ROOT}/${name}/webui/dist" >&2
-    if [[ "${ADDON_ROOT}" != "${ROOT}/addon" ]]; then
-      echo "             ${ROOT}/addon/${name}/webui/dist" >&2
+    if [[ "${ADDON_ROOT}" != "${ROOT}/module" ]]; then
+      echo "             ${ROOT}/module/${name}/webui/dist" >&2
     fi
-    echo "             ${ROOT}/builtin/${name}/webui/dist" >&2
+    echo "             ${ROOT}/inbuilt/${name}/webui/dist" >&2
     echo "   run: make build ${name}" >&2
     echo "   or:  make preview BUILD=1 ${name}" >&2
     exit 1

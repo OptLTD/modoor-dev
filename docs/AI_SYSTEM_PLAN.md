@@ -35,7 +35,7 @@ PHASE0.md / INTEGRATION.md  实现约定与接入
 数据流（当前）：
 
 ```text
-builtin/* + addon/*  ──install──▶  Registry
+inbuilt/* + module/*  ──install──▶  Registry
                            │
               ┌────────────┼────────────┐
               ▼            ▼            ▼
@@ -167,7 +167,7 @@ MCP 暴露策略（已决）：
 - [x] MCP：**A 单聚合**
 - [x] 鉴权：Phase 0 **API Key → ctx**
 - [x] 第一条垂直链：**销售单** `sale.create_order` → `sale.confirm_order`
-- [x] Skill 分发：Phase 0 **仓库 `builtin|addon/*/skills/` 目录** + 接入说明（HTTP/zip 后置）
+- [x] Skill 分发：Phase 0 **仓库 `inbuilt|module/*/skills/` 目录** + 接入说明（HTTP/zip 后置）
 - [x] `needs_confirmation`：HMAC token，绑定 ctx + tool + args 摘要 + TTL；二次 call 带 `confirmation_token`
 
 ---

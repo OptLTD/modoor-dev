@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Start API (:8765) + selected module Vue apps; API reverse-proxies /mod/<module>.
+# Start API (:8765) + selected module Vue apps.
+# API reverse-proxies /mod/<module> and, when present, /mob/<module>.
 # Usage: scripts/run_dev.sh [base] [wiki] [sale] ...
 set -euo pipefail
 
@@ -21,6 +22,13 @@ module_port() {
     capacity) echo 5182 ;;
     dispatch) echo 5183 ;;
     flow) echo 5184 ;;
+    *) echo "" ;;
+  esac
+}
+
+mob_port() {
+  case "$1" in
+    freight) echo 5190 ;;
     *) echo "" ;;
   esac
 }
@@ -74,9 +82,9 @@ source .env
 set +a
 modoor_load_webui_url
 
-# Same root as modoor.core.settings.modoor_modules_root (MODOOR_ADDON_ROOT).
+# Same root as modoor.core.settings.modoor_modules_root (MODOOR_MODULE_ROOT).
 addon_root() {
-  local root="${MODOOR_ADDON_ROOT:-${ROOT}/addon}"
+  local root="${MODOOR_MODULE_ROOT:-${ROOT}/module}"
   if [[ "${root}" != /* ]]; then
     root="${ROOT}/${root}"
   fi
@@ -93,7 +101,7 @@ start_webui() {
   local name="$1"
   local dir="${ADDON_ROOT}/${name}/webui"
   if [[ ! -d "${dir}" ]]; then
-    dir="${ROOT}/builtin/${name}/webui"
+    dir="${ROOT}/inbuilt/${name}/webui"
   fi
   local p
   p="$(module_port "${name}")"
@@ -111,7 +119,7 @@ start_webui() {
     cd "${dir}"
     export MODOOR_PUBLIC_HOST="${HOST}"
     export MODOOR_PUBLIC_PORT="${PORT}"
-    # Prefer pnpm workspace when addon root lives in a pro-style repo.
+    # Prefer pnpm workspace when module root lives in a pro-style repo.
     local pkg_root=""
     if [[ -f "${ADDON_ROOT}/../pnpm-workspace.yaml" ]]; then
       pkg_root="$(cd "${ADDON_ROOT}/.." && pwd)"
@@ -135,9 +143,45 @@ start_webui() {
   PIDS+=($!)
 }
 
+start_mob() {
+  local name="$1"
+  local dir
+  dir="$(cd "${ADDON_ROOT}/.." && pwd)/mobile/${name}"
+  if [[ ! -f "${dir}/package.json" ]]; then
+    return 0
+  fi
+  local p
+  p="$(mob_port "${name}")"
+  if [[ -z "${p}" ]]; then
+    echo ">> skip /mob/${name}: no vite port" >&2
+    return 0
+  fi
+  free_port "${p}"
+  PROXY_PARTS+=("mob/${name}=http://127.0.0.1:${p}")
+  (
+    cd "${dir}"
+    export MODOOR_PUBLIC_HOST="${HOST}"
+    export MODOOR_PUBLIC_PORT="${PORT}"
+    local pkg_root=""
+    if [[ -f "${ADDON_ROOT}/../pnpm-workspace.yaml" ]]; then
+      pkg_root="$(cd "${ADDON_ROOT}/.." && pwd)"
+    fi
+    if [[ -n "${pkg_root}" ]] && command -v pnpm >/dev/null 2>&1; then
+      pnpm run dev
+    else
+      if [[ ! -d node_modules ]]; then
+        npm install
+      fi
+      npm run dev
+    fi
+  ) &
+  PIDS+=($!)
+}
+
 for mid in "${MODULES[@]:-}"; do
   [[ -z "${mid}" ]] && continue
   start_webui "${mid}"
+  start_mob "${mid}"
 done
 
 # Join proxies: base=http://127.0.0.1:5175,wiki=... → mounted as /mod/base, /mod/wiki
@@ -149,14 +193,19 @@ else
 fi
 export MODOOR_WEBUI_PROXIES
 export MODOOR_WEBUI_URL
-export MODOOR_ADDON_ROOT="${ADDON_ROOT}"
+export MODOOR_MODULE_ROOT="${ADDON_ROOT}"
 
 echo ""
 echo "API / login  ${MODOOR_WEBUI_URL}/login"
 echo "same port    ${MODOOR_WEBUI_URL}/mod/<module>"
+echo "             ${MODOOR_WEBUI_URL}/mob/<module>"
 for mid in "${MODULES[@]:-}"; do
   [[ -z "${mid}" ]] && continue
   printf "  /mod/%-6s → vite :%s\n" "${mid}" "$(module_port "${mid}")"
+  mobp="$(mob_port "${mid}")"
+  if [[ -n "${mobp}" && -f "$(cd "${ADDON_ROOT}/.." && pwd)/mobile/${mid}/package.json" ]]; then
+    printf "  /mob/%-6s → vite :%s\n" "${mid}" "${mobp}"
+  fi
 done
 echo "proxies      ${MODOOR_WEBUI_PROXIES}"
 echo "  MCP binary: ${ROOT}/.venv/bin/modoor-mcp"

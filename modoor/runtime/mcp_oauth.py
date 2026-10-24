@@ -47,7 +47,7 @@ from mcp.shared.auth import OAuthClientInformationFull, OAuthToken, ProtectedRes
 
 from modoor.core.db import session_scope
 from modoor.core.settings import get_settings
-from builtin.base import domain as base_domain
+from inbuilt.base import domain as base_domain
 
 logger = logging.getLogger(__name__)
 

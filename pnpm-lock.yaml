@@ -8,7 +8,7 @@ importers:
 
   .: {}
 
-  addon/sale/webui:
+  module/sale/webui:
     dependencies:
       '@modoor/hooks':
         specifier: workspace:*
@@ -45,7 +45,7 @@ importers:
         specifier: ^2.1.0
         version: 2.2.12(typescript@5.9.3)
 
-  builtin/base/webui:
+  inbuilt/base/webui:
     dependencies:
       '@modoor/hooks':
         specifier: workspace:*
@@ -82,7 +82,7 @@ importers:
         specifier: ^2.1.0
         version: 2.2.12(typescript@5.9.3)
 
-  builtin/doc/webui:
+  inbuilt/doc/webui:
     dependencies:
       '@modoor/hooks':
         specifier: workspace:*
@@ -128,7 +128,7 @@ importers:
         specifier: ^2.1.0
         version: 2.2.12(typescript@5.9.3)
 
-  builtin/flow/webui:
+  inbuilt/flow/webui:
     dependencies:
       '@modoor/hooks':
         specifier: workspace:*
@@ -165,7 +165,7 @@ importers:
         specifier: ^2.1.0
         version: 2.2.12(typescript@5.9.3)
 
-  builtin/skill/webui:
+  inbuilt/skill/webui:
     dependencies:
       '@modoor/hooks':
         specifier: workspace:*
@@ -205,7 +205,7 @@ importers:
         specifier: ^2.1.0
         version: 2.2.12(typescript@5.9.3)
 
-  builtin/wiki/webui:
+  inbuilt/wiki/webui:
     dependencies:
       '@blocknote/core':
         specifier: ^0.31.1

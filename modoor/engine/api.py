@@ -13,15 +13,15 @@ from modoor.core.db import session_scope
 from modoor.core.errors import AppError
 from modoor.core.settings import get_settings
 from modoor.engine.service import get_engine
-from builtin.base import domain as base_domain
-from builtin.base.domain import SystemUser
+from inbuilt.base import domain as base_domain
+from inbuilt.base.domain import SystemUser
 from modoor.web.acting import acting_role, clear_acting_role_cookie
 
 router = APIRouter()
 
 
 def _bootstrap_tenant_id() -> int:
-    from builtin.base.domain import ensure_tenant
+    from inbuilt.base.domain import ensure_tenant
 
     with session_scope() as session:
         s = get_settings()

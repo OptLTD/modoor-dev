@@ -1,4 +1,4 @@
-"""Load model bundles: builtin|addon/<id>/models/<name>/{config,tables,inputs}.json."""
+"""Load model bundles: inbuilt|module/<id>/models/<name>/{config,tables,inputs}.json."""
 
 from __future__ import annotations
 

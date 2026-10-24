@@ -1,4 +1,4 @@
-.PHONY: help setup db build dev preview image mcp web webui api test smoke external base wiki sale skill doc fleet freight capacity dispatch sync flow worker seed
+.PHONY: help setup db build dev preview image mcp web webui api test smoke base wiki sale skill doc fleet freight capacity dispatch sync flow worker seed
 
 ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 PYTHON := $(ROOT)/.venv/bin/python
@@ -125,9 +125,9 @@ webui: ## Module Vue only: make webui base wiki
 		( cd "$(ROOT)" && pnpm install ); \
 	fi; \
 	for m in $$mods; do \
-		d="$(ROOT)/addon/$$m/webui"; \
-		if [ ! -d "$$d" ]; then d="$(ROOT)/builtin/$$m/webui"; fi; \
-		if [ ! -d "$$d" ]; then echo "missing addon|builtin/$$m/webui"; exit 1; fi; \
+		d="$(ROOT)/module/$$m/webui"; \
+		if [ ! -d "$$d" ]; then d="$(ROOT)/inbuilt/$$m/webui"; fi; \
+		if [ ! -d "$$d" ]; then echo "missing module|inbuilt/$$m/webui"; exit 1; fi; \
 		( cd "$$d" && pnpm run dev ) & \
 	done; wait
 
@@ -142,11 +142,6 @@ seed: setup ## Seed demo data: make seed [sale|fleet|dispatch|city] FORCE=1
 	if [ "$(FORCE)" = "1" ]; then args="$$args --force"; fi; \
 	$(PYTHON) scripts/seed_demo.py $$args
 
-external: setup ## Start external Board+Pulse (Modoor registry must be up)
-	@set -a && source .env && set +a && \
-		MODOOR_URL="$${MODOOR_WEBUI_URL:-http://127.0.0.1:8765}" \
-		PYTHONPATH="$(ROOT)" $(PYTHON) scripts/run_external_demos.py
-
 mcp: setup ## Run MCP server (stdio; loads .env)
 	@set -a && source .env && set +a && exec $(PYTHON) -m modoor.runtime.mcp_server
 
@@ -158,4 +153,4 @@ test: setup ## Run pytest (needs Postgres on DATABASE_URL)
 	@$(PYTHON) -m pytest -q
 
 smoke: setup ## Run sale smoke flow
-	@$(PYTHON) addon/sale/tests/smoke_sale_flow.py
+	@$(PYTHON) module/sale/tests/smoke_sale_flow.py

@@ -1,7 +1,7 @@
 # Module 契约（围绕期望设计）
 
 > 依据 [`EXPECTATIONS.md`](./EXPECTATIONS.md)：  
-> **当前**对外交付是 **Skill + MCP（给其他 AI）**；自有 Chat / 编排 / Mobile Shell 后置。  
+> **当前**对外交付是 **Skill + MCP（给其他 AI）**；自有 Chat / 编排后置。桌面页在 `/mod`，移动页在 `/mob`。  
 > 契约与实现均为自研；调用上下文：必填 `tenant` / `user_id`，可选 `team_id`。  
 > 本文规定 Module 必须提供的契约。整合见 [`AI_SYSTEM_PLAN.md`](./AI_SYSTEM_PLAN.md)。
 
@@ -16,7 +16,7 @@ Module（契约包）—— 含仓库内模块与 external 运行时注册
   ├── Tool 导出（exports.tools + artifacts.tools）
   ├── Skill 导出（exports.skills + artifacts.skills）
   ├── 安全契约（ability / risk）
-  ├── UI（ui-web 本阶段；ui-app 后置）
+  ├── UI（ui-web → `/mod`；移动端 → `/mob`）
   ├── 可选事件
   └── 测试
            │
@@ -43,7 +43,7 @@ Module（契约包）—— 含仓库内模块与 external 运行时注册
 ## 2. 目录契约（建议形态）
 
 ```text
-builtin/<id>/ 或 addon/<id>/
+inbuilt/<id>/ 或 module/<id>/
   module.yaml           # 必填：清单
   models/               # 必填（可空）：实体（整合层可据此派生只读描述）
   migrations/           # 有模型变更则必填
@@ -62,12 +62,14 @@ builtin/<id>/ 或 addon/<id>/
 
 > 目录不必再设 `mcp/resources`、`mcp/prompts`。若极少数模块有不可派生的只读文档，可用 `docs/` 或后续扩展，不作为默认契约。
 
-### 2.1 UI：`ui-web`（本阶段）与 `ui-app`（后置）
+### 2.1 UI：`ui-web`（`/mod`）与移动端（`/mob`）
 
-| 字段 | 阶段 | 含义 |
+| 层 | 目录 | 公开地址 |
 |---|---|---|
-| `ui-web` | **现在** | PC Web Shell（Brand / Nav / 模块前端入口） |
-| `ui-app` | **以后** | 原生 / 移动 App 壳与能力；本阶段不实现，见 [`EXPECTATIONS.md`](./EXPECTATIONS.md) |
+| `ui-web` | `module/<id>/webui` 或 `inbuilt/<id>/webui` | `/mod/<id>/` |
+| `mob` | `mobile/<id>/`（与 `module/` 同级，按模块一分） | `/mob/<id>/` |
+
+不设 `ui-app`。移动端走同一套 Module API，只是另一层页面。
 
 `ui-web` **可选**。模块可以没有前端。有前端时：**Master 只认运行时入口**，由模块的 `resolve_entry` 动态返回（template / 静态目录 / `npm run dev` URL 均可）。
 
@@ -83,10 +85,10 @@ builtin/<id>/ 或 addon/<id>/
 
 #### 入口解析：`resolve_entry`（正式契约）
 
-路径约定：`builtin/<id>/webui.py` 或 `addon/<id>/webui.py`（导出 `resolve_entry` + `register`）。
+路径约定：`inbuilt/<id>/webui.py` 或 `module/<id>/webui.py`（导出 `resolve_entry` + `register`）。
 
 ```python
-# builtin/<id>/webui.py 或 addon/<id>/webui.py
+# inbuilt/<id>/webui.py 或 module/<id>/webui.py
 from modoor.web.entry import EntryContext, WebEntry
 
 def resolve_entry(ctx: EntryContext) -> WebEntry | None:
@@ -109,7 +111,7 @@ def register(app, kit) -> None:
 | `mode` | `target` 示例 | Master 做什么 |
 |---|---|---|
 | `url` | `http://127.0.0.1:5175/` | 开发态代理 / 跳转（`npm run dev`） |
-| `static` | `builtin/wiki/webui/dist` | 同源挂载静态目录 |
+| `static` | `inbuilt/wiki/webui/dist` | 同源挂载静态目录 |
 | `template` | `wiki/home.html` 或已 register 的路由前缀 | 服务端 template 渲染 |
 
 解析优先级（固定）：
@@ -199,7 +201,7 @@ exports:
 | 字段 | 谁用 | 说明 |
 |---|---|---|
 | `ui-web.base` | 壳 / 挂载 | 模块独占前缀（如 `/wiki`）；公开 URL = `/mod` + base |
-| `ui-web.seqno` | 壳下拉 / 工作台 | 模块排序（越小越前）；缺省 `1000`；建议 builtin `0–100`，业务 addon 按域段分配 |
+| `ui-web.seqno` | 壳下拉 / 工作台 | 模块排序（越小越前）；缺省 `1000`；建议 inbuilt `0–100`，业务 module 按域段分配 |
 | `exports.menus[].route` | 壳 | 相对 `base` |
 | `exports.menus[].seqno` | 壳 Nav | 菜单排序（越小越前）；缺省 `100` |
 | `exports.menus[].access` | 壳 / 角色页 | 能力点列表。角色页把 `.list` / `.edit` / `.alert` 显示为查看数据、编辑数据、危险操作，其余编码用 i18n 自定义名称。用户持有其中任一即显示该菜单；分组在子项被滤空后隐藏。未声明则始终显示。没有 `path` 的子项只进角色页（页签权限），不进导航 |
@@ -226,7 +228,7 @@ exports:
 - 真独立进程 / 外域；Master 不参与渲染
 - 入口：`resolve_entry` → `mode:url` **或** registry `entry_url`
 - 强烈建议应用内具备模块切换、logout
-- 示例：`external/board`、`external/pulse`
+- 示例：独立进程启动后 `POST /api/apps` 注册
 
 壳辅助 API：
 
@@ -260,7 +262,7 @@ exports:
 
 可选：`events`、`category`、`risk_default`、`ui-web.*`、`exports.menus`、`exports.views`、`exports.actions`。  
 **不要求** `exports.resources` / `exports.prompts`。  
-**本阶段不实现** `ui-app`（见 Expectations）。
+移动端没有单独的 manifest 字段：有 `mobile/<id>/` 就挂到 `/mob/<id>/`。
 
 PC Shell（`ui-web`）：
 
@@ -431,7 +433,7 @@ Tool 实现只消费 ctx，不得自行解析凭证或旁路租户隔离。
 ## 9. 最小示例（销售模块导出面）
 
 ```yaml
-# addon/sale/module.yaml（示意）
+# module/sale/module.yaml（示意）
 id: sale
 version: 0.1.0
 depends: [base, partner, product]
@@ -464,5 +466,5 @@ Skill `sale.create_and_confirm_order` 只编排上述 tools，并在 `confirm_or
 ## 10. 一句话
 
 > **Module 默认对外契约 = Manifest + Tools + Skills + Ability + Migrations（+ 可选 ui-web）。**  
-> 业务实现（models / domain）放在 `addon/<id>/` 或 `builtin/<id>/`，不进能力层核心包。  
+> 业务实现（models / domain）放在 `module/<id>/` 或 `inbuilt/<id>/`，不进能力层核心包。  
 > MCP Server 由整合层组装；Resources/Prompts 非模块必选项（SOP 用 Skill，只读描述可由整合层派生）。

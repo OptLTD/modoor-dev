@@ -20,8 +20,8 @@ from modoor.web.nav import (
     detect_module, get_module_meta,
     module_menus, switcher_items,
 )
-from builtin.base import domain as base_domain
-from builtin.base.domain import SystemUser
+from inbuilt.base import domain as base_domain
+from inbuilt.base.domain import SystemUser
 
 TEMPLATES_DIR = Path(__file__).resolve().parent / "templates"
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
@@ -41,7 +41,7 @@ class ShellKit:
 
     def tenant(self) -> int:
         """Resolved tenant id (ensures tenant + root team exist)."""
-        from builtin.base.domain import ensure_tenant
+        from inbuilt.base.domain import ensure_tenant
 
         s = self.settings()
         with session_scope() as session:
@@ -186,7 +186,7 @@ class ShellKit:
         enabled: set[str],
         allowed: set[str] | None,
     ) -> tuple[str | None, str]:
-        from builtin.base.global_settings import get_global_settings, landing_module
+        from inbuilt.base.global_settings import get_global_settings, landing_module
 
         mid = landing_module(
             get_global_settings(session, self.ctx(user)),
@@ -233,7 +233,7 @@ class ShellKit:
                     "tone": sum(ord(c) for c in mid) % 6,
                     "href": item.get("href") or item.get("path") or f"/go/{item['id']}",
                     "online": item.get("online", True),
-                    "origin": item.get("origin") or "addon",
+                    "origin": item.get("origin") or "module",
                 }
             )
         return apps
@@ -245,17 +245,17 @@ class ShellKit:
         *,
         active_role: str | None = None,
     ) -> list[dict[str, Any]]:
-        """Workbench cards split into lightapp / builtin / addon."""
+        """Workbench cards split into lightapp / inbuilt / module."""
         apps = self.workbench_apps(session, user, active_role=active_role)
-        buckets = {"lightapp": [], "builtin": [], "addon": []}
+        buckets = {"lightapp": [], "inbuilt": [], "module": []}
         for app in apps:
-            origin = str(app.get("origin") or "addon")
+            origin = str(app.get("origin") or "module")
             if origin not in buckets:
-                origin = "addon"
+                origin = "module"
             buckets[origin].append(app)
         groups = [
-            {"id": "builtin", "cards": buckets["builtin"]},
-            {"id": "addon", "cards": buckets["addon"]},
+            {"id": "inbuilt", "cards": buckets["inbuilt"]},
+            {"id": "module", "cards": buckets["module"]},
         ]
         if buckets["lightapp"]:
             groups.insert(0, {"id": "lightapp", "cards": buckets["lightapp"]})

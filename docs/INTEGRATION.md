@@ -46,5 +46,5 @@
 
 ## Skill 加载
 
-- 仓库路径：`addon/sale/skills/create_and_confirm_order.md`
+- 仓库路径：`module/sale/skills/create_and_confirm_order.md`
 - 或 MCP resource / `catalog.list_skills`

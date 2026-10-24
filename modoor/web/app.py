@@ -44,7 +44,7 @@ from modoor.web.nav import (
     registry_catalog,
     resolve_home,
 )
-from builtin.base import domain as base_domain
+from inbuilt.base import domain as base_domain
 
 
 @asynccontextmanager

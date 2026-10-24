@@ -1,4 +1,4 @@
-"""Resolve on-disk module roots: builtin/* + addon/*."""
+"""Resolve on-disk module roots: inbuilt/* + module/*."""
 
 from __future__ import annotations
 
@@ -7,8 +7,8 @@ from pathlib import Path
 from modoor.core.settings import Settings, get_settings
 
 # python import prefix → default relative dir under repo root
-PKG_BUILTIN = "builtin"
-PKG_MODULES = "addon"
+PKG_BUILTIN = "inbuilt"
+PKG_MODULES = "module"
 
 
 def module_pkg_roots(settings: Settings | None = None) -> list[tuple[str, Path]]:

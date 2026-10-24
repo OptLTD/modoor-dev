@@ -1,4 +1,4 @@
-"""Lazy module actived + schema smoke tests (platform / builtin only)."""
+"""Lazy module actived + schema smoke tests (platform / inbuilt only)."""
 
 from __future__ import annotations
 

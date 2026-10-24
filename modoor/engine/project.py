@@ -168,7 +168,7 @@ def merge_dict_key_refers(
     if not keys:
         return out
     try:
-        from builtin.base import domain as base_domain
+        from inbuilt.base import domain as base_domain
     except ImportError:
         return out
     cache: dict[str, list[dict[str, Any]]] = {}

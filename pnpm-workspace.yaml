@@ -1,6 +1,6 @@
 packages:
-  - "addon/*/webui"
-  - "builtin/*/webui"
+  - "module/*/webui"
+  - "inbuilt/*/webui"
   - "shared/hooks"
   - "shared/widget"
   - "shared/views"

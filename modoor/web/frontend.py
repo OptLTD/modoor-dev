@@ -16,7 +16,7 @@ from starlette.responses import Response as StarletteResponse
 from starlette.types import Scope
 
 from modoor.core.settings import get_settings
-from modoor.web.mount import WEBUI_MOUNT_PREFIX, join_web_mount
+from modoor.web.mount import MOB_MOUNT_PREFIX, WEBUI_MOUNT_PREFIX, join_web_mount
 from modoor.web.nav import get_ui_catalog
 
 logger = logging.getLogger(__name__)
@@ -47,8 +47,8 @@ def parse_webui_proxies(raw: str) -> list[tuple[str, str]]:
         url = url.strip().rstrip("/")
         if not mid or not url:
             continue
-        # Allow either "base" or "mod/base" in env.
-        if mid.startswith("mod/"):
+        # "freight" → /mod/freight. "mod/freight" or "mob/freight" keep their layer.
+        if mid.startswith("mod/") or mid.startswith("mob/"):
             prefix = f"/{mid}"
         else:
             prefix = f"{WEBUI_MOUNT_PREFIX}/{mid}"
@@ -63,6 +63,7 @@ def register_frontends(app: FastAPI) -> list[str]:
     skip = {prefix for prefix, _ in proxies}
     registered = _register_proxies(app, proxies)
     registered.extend(_register_statics(app, skip_prefixes=skip))
+    registered.extend(_register_mob_statics(app, skip_prefixes=skip))
     return registered
 
 
@@ -256,4 +257,34 @@ def _register_statics(
 
     if registered:
         logger.info("frontend static mount root %s (%d apps)", WEBUI_MOUNT_PREFIX, len(registered))
+    return registered
+
+
+def _register_mob_statics(
+    app: FastAPI,
+    *,
+    skip_prefixes: set[str],
+) -> list[str]:
+    """Mount mobile/<module>/dist at /mob/<module>."""
+    settings = get_settings()
+    root = Path(settings.modoor_modules_root).resolve().parent / "mobile"
+    if not root.is_dir():
+        return []
+    registered: list[str] = []
+    for child in sorted(root.iterdir()):
+        if not child.is_dir() or child.name.startswith("."):
+            continue
+        public = f"{MOB_MOUNT_PREFIX}/{child.name}"
+        if public in skip_prefixes or any(public.startswith(f"{p}/") for p in skip_prefixes):
+            continue
+        dist = child / "dist"
+        if not (dist / "index.html").is_file():
+            continue
+        app.mount(
+            public,
+            SPAStaticFiles(directory=str(dist), html=True),
+            name=f"mob-static-{child.name}",
+        )
+        registered.append(f"{public} → {dist}")
+        logger.info("mobile static %s → %s", public, dist)
     return registered

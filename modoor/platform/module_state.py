@@ -106,7 +106,7 @@ def discover_manifests(settings: Settings | None = None) -> list[dict[str, Any]]
             order = seqno(ui.get("seqno"), 1000)
             tags = texts(data.get("tags"))
             # Do not auto-append kind / risk_default / pkg — they clutter filter chips;
-            # origin is exposed separately as builtin|addon|lightapp.
+            # origin is exposed separately as inbuilt|module|lightapp.
             actived = _manifest_actived(data)
             exports = (data.get("exports") or {}).get("menus")
             items.append(
@@ -224,7 +224,7 @@ def _sync_external_installs(
 
 def ensure_external_install(session: Session, module_id: str, *, version: str = "") -> None:
     """Create AppInstall for a registered external module; do not re-enable if disabled."""
-    from builtin.base.domain import SystemTenant
+    from inbuilt.base.domain import SystemTenant
 
     tenant_ids = [int(t.id) for t in session.scalars(select(SystemTenant))]
     if not tenant_ids:
@@ -326,7 +326,7 @@ def list_modules(
                 "install_id": row.id if row else None,
                 "online": online,
                 "source": "external",
-                "origin": "addon",
+                "origin": "module",
                 "tags": _module_tags(meta, enabled=enabled, online=online),
             }
         )
@@ -349,13 +349,13 @@ def drop_blended_hosts(modules: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
 
 def _module_origin(meta: dict[str, Any]) -> str:
-    """builtin / addon / lightapp. External registry apps are addon; lightapp is tenant-built only."""
+    """inbuilt / module / lightapp. External registry apps are module; lightapp is tenant-built only."""
     pkg = text(meta.get("pkg"), strip=True)
-    if pkg == "builtin":
-        return "builtin"
+    if pkg == "inbuilt":
+        return "inbuilt"
     if pkg == "lightapp":
         return "lightapp"
-    return "addon"
+    return "module"
 
 
 def _module_tags(

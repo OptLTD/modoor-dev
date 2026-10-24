@@ -350,7 +350,7 @@ def _stamp_upload_assets(
     ]
     if not upload_keys:
         return
-    from builtin.doc import domain as doc_domain
+    from inbuilt.doc import domain as doc_domain
 
     for rec in records:
         if not isinstance(rec, dict):

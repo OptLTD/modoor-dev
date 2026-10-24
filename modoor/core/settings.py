@@ -11,17 +11,17 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 def _default_platform_root() -> Path:
     # modoor/core/settings.py → repo root
-    return Path(__file__).resolve().parents[2] / "builtin"
+    return Path(__file__).resolve().parents[2] / "inbuilt"
 
 
 def _default_addon_root() -> Path:
     # modoor/core/settings.py → repo root
-    return Path(__file__).resolve().parents[2] / "addon"
+    return Path(__file__).resolve().parents[2] / "module"
 
 
-def ensure_addon_import_path(addon_root: Path) -> None:
-    """Put parent of addon/ first on sys.path so ``import addon.*`` matches MODOOR_ADDON_ROOT."""
-    parent = str(Path(addon_root).resolve().parent)
+def ensure_module_import_path(module_root: Path) -> None:
+    """Put parent of module/ first on sys.path so ``import module.*`` matches MODOOR_MODULE_ROOT."""
+    parent = str(Path(module_root).resolve().parent)
     if not parent:
         return
     try:
@@ -100,14 +100,14 @@ class Settings(BaseSettings):
     modoor_builtin_root: Path = Field(
         default_factory=_default_platform_root,
         alias="MODOOR_PLATFORM_ROOT",
-        description="Builtin platform modules (base/doc/wiki/skill).",
+        description="Inbuilt platform modules (base/doc/wiki/skill).",
     )
     modoor_modules_root: Path = Field(
         default_factory=_default_addon_root,
-        alias="MODOOR_ADDON_ROOT",
+        alias="MODOOR_MODULE_ROOT",
         description=(
-            "Addon package root (directory named addon/ with module subdirs). "
-            "Default: repo ./addon (demo). Set to an external addon/ to mount other modules."
+            "Business package root (directory named module/ with one subdir per module). "
+            "Default: repo ./module (sale demo). Point at another module/ tree to mount it."
         ),
     )
     # Derived from MODOOR_WEBUI_URL (no separate env needed).
@@ -147,7 +147,7 @@ class Settings(BaseSettings):
         default="",
         alias="MODOOR_WEBUI_PROXIES",
     )
-    # Preview/prod: mount addon/*/webui/dist (comma ids; empty = all with dist)
+    # Preview/prod: mount module/*/webui/dist (comma ids; empty = all with dist)
     modoor_webui_static_modules: str = Field(
         default="",
         alias="MODOOR_WEBUI_STATIC_MODULES",
@@ -238,5 +238,5 @@ class Settings(BaseSettings):
 @lru_cache
 def get_settings() -> Settings:
     settings = Settings()
-    ensure_addon_import_path(Path(settings.modoor_modules_root))
+    ensure_module_import_path(Path(settings.modoor_modules_root))
     return settings

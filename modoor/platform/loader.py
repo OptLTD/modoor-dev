@@ -277,7 +277,7 @@ def register_module_tools(mcp: Any, settings: Settings | None = None) -> list[st
         from modoor.core.db import session_scope
 
         with session_scope() as session:
-            from builtin.base.domain import ensure_tenant
+            from inbuilt.base.domain import ensure_tenant
 
             tenant_id = int(
                 ensure_tenant(

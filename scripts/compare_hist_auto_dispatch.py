@@ -20,7 +20,7 @@ from modoor.core.settings import get_settings
 from modoor.platform.bootstrap import bootstrap
 from modoor.runtime.auth import resolve_ctx
 
-from addon.dispatch import domain as dsp
+from module.dispatch import domain as dsp
 
 UUKEY_RE = re.compile(
     r"^(?:FL-)?SDL-(\d{8})-(.+)-(\d+)-(\d+)$",
@@ -168,7 +168,7 @@ def waybill_from_group(
 def _trailer_to_tractor(session, ctx) -> dict[str, str]:
     from sqlalchemy import select
 
-    from addon.fleet.domain.orm import VmsFreight, VmsTrailer, VmsVehicle
+    from module.fleet.domain.orm import VmsFreight, VmsTrailer, VmsVehicle
 
     trailers = list(
         session.scalars(select(VmsTrailer).where(VmsTrailer.tenant == ctx.tenant)).all()

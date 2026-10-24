@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-# Shell mounts every module frontend under this prefix:
-#   ui-web.base=/base  →  public /mod/base
+# Desktop module frontends: ui-web.base=/freight → public /mod/freight
 WEBUI_MOUNT_PREFIX = "/mod"
+# Mobile module frontends: mobile/<id>/ → public /mob/<id>
+MOB_MOUNT_PREFIX = "/mob"
 
 
 def join_web_mount(path: str) -> str:

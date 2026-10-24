@@ -13,8 +13,8 @@ from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
 from starlette.requests import Request
 from starlette.responses import Response
 
-from builtin.base import domain as base_domain
-from builtin.base.domain import SystemUser
+from inbuilt.base import domain as base_domain
+from inbuilt.base.domain import SystemUser
 from modoor.core.db import session_scope
 from modoor.core.errors import AppError
 from modoor.core.settings import get_settings

@@ -75,25 +75,25 @@ def main(argv: list[str] | None = None) -> int:
 
     with session_scope() as session:
         if "sale" in targets:
-            from addon.sale import domain as sale_domain
+            from module.sale import domain as sale_domain
 
             out["results"]["sale"] = sale_domain.seed_demo_orders(
                 session, ctx, force=args.force
             )
         if "fleet" in targets:
-            from addon.fleet import domain as fleet_domain
+            from module.fleet import domain as fleet_domain
 
             out["results"]["fleet"] = fleet_domain.seed_demo_fleet(
                 session, ctx, force=args.force
             )
         if "dispatch" in targets:
-            from addon.dispatch import domain as dispatch_domain
+            from module.dispatch import domain as dispatch_domain
 
             out["results"]["dispatch"] = dispatch_domain.seed_demo_dispatch(
                 session, ctx, force=args.force
             )
         if "city" in targets:
-            from addon.dispatch.seed_city import seed_demo_beijing_city
+            from module.dispatch.seed_city import seed_demo_beijing_city
 
             out["results"]["city"] = seed_demo_beijing_city(
                 session, ctx, force=args.force

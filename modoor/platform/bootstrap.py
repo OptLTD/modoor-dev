@@ -15,8 +15,8 @@ from modoor.core.security import hash_password
 from modoor.core.settings import Settings, get_settings
 from modoor.platform.loader import ensure_modules_ready
 from modoor.platform.module_state import enabled_module_ids, sync_discovered_modules
-from builtin.base import domain as base_domain
-from builtin.base.domain import SystemTenant, SystemUser
+from inbuilt.base import domain as base_domain
+from inbuilt.base.domain import SystemTenant, SystemUser
 
 
 def _find_existing_tenant(
@@ -145,7 +145,7 @@ def bootstrap(settings: Settings | None = None) -> dict:
 
         enabled = enabled_module_ids(session, tenant_id)
         if "wiki" in enabled:
-            from builtin.wiki import domain as wiki_domain
+            from inbuilt.wiki import domain as wiki_domain
 
             projects = wiki_domain.list_projects(session, ctx)
             if projects["count"] == 0:

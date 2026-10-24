@@ -36,7 +36,7 @@ Module ──┤
 ## 1. 在 Module 中的位置
 
 ```text
-addon/<module_id>/ 或 builtin/<module_id>/
+module/<module_id>/ 或 inbuilt/<module_id>/
   module.yaml
   domain.py                    # 底层数据约定（已有；本契约不取代）
   models/                      # UI + schema 解释（本文件约定）

@@ -9,7 +9,7 @@ and OR-Tools CVRP on the same day's same-depot orders.
   .venv/bin/python scripts/replay_fleet_dispatch.py --dry-run
 
 This customer: 运费锁在定根需求上，调度只压实际里程。口径见
-addon/fleet/OIL_DISPATCH.md（不是 TOS 通论）。
+module/fleet/OIL_DISPATCH.md（不是 TOS 通论）。
 
 站点坐标优先天地图地理编码（连云港/淮安/盐城），缺结果才按账面行程绕油库摆点。
 """
@@ -199,7 +199,7 @@ def lookup_or_geocode(
         return cache[name]
     if not tk:
         return None
-    from addon.dispatch import domain as dsp
+    from module.dispatch import domain as dsp
 
     hit = dsp._tianditu_geocode(geocode_keyword(name), tk=tk)
     if hit is None:
@@ -235,7 +235,7 @@ def resolve_coords(
 
 
 def load_station_index(session, ctx) -> dict[str, dict]:
-    from addon.dispatch import domain as dsp
+    from module.dispatch import domain as dsp
 
     out: dict[str, dict] = {}
     for row in dsp._list_docs(session, ctx, dsp.DspStation):
@@ -263,7 +263,7 @@ def upsert_station(
 ) -> dict:
     from sqlalchemy.orm.attributes import flag_modified
 
-    from addon.dispatch import domain as dsp
+    from module.dispatch import domain as dsp
 
     uukey = station_code(name)
     row = dsp._resolve(session, ctx, dsp.DspStation, uukey)
@@ -322,7 +322,7 @@ def upsert_order(session, ctx, trip: dict, depot_st: dict, dest_st: dict, *, for
     from sqlalchemy import select
     from sqlalchemy.orm.attributes import flag_modified
 
-    from addon.freight.domain import TmsOrder
+    from module.freight.domain import TmsOrder
 
     uukey = f"{ORDER_PREFIX}{trip['uukey']}"
     now = _utcnow()
@@ -374,7 +374,7 @@ def upsert_order(session, ctx, trip: dict, depot_st: dict, dest_st: dict, *, for
 
 
 def historical_plan(depot: dict, trips: list[dict], slots: list[dict]) -> dict[str, Any]:
-    from addon.dispatch.domain.solver import waybill_from
+    from module.dispatch.domain.solver import waybill_from
 
     by_trip = {s["id"].split("#", 1)[-1]: s for s in slots}
     waybills = []
@@ -556,7 +556,7 @@ def build_assets(session, ctx, trips: list[dict], *, pack: str) -> list[dict]:
     """One asset slot per historical trip, so vehicles that ran N 趟 that day still have N slots."""
     from sqlalchemy import select
 
-    from addon.fleet.domain.orm import VmsTrailer, VmsVehicle
+    from module.fleet.domain.orm import VmsTrailer, VmsVehicle
 
     ids = {str(t.get("vehicle") or "") for t in trips if t.get("vehicle")}
     vehicles = list(
@@ -611,7 +611,7 @@ def build_assets(session, ctx, trips: list[dict], *, pack: str) -> list[dict]:
 def collect_trips(session, ctx, *, day: str | None, depot_filter: str | None, limit: int) -> list[dict]:
     from sqlalchemy import select
 
-    from addon.fleet.domain.orm import VmsFreight
+    from module.fleet.domain.orm import VmsFreight
 
     stmt = select(VmsFreight).where(VmsFreight.tenant == ctx.tenant).order_by(VmsFreight.utime.desc())
     rows = list(session.scalars(stmt.limit(5000)).all())
@@ -665,7 +665,7 @@ def main(argv: list[str] | None = None) -> int:
     from modoor.core.settings import get_settings
     from modoor.platform.bootstrap import bootstrap
     from modoor.runtime.auth import resolve_ctx
-    from addon.dispatch.domain.solver import plan_heuristic, plan_ortools
+    from module.dispatch.domain.solver import plan_heuristic, plan_ortools
 
     get_settings.cache_clear()
     settings = get_settings()
@@ -686,7 +686,7 @@ def main(argv: list[str] | None = None) -> int:
         for t in trips:
             by_depot[t["depot"]].append(t)
 
-        from addon.dispatch import domain as dsp
+        from module.dispatch import domain as dsp
 
         existing = load_station_index(session, ctx)
         tk = "" if args.no_geocode else dsp._tianditu_geocode_tk(session, ctx)

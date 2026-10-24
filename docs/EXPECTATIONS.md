@@ -11,8 +11,8 @@
 
 | 阶段 | 做什么 | 不做什么 |
 |---|---|---|
-| **现在（Capability Layer）** | Module 整合 + **Skill / MCP 发布** + ACL / 审计 / 确认语义 + **ui-web** | 自研 Chat UI、Planner、多 Agent 编排、**ui-app** |
-| **以后（可选）** | 自有 Agent Runtime / Chat + Canvas / **ui-app** | — |
+| **现在（Capability Layer）** | Module 整合 + **Skill / MCP 发布** + ACL / 审计 / 确认语义 + **ui-web（`/mod`）** + **移动页（`/mob`）** | 自研 Chat UI、Planner、多 Agent 编排 |
+| **以后（可选）** | 自有 Agent Runtime / Chat + Canvas | — |
 
 定位一句话：
 
@@ -112,19 +112,14 @@
 - 自研对话 UI、Planner、多步 Agent、会话记忆
 - 本层已提供的 Skill/MCP 应可被自有 Runtime **零改契约**复用
 
-### 4.2 UI：`ui-web`（已开始）与 `ui-app`（后置）
+### 4.2 UI：`ui-web`（`/mod`）与移动端（`/mob`）
 
-| 字段 | 阶段 | 说明 |
-|---|---|---|
-| **`ui-web`** | 现在 | 模块 `app`（`resolve_entry`）/ `external`；登录为平台 template；见 MODULE_CONTRACT §2.1 |
-| **`ui-app`** | **以后** | 原生 / 移动 App 壳、设备桥（扫码/GPS）、离线与推送等 |
+| 层 | 说明 |
+|---|---|
+| **`ui-web`** | 模块 `app`（`resolve_entry`）/ `external`；登录为平台 template；见 MODULE_CONTRACT §2.1。公开地址 `/mod/<id>/` |
+| **`mob`** | `mobile/<id>/` 里的页面，公开地址 `/mob/<id>/`。与桌面共用同一套 tools / skills / ability，不另开业务 API |
 
-对 **`ui-app`** 的期望（本阶段**不实现**）：
-
-- Module 可在 `module.yaml` 预留 `ui-app`（入口、能力声明、`mobile_hints` 等），契约可先写
-- App 壳仍须经同一 MCP / Ability 调用业务；**禁止** App 专用写库旁路
-- Chat + Canvas、PWA/原生安装、设备输入属此轨
-- 与 `ui-web` 共用 Module 的 tools/skills/ability，不另起一套业务 API
+不设 `ui-app`。原生安装、扫码、GPS、离线不在这一层里。
 
 ### 4.3 人机确认宿主（后置或由调用方提供）
 
@@ -136,7 +131,7 @@
 
 - 自研 AI Chat、AI 编排、多 Agent 框架
 - 复刻完整传统 ERP 菜单 / 应用树
-- 终端用户 Mobile App（可作为更后期）
+- 原生安装、设备桥（扫码 / GPS）、离线
 - Agent 直连 DB 或旁路 MCP
 - 无 Module 产物的影子改表
 

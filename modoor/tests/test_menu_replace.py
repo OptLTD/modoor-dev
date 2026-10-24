@@ -15,7 +15,7 @@ from modoor.web.nav import (
     merge_blended_menus,
 )
 
-FREIGHT_YAML = Path(__file__).resolve().parents[3] / "modoor-pro" / "addon" / "freight" / "module.yaml"
+FREIGHT_YAML = Path(__file__).resolve().parents[3] / "modoor-pro" / "module" / "freight" / "module.yaml"
 
 
 def test_replace_null_removes_and_object_patches_path():

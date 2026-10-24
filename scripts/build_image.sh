@@ -31,7 +31,7 @@ if [[ -f "${ROOT}/.env" ]]; then
   set +a
 fi
 
-PRO_ADDON="${ROOT}/../modoor-pro/addon"
+PRO_ADDON="${ROOT}/../modoor-pro/module"
 if [[ -d "${PRO_ADDON}" ]]; then
   PRO_ADDON="$(cd "${PRO_ADDON}" && pwd)"
 fi
@@ -39,30 +39,30 @@ fi
 resolve_module() {
   local name="$1"
   local root=""
-  if [[ -n "${MODOOR_ADDON_ROOT:-}" ]]; then
-    root="${MODOOR_ADDON_ROOT}"
+  if [[ -n "${MODOOR_MODULE_ROOT:-}" ]]; then
+    root="${MODOOR_MODULE_ROOT}"
     if [[ "${root}" != /* ]]; then
       root="${ROOT}/${root}"
     fi
     if [[ -f "${root}/${name}/module.yaml" ]]; then
       (cd "${root}/${name}" && pwd)
-      echo "addon"
+      echo "module"
       return
     fi
   fi
-  if [[ -f "${ROOT}/addon/${name}/module.yaml" ]]; then
-    (cd "${ROOT}/addon/${name}" && pwd)
-    echo "addon"
+  if [[ -f "${ROOT}/module/${name}/module.yaml" ]]; then
+    (cd "${ROOT}/module/${name}" && pwd)
+    echo "module"
     return
   fi
   if [[ -n "${PRO_ADDON}" && -f "${PRO_ADDON}/${name}/module.yaml" ]]; then
     (cd "${PRO_ADDON}/${name}" && pwd)
-    echo "addon"
+    echo "module"
     return
   fi
-  if [[ -f "${ROOT}/builtin/${name}/module.yaml" ]]; then
-    (cd "${ROOT}/builtin/${name}" && pwd)
-    echo "builtin"
+  if [[ -f "${ROOT}/inbuilt/${name}/module.yaml" ]]; then
+    (cd "${ROOT}/inbuilt/${name}" && pwd)
+    echo "inbuilt"
     return
   fi
   return 1
@@ -95,12 +95,12 @@ for name in "${MODULES[@]}"; do
   fi
   if ! resolved="$(resolve_module "${name}")"; then
     echo "unknown module: ${name}" >&2
-    echo "  looked in ./addon, MODOOR_ADDON_ROOT, ../modoor-pro/addon, ./builtin" >&2
+    echo "  looked in ./module, MODOOR_MODULE_ROOT, ../modoor-pro/module, ./inbuilt" >&2
     exit 1
   fi
   kind="$(echo "${resolved}" | tail -n 1)"
   path="$(echo "${resolved}" | head -n 1)"
-  if [[ "${kind}" == "addon" ]]; then
+  if [[ "${kind}" == "module" ]]; then
     ADDON_NAMES+=("${name}")
     ADDON_PATHS+=("${path}")
   fi
@@ -135,7 +135,7 @@ dist_fresh() {
 chmod +x "${ROOT}/scripts/run_build.sh"
 PLATFORM_NEED=()
 for name in "${PLATFORM_WEBUI[@]}"; do
-  dir="${ROOT}/builtin/${name}/webui"
+  dir="${ROOT}/inbuilt/${name}/webui"
   if [[ ! -d "${dir}" ]]; then
     continue
   fi
@@ -153,17 +153,25 @@ fi
 for i in "${!ADDON_NAMES[@]}"; do
   name="${ADDON_NAMES[$i]}"
   path="${ADDON_PATHS[$i]}"
-  if [[ ! -d "${path}/webui" ]]; then
-    echo ">> skip ${name}: no webui/"
-    continue
-  fi
-  if dist_fresh "${path}/webui"; then
-    echo ">> skip ${name}: dist is up to date"
-    continue
-  fi
   addon_root="$(cd "$(dirname "${path}")" && pwd)"
-  echo ">> build addon webui: ${name} (${addon_root})"
-  MODOOR_ADDON_ROOT="${addon_root}" "${ROOT}/scripts/run_build.sh" "${name}"
+  mob="${addon_root}/../mobile/${name}"
+  need=0
+  if [[ -d "${path}/webui" ]] && ! dist_fresh "${path}/webui"; then
+    need=1
+  fi
+  if [[ -f "${mob}/package.json" ]] && ! dist_fresh "${mob}"; then
+    need=1
+  fi
+  if [[ "${need}" == "0" ]]; then
+    if [[ ! -d "${path}/webui" && ! -f "${mob}/package.json" ]]; then
+      echo ">> skip ${name}: no webui/ or mobile/"
+    else
+      echo ">> skip ${name}: dist is up to date"
+    fi
+    continue
+  fi
+  echo ">> build module frontends: ${name} (${addon_root})"
+  MODOOR_MODULE_ROOT="${addon_root}" "${ROOT}/scripts/run_build.sh" "${name}"
 done
 
 STAGE="$(mktemp -d "${TMPDIR:-/tmp}/modoor-image.XXXXXX")"
@@ -171,21 +179,27 @@ cleanup() { rm -rf "${STAGE}"; }
 trap cleanup EXIT
 
 copy_tree "${ROOT}/modoor" "${STAGE}/modoor"
-copy_tree "${ROOT}/builtin" "${STAGE}/builtin"
-mkdir -p "${STAGE}/addon"
-printf '%s\n' '# Selected business addons for this image.' > "${STAGE}/addon/__init__.py"
+copy_tree "${ROOT}/inbuilt" "${STAGE}/inbuilt"
+mkdir -p "${STAGE}/module" "${STAGE}/mobile"
+printf '%s\n' '# Selected business modules for this image.' > "${STAGE}/module/__init__.py"
+touch "${STAGE}/mobile/.keep"
 
 STATIC=(base doc wiki skill flow)
 for i in "${!ADDON_NAMES[@]}"; do
   name="${ADDON_NAMES[$i]}"
   path="${ADDON_PATHS[$i]}"
-  copy_tree "${path}" "${STAGE}/addon/${name}"
+  copy_tree "${path}" "${STAGE}/module/${name}"
   STATIC+=("${name}")
+  mob="$(cd "$(dirname "${path}")/.." && pwd)/mobile/${name}"
+  if [[ -f "${mob}/dist/index.html" ]]; then
+    mkdir -p "${STAGE}/mobile/${name}"
+    rsync -a "${mob}/dist" "${STAGE}/mobile/${name}/"
+  fi
 done
 
 FINAL_STATIC=()
 for name in "${STATIC[@]}"; do
-  if [[ -f "${STAGE}/builtin/${name}/webui/dist/index.html" || -f "${STAGE}/addon/${name}/webui/dist/index.html" ]]; then
+  if [[ -f "${STAGE}/inbuilt/${name}/webui/dist/index.html" || -f "${STAGE}/module/${name}/webui/dist/index.html" ]]; then
     FINAL_STATIC+=("${name}")
   fi
 done
@@ -194,12 +208,6 @@ STATIC_CSV="$(IFS=,; echo "${FINAL_STATIC[*]}")"
 mkdir -p "${STAGE}/scripts"
 cp "${ROOT}/pyproject.toml" "${ROOT}/README.md" "${ROOT}/LICENSE" "${ROOT}/Dockerfile" "${ROOT}/logo.png" "${STAGE}/"
 cp "${ROOT}/scripts/docker-entrypoint.sh" "${STAGE}/scripts/docker-entrypoint.sh"
-# Image does not ship external/. Drop it from the staged package list so pip install succeeds.
-python3 - "${STAGE}/pyproject.toml" <<'PY'
-import pathlib, sys
-path = pathlib.Path(sys.argv[1])
-path.write_text(path.read_text().replace(', "external"', ""))
-PY
 
 IMAGE="${REPO}:${TAG}"
 # Host is often arm64 (Apple Silicon). Deploy targets are linux/amd64.

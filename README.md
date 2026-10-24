@@ -2,16 +2,14 @@
 
 以可安装 **Module** 为扩展单位的 AI 能力层：对外发布 **Skill + MCP**，供外部 AI 调用。
 
-当前能力：`base`（app/user/role）、`sale` demo（create→confirm）、`wiki`（页面 CRUD）；鉴权为 API Key → ctx。  
-外部应用 demo：`external/board`、`external/pulse`（经 Modoor 注册中心发现）。
+当前能力：`base`（app/user/role）、`sale` demo（create→confirm）、`wiki`（页面 CRUD）；鉴权为 API Key → ctx。
 
 整合层包结构：
 
 ```text
-builtin/    # 平台模块：base / doc / wiki / skill / flow
-addon/       # 业务 demo：sale（完整可运行）
-shared/       # 共享前端：hooks / widget / views
-external/     # 外进程 demo（board / pulse）
+inbuilt/    # 平台模块：base / doc / wiki / skill / flow
+module/     # 业务 demo：sale（完整可运行）
+shared/     # 共享前端：hooks / widget / views
 modoor/
   core/       # settings / ctx / db / errors / security
   runtime/    # auth / audit / confirmation / tool runner / MCP / worker
@@ -20,7 +18,7 @@ modoor/
 pnpm-workspace.yaml  # webui + shared/* → workspace:*
 ```
 
-本仓是完整可运行方案（含 sale demo）。需要其它业务模块时，通过 `MODOOR_ADDON_ROOT` 指向外部 `addon/` 目录即可（发现与 `import addon.*` 都会走该路径）。
+本仓是完整可运行方案（含 sale demo）。需要其它业务模块时，通过 `MODOOR_MODULE_ROOT` 指向外部 `module/` 目录即可（发现与 `import module.*` 都会走该路径）。
 
 前端依赖用 **pnpm**（`workspace:*`），根目录一次安装：
 
@@ -42,11 +40,11 @@ make dev base            # 建表 + 初始化 + 启动 Web：http://127.0.0.1:87
 # make test
 ```
 
-### 外挂 addon（可选）
+### 外挂 module（可选）
 
 ```bash
 # .env
-MODOOR_ADDON_ROOT=/path/to/external/addon
+MODOOR_MODULE_ROOT=/path/to/module
 ```
 
 等价手工步骤：
@@ -58,7 +56,7 @@ pip install -e ".[dev]"
 cp .env.example .env
 
 # 冒烟：直接跑销售链（不经 MCP 宿主）
-python addon/sale/tests/smoke_sale_flow.py
+python module/sale/tests/smoke_sale_flow.py
 
 # 启动 MCP（stdio，供 Cursor 等连接）
 modoor-mcp
@@ -88,7 +86,7 @@ modoor-mcp
 }
 ```
 
-Skill 文档路径：`addon/sale/skills/create_and_confirm_order.md`  
+Skill 文档路径：`module/sale/skills/create_and_confirm_order.md`  
 也可经 MCP resource：`skill://sale/create_and_confirm_order`，或 tool `catalog.list_skills`。
 
 更细说明见 [`docs/INTEGRATION.md`](./docs/INTEGRATION.md)。
@@ -107,6 +105,6 @@ Skill 文档路径：`addon/sale/skills/create_and_confirm_order.md`
 
 Copyright (c) 2026 Option.LTD.
 
-默认许可是 [AGPL-3.0](./LICENSE)，并带有仓库内的附加条款。核心（`modoor/`、`builtin/`、`shared/`）的修改在分发或提供网络交互时须公开对应源码。`addon/`、`external/` 以及不改核心的扩展模块可以按自有条款分发。界面须保留文字标识：「基于 Modoor」（链接到 https://modoor.dev）和 Copyright (c) Option.LTD.
+默认许可是 [AGPL-3.0](./LICENSE)，并带有仓库内的附加条款。核心（`modoor/`、`inbuilt/`、`shared/`）的修改在分发或提供网络交互时须公开对应源码。`module/` 以及不改核心的扩展模块可以按自有条款分发。界面须保留文字标识：「基于 Modoor」（链接到 https://modoor.dev）和 Copyright (c) Option.LTD.
 
 向付费客户做私有化部署并收费，只要遵守上述条款即可。闭源修改核心，或去除、遮挡上述文字标识，须发邮件至 chnwine@qq.com，向 Option.LTD. 另行取得书面商业许可。
