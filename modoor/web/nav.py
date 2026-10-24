@@ -13,19 +13,20 @@ from modoor.core.settings import get_settings
 from modoor.platform.module_state import discover_manifests
 from modoor.platform.services import get_by_module, get_entry_url, list_services
 from modoor.platform.manifest_i18n import APP_LABEL_KEY, normalize_manifest_i18n
+from modoor.support import seqno, text, texts
 
 # re-export for callers / tests
 __all__ = ["APP_LABEL_KEY"]
 
 
 def _menu_path(raw: dict[str, Any]) -> str:
-    return str(raw.get("path") or raw.get("route") or "").strip()
+    return text(raw.get("path") or raw.get("route"), strip=True)
 
 
 def _normalize_menu(raw: dict[str, Any], *, mid: str, fallback_id: str) -> dict[str, Any] | None:
     """Leaf needs path; group needs items. Nested ``items`` (alias ``children``) supported."""
     items_raw = list(raw.get("items") or raw.get("children") or [])
-    items_raw.sort(key=lambda m: (int(m.get("seqno", 100) or 100), m.get("label") or ""))
+    items_raw.sort(key=lambda m: (seqno(m.get("seqno"), 100), text(m.get("label"))))
     items: list[dict[str, Any]] = []
     for j, child in enumerate(items_raw):
         normalized = _normalize_menu(
@@ -37,27 +38,254 @@ def _normalize_menu(raw: dict[str, Any], *, mid: str, fallback_id: str) -> dict[
             items.append(normalized)
 
     path = _menu_path(raw)
-    menu_id = str(raw.get("id") or fallback_id)
+    menu_id = text(raw.get("id")) or fallback_id
     if not path and not items:
         return None
     item: dict[str, Any] = {
         "id": menu_id,
         "label": raw.get("label") or menu_id or "Menu",
-        "seqno": int(raw.get("seqno", 100) or 100),
+        "seqno": seqno(raw.get("seqno"), 100),
     }
     if path:
         item["path"] = path
-    access = [str(a).strip() for a in (raw.get("access") or []) if str(a).strip()]
+    access = texts(raw.get("access"))
     if access:
         item["access"] = access
+    industry = _menu_industry(raw.get("industry"))
+    if industry:
+        item["industry"] = industry
     if items:
         item["items"] = items
     return item
 
 
+def _normalize_replace(raw: Any, *, mid: str) -> dict[str, Any]:
+    """Host menu overrides from module.yaml ``replace``.
+
+    A null or false value removes that menu id. A mapping patches only the
+    fields it sets (``path``, ``label``, ``seqno``, ``access``, ``industry``,
+    ``items``).
+    """
+    if not isinstance(raw, dict):
+        return {}
+    out: dict[str, Any] = {}
+    for key, value in raw.items():
+        menu_id = text(key, strip=True)
+        if not menu_id:
+            continue
+        if value is None or value is False:
+            out[menu_id] = None
+            continue
+        if not isinstance(value, dict):
+            continue
+        patch: dict[str, Any] = {}
+        if "path" in value or "route" in value:
+            patch["path"] = _menu_path(value)
+        if "label" in value and value.get("label") is not None:
+            patch["label"] = text(value.get("label"))
+        if "seqno" in value:
+            patch["seqno"] = seqno(value.get("seqno"), 100)
+        if "access" in value:
+            patch["access"] = texts(value.get("access"))
+        if "industry" in value:
+            patch["industry"] = _menu_industry(value.get("industry"))
+        if "items" in value:
+            items: list[dict[str, Any]] = []
+            for j, child in enumerate(value.get("items") or []):
+                if not isinstance(child, dict):
+                    continue
+                normalized = _normalize_menu(child, mid=mid, fallback_id=f"{menu_id}.{j}")
+                if normalized:
+                    items.append(normalized)
+            patch["items"] = items
+        out[menu_id] = patch
+    return out
+
+
+def filter_menus_by_industry(menus: list[dict[str, Any]], industry: str) -> list[dict[str, Any]]:
+    """Drop menus tagged for another industry. ``all`` and untagged menus stay.
+
+    A group with no path is dropped once every child is gone.
+    """
+    current = text(industry or "all", strip=True).lower()
+    if not current or current == "all":
+        return menus
+    out: list[dict[str, Any]] = []
+    for menu in menus:
+        declared = [item.lower() for item in texts(menu.get("industry"))]
+        if declared and current not in declared:
+            continue
+        item = dict(menu)
+        if menu.get("items"):
+            nested = filter_menus_by_industry(list(menu.get("items") or []), current)
+            if not menu.get("path") and not nested:
+                continue
+            if nested:
+                item["items"] = nested
+            else:
+                item.pop("items", None)
+        out.append(item)
+    return out
+
+
+def _menu_seq(menu: dict[str, Any]) -> int:
+    return seqno(menu.get("seqno"), 100)
+
+
+def _by_seq_label(menu: dict[str, Any]) -> tuple[int, str]:
+    return (_menu_seq(menu), text(menu.get("label")))
+
+
+def apply_menu_replace(
+    menus: list[dict[str, Any]],
+    replace: dict[str, Any] | None,
+) -> list[dict[str, Any]]:
+    """Apply ``replace`` onto a menu tree. ``None`` drops that id."""
+    if not replace:
+        return list(menus)
+    out: list[dict[str, Any]] = []
+    for menu in menus:
+        menu_id = text(menu.get("id"))
+        has = menu_id in replace
+        spec = replace.get(menu_id) if has else None
+        if has and spec is None:
+            continue
+        item = dict(menu)
+        if isinstance(spec, dict):
+            if spec.get("path"):
+                item["path"] = spec["path"]
+            if "label" in spec and spec.get("label") is not None:
+                item["label"] = spec["label"]
+            if "seqno" in spec and spec.get("seqno") is not None:
+                item["seqno"] = spec["seqno"]
+            if spec.get("access"):
+                item["access"] = spec["access"]
+            if spec.get("industry"):
+                item["industry"] = spec["industry"]
+            if "items" in spec:
+                if spec.get("items"):
+                    item["items"] = list(spec["items"])
+                else:
+                    item.pop("items", None)
+        if item.get("items"):
+            nested = apply_menu_replace(list(item["items"]), replace)
+            if nested:
+                item["items"] = nested
+            else:
+                item.pop("items", None)
+        if not item.get("path") and not item.get("items"):
+            continue
+        out.append(item)
+    return out
+
+
+def _copy_i18n(raw: Any) -> dict[str, Any]:
+    if not isinstance(raw, dict):
+        return {}
+    out: dict[str, Any] = {}
+    for loc, pack in raw.items():
+        out[str(loc)] = dict(pack) if isinstance(pack, dict) else {}
+    return out
+
+
+def merge_blended_menus(modules: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Graft modules with ``blend`` onto the host menu. Both shells share that tree."""
+    by_id = {text(mod.get("id")): mod for mod in modules}
+    guests = [mod for mod in modules if text(mod.get("blend")) in by_id]
+    if not guests:
+        return modules
+    grouped: dict[str, list[dict[str, Any]]] = {}
+    for guest in guests:
+        grouped.setdefault(text(guest.get("blend")), []).append(guest)
+    merged: dict[str, dict[str, Any]] = {}
+    for host_id, host_guests in grouped.items():
+        host = by_id.get(host_id)
+        if not host:
+            continue
+        replace: dict[str, Any] = {}
+        for guest in host_guests:
+            guest_replace = guest.get("replace") or {}
+            if isinstance(guest_replace, dict):
+                replace.update(guest_replace)
+        menus = apply_menu_replace(list(host.get("menus") or []), replace)
+        for guest in host_guests:
+            menus.extend(list(guest.get("menus") or []))
+        menus.sort(key=_by_seq_label)
+        i18n = _copy_i18n(host.get("i18n"))
+        for guest in host_guests:
+            extra = guest.get("i18n")
+            _merge_i18n(i18n, extra if isinstance(extra, dict) else None)
+        merged[host_id] = {"menus": menus, "i18n": i18n}
+    out: list[dict[str, Any]] = []
+    for mod in modules:
+        host_id = text(mod.get("blend"))
+        chosen = host_id if host_id in merged else text(mod.get("id"))
+        hit = merged.get(chosen)
+        if not hit:
+            out.append(mod)
+            continue
+        item = dict(mod)
+        item["menus"] = hit["menus"]
+        item["i18n"] = hit["i18n"]
+        out.append(item)
+    return out
+
+
+def mark_blend_listing(modules: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Hide a module that another module blends. The shell identity stays with the blender."""
+    owners: dict[str, str] = {}
+    for mod in modules:
+        target = text(mod.get("blend"), strip=True)
+        owner = text(mod.get("id"), strip=True)
+        if target and owner and target not in owners:
+            owners[target] = owner
+    out: list[dict[str, Any]] = []
+    for mod in modules:
+        item = dict(mod)
+        item.pop("blend", None)
+        owner = owners.get(text(item.get("id")))
+        if owner:
+            item["listed"] = False
+            item["shell"] = owner
+        else:
+            item["listed"] = True
+        out.append(item)
+    return out
+
+
+def _tenant_menu_industry(session: Any, tenant_id: int) -> str:
+    """Current tenant industry. Fleet stores it; other installs show every menu."""
+    try:
+        from addon.fleet.domain.industry import active_industry
+    except ImportError:
+        return "all"
+    from modoor.core.ctx import Ctx
+
+    return active_industry(session, Ctx(tenant=int(tenant_id), user_id=0, team_id=0))
+
+
+def _mount_replace(replace: dict[str, Any], map_path) -> dict[str, Any]:
+    out: dict[str, Any] = {}
+    for menu_id, patch in replace.items():
+        if patch is None:
+            out[menu_id] = None
+            continue
+        item = dict(patch)
+        if item.get("path"):
+            item["path"] = map_path(item["path"])
+        if item.get("items"):
+            item["items"] = _map_menu_paths(list(item["items"]), map_path)
+        out[menu_id] = item
+    return out
+
+
+def _menu_industry(raw: Any) -> list[str]:
+    return texts(raw, unique=True)
+
+
 def _first_leaf_path(menus: list[dict[str, Any]]) -> str:
     for m in menus:
-        path = str(m.get("path") or "").strip()
+        path = text(m.get("path"), strip=True)
         if path:
             return path
         nested = _first_leaf_path(list(m.get("items") or []))
@@ -96,7 +324,7 @@ def _merge_i18n(host: dict[str, Any], extra: dict[str, Any] | None) -> None:
 
 def _find_menu(menus: list[dict[str, Any]], menu_id: str) -> dict[str, Any] | None:
     for m in menus:
-        if str(m.get("id") or "") == menu_id:
+        if text(m.get("id")) == menu_id:
             return m
         hit = _find_menu(list(m.get("items") or []), menu_id)
         if hit:
@@ -118,11 +346,11 @@ def _attach_extension_menus(
         if group is not None:
             kids = list(group.get("items") or [])
             kids.extend(contrib)
-            kids.sort(key=lambda m: (int(m.get("seqno", 100) or 100), m.get("label") or ""))
+            kids.sort(key=_by_seq_label)
             group["items"] = kids
             return
     host_menus.extend(contrib)
-    host_menus.sort(key=lambda m: (int(m.get("seqno", 100) or 100), m.get("label") or ""))
+    host_menus.sort(key=_by_seq_label)
 
 
 def _load_ui_catalog() -> dict[str, dict[str, Any]]:
@@ -136,12 +364,12 @@ def _load_ui_catalog() -> dict[str, dict[str, Any]]:
         ui = data.get("ui-web") or {}
         exports = data.get("exports") or {}
         top_i18n = meta.get("i18n") or normalize_manifest_i18n(data.get("i18n"))
-        kind = (ui.get("kind") or "app").strip()
+        kind = text(ui.get("kind"), strip=True) or "app"
         # External apps must register at runtime — do not load from modules/
         if kind == "external":
             continue
         menus_raw = list(exports.get("menus") or [])
-        menus_raw.sort(key=lambda m: (int(m.get("seqno", 100) or 100), m.get("label") or ""))
+        menus_raw.sort(key=_by_seq_label)
         menus: list[dict[str, Any]] = []
         for i, m in enumerate(menus_raw):
             if not isinstance(m, dict):
@@ -153,32 +381,32 @@ def _load_ui_catalog() -> dict[str, dict[str, Any]]:
         # SPA-relative path (no host); external keeps absolute entry URL
         home_path = home if not str(home).startswith("http") else ""
         prefix = ui.get("base") or f"/{mid}"
-        try:
-            seqno = int(ui.get("seqno", 1000))
-        except (TypeError, ValueError):
-            seqno = 1000
+        order = seqno(ui.get("seqno"), 1000)
 
         # Extension packages contribute menus/i18n into host; not a switcher app.
         if kind == "extension":
-            host = str(ui.get("host") or "").strip()
-            parent = str(ui.get("parent") or "").strip() or None
+            host = text(ui.get("host"), strip=True)
+            parent = text(ui.get("parent"), strip=True) or None
             if host:
                 pending_ext.append((host, {"parent": parent}, menus, top_i18n if isinstance(top_i18n, dict) else {}))
             continue
 
-        pkg = str(meta.get("pkg") or "")
+        pkg = text(meta.get("pkg"))
         if pkg == "builtin":
             origin = "builtin"
         elif pkg == "lightapp":
             origin = "lightapp"
         else:
             origin = "addon"
+        blend = text(ui.get("blend"), strip=True)
         catalog[mid] = {
             "id": mid,
             "label": ui.get("label") or mid.title(),
             "i18n": top_i18n,
             "kind": kind,
-            "seqno": seqno,
+            "blend": blend,
+            "replace": _normalize_replace(data.get("replace"), mid=mid),
+            "seqno": order,
             "home": home,
             "home_path": home_path,
             "entry": home,
@@ -329,7 +557,7 @@ def switcher_items(
 
     order = sorted(
         catalog.keys(),
-        key=lambda mid: (int(catalog[mid].get("seqno", 1000)), mid),
+        key=lambda mid: (seqno(catalog[mid].get("seqno"), 1000), mid),
     )
     for mid in order:
         if mid not in catalog:
@@ -362,7 +590,9 @@ def switcher_items(
                 "i18n": meta.get("i18n") or {},
                 "path": path, "href": href,
                 "kind": meta.get("kind") or "app",
-                "seqno": int(meta.get("seqno", 1000)),
+                "blend": text(meta.get("blend")),
+                "replace": _mount_replace(dict(meta.get("replace") or {}), lambda p: join_web_mount(p)),
+                "seqno": seqno(meta.get("seqno"), 1000),
                 "entry": href, "menus": menus,
                 "exports": None, "online": True,
                 "exports_count": None,
@@ -387,10 +617,7 @@ def switcher_items(
         ui = mfest.get("ui-web") or {}
         if not isinstance(ui, dict):
             ui = {}
-        try:
-            seqno = int(ui.get("seqno", 2000))
-        except (TypeError, ValueError):
-            seqno = 2000
+        order = seqno(ui.get("seqno"), 2000)
         items.append(
             {
                 "id": mid,
@@ -398,7 +625,7 @@ def switcher_items(
                 "i18n": normalize_manifest_i18n(mfest.get("i18n")),
                 "href": href,
                 "kind": "external",
-                "seqno": seqno,
+                "seqno": order,
                 "online": bool(svc.get("online", True)),
                 "entry": svc.get("entry_url"),
                 "exports": exports,
@@ -432,6 +659,7 @@ def registry_catalog(
     tenant_name = settings.modoor_tenant
     access = {"unrestricted": False, "abilities": []}
     menu_layouts: dict[str, str] = {}
+    industry = "all"
     if tenant_id is not None:
         from modoor.core.ctx import Ctx
         from modoor.core.db import session_scope
@@ -458,6 +686,7 @@ def registry_catalog(
                 session,
                 Ctx(tenant=int(tenant_id), user_id=0, team_id=0),
             )
+            industry = _tenant_menu_industry(session, int(tenant_id))
     else:
         from modoor.core.ctx import Ctx
         from modoor.core.db import session_scope
@@ -475,9 +704,16 @@ def registry_catalog(
                 session,
                 Ctx(tenant=int(tenant_id), user_id=0, team_id=0),
             )
-    modules = switcher_items(enabled, allowed_modules=allowed_modules)
+            industry = _tenant_menu_industry(session, int(tenant_id))
+    modules = mark_blend_listing(
+        merge_blended_menus(switcher_items(enabled, allowed_modules=allowed_modules))
+    )
     for item in modules:
-        item["menuLayout"] = menu_layouts.get(str(item.get("id") or ""), "top")
+        item.pop("replace", None)
+        item["menuLayout"] = menu_layouts.get(text(item.get("id")), "top")
+        menus = item.get("menus")
+        if menus:
+            item["menus"] = filter_menus_by_industry(list(menus), industry)
     return {
         "tenant": {
             "id": tenant_id,

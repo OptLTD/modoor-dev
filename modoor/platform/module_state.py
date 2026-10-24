@@ -14,6 +14,7 @@ from modoor.core.db import Base
 from modoor.core.errors import AppError
 from modoor.core.settings import Settings, get_settings
 from modoor.platform.manifest_i18n import normalize_manifest_i18n
+from modoor.support import flag, seqno, text, texts
 
 
 class AppInstall(Base):
@@ -57,11 +58,7 @@ def _manifest_actived(data: dict[str, Any]) -> bool:
         raw = data.get("enabled")
     else:
         raw = False
-    if isinstance(raw, bool):
-        return raw
-    if isinstance(raw, (int, float)):
-        return bool(raw)
-    return str(raw or "").strip().lower() in ("1", "true", "yes", "on")
+    return flag(raw)
 
 
 def _menu_access_tree(raw: Any) -> list[dict[str, Any]]:
@@ -72,14 +69,14 @@ def _menu_access_tree(raw: Any) -> list[dict[str, Any]]:
     for item in raw:
         if not isinstance(item, dict):
             continue
-        mid = str(item.get("id") or "").strip()
+        mid = text(item.get("id"), strip=True)
         if not mid:
             continue
         out.append(
             {
                 "id": mid,
-                "label": str(item.get("label") or mid),
-                "access": [str(a).strip() for a in (item.get("access") or []) if str(a).strip()],
+                "label": text(item.get("label")) or mid,
+                "access": texts(item.get("access")),
                 "items": _menu_access_tree(item.get("items")),
             }
         )
@@ -104,41 +101,36 @@ def discover_manifests(settings: Settings | None = None) -> list[dict[str, Any]]
             ui = data.get("ui-web") or {}
             if not isinstance(ui, dict):
                 ui = {}
-            kind = str(ui.get("kind") or "app")
-            label = str(ui.get("label") or mid)
-            try:
-                seqno = int(ui.get("seqno", 1000))
-            except (TypeError, ValueError):
-                seqno = 1000
-            raw_tags = data.get("tags")
-            tags: list[str] = []
-            if isinstance(raw_tags, list):
-                tags = [str(t).strip() for t in raw_tags if str(t).strip()]
+            kind = text(ui.get("kind")) or "app"
+            label = text(ui.get("label")) or mid
+            order = seqno(ui.get("seqno"), 1000)
+            tags = texts(data.get("tags"))
             # Do not auto-append kind / risk_default / pkg — they clutter filter chips;
             # origin is exposed separately as builtin|addon|lightapp.
             actived = _manifest_actived(data)
+            exports = (data.get("exports") or {}).get("menus")
             items.append(
                 {
                     "id": mid,
                     "tags": tags,
                     "label": label,
                     "kind": kind,
-                    "seqno": seqno,
+                    "seqno": order,
                     "actived": actived,
-                    "version": str(data.get("version") or ""),
-                    "summary": data.get("summary") or "",
-                    "risk_default": data.get("risk_default") or "",
-                    "ability": [str(x) for x in (data.get("ability") or []) if str(x).strip()],
-                    "menus": _menu_access_tree((data.get("exports") or {}).get("menus") if isinstance(data.get("exports"), dict) else None),
+                    "version": text(data.get("version")),
+                    "summary": text(data.get("summary")),
+                    "risk_default": text(data.get("risk_default")),
+                    "ability": texts(data.get("ability")),
+                    "menus": _menu_access_tree(exports),
                     "depends": list(data.get("depends") or []),
                     "tools": (data.get("exports") or {}).get("tools") or [],
                     "skills": (data.get("exports") or {}).get("skills") or [],
                     "i18n": normalize_manifest_i18n(data.get("i18n")),
-                    "path": str(path.parent),
-                    "pkg": pkg,
+                    "pkg": pkg, "path": str(path.parent),
+                    "blend": text(ui.get("blend"), strip=True),
                 }
             )
-    items.sort(key=lambda m: (int(m.get("seqno", 1000)), str(m.get("id") or "")))
+    items.sort(key=lambda m: (seqno(m.get("seqno"), 1000), text(m.get("id"))))
     return items
 
 
@@ -217,7 +209,7 @@ def _sync_external_installs(
         mid = rec.module_id
         if not mid or mid in existing:
             continue
-        version = str((rec.manifest or {}).get("version") or "")
+        version = text((rec.manifest or {}).get("version"))
         mfest = rec.manifest or {}
         row = AppInstall(
             id=str(uuid.uuid4()),
@@ -307,21 +299,18 @@ def list_modules(
         ui = mfest.get("ui-web") or {}
         if not isinstance(ui, dict):
             ui = {}
-        try:
-            seqno = int(ui.get("seqno", 2000))
-        except (TypeError, ValueError):
-            seqno = 2000
+        order = seqno(ui.get("seqno"), 2000)
         online = rec.service_id in live
         meta = {
             "id": mid,
             "label": rec.app_name or ui.get("label") or mid,
             "kind": "external",
-            "seqno": seqno,
-            "version": str(mfest.get("version") or ""),
+            "seqno": order,
+            "version": text(mfest.get("version")),
             "summary": mfest.get("summary") or "",
             "tags": ["external"],
-            "risk_default": str(mfest.get("risk_default") or ""),
-            "ability": [str(x) for x in (mfest.get("ability") or []) if str(x).strip()],
+            "risk_default": text(mfest.get("risk_default")),
+            "ability": texts(mfest.get("ability")),
             "depends": list(mfest.get("depends") or []),
             "actived": _manifest_actived(mfest),
             "tools": (mfest.get("exports") or {}).get("tools") or [],
@@ -341,13 +330,27 @@ def list_modules(
                 "tags": _module_tags(meta, enabled=enabled, online=online),
             }
         )
-    out.sort(key=lambda m: (int(m.get("seqno", 1000)), str(m.get("id") or "")))
-    return out
+    out.sort(key=lambda m: (seqno(m.get("seqno"), 1000), text(m.get("id"))))
+    return drop_blended_hosts(out)
+
+
+def drop_blended_hosts(modules: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Drop a module that an enabled module blends into, so the pair shows as one."""
+    hidden: set[str] = set()
+    for mod in modules:
+        if mod.get("enabled") is False:
+            continue
+        target = text(mod.get("blend"), strip=True)
+        if target:
+            hidden.add(target)
+    if not hidden:
+        return modules
+    return [mod for mod in modules if text(mod.get("id")) not in hidden]
 
 
 def _module_origin(meta: dict[str, Any]) -> str:
     """builtin / addon / lightapp. External registry apps are addon; lightapp is tenant-built only."""
-    pkg = str(meta.get("pkg") or "").strip()
+    pkg = text(meta.get("pkg"), strip=True)
     if pkg == "builtin":
         return "builtin"
     if pkg == "lightapp":
@@ -361,7 +364,7 @@ def _module_tags(
     enabled: bool,
     online: bool | None = None,
 ) -> list[str]:
-    tags = [str(t).strip() for t in (meta.get("tags") or []) if str(t).strip()]
+    tags = texts(meta.get("tags"))
     status = "enabled" if enabled else "disabled"
     if status not in tags:
         tags.append(status)
@@ -401,7 +404,7 @@ def set_module_enabled(
         )
         if reg is None:
             raise AppError("not_found", f"module not found: {module_id}")
-        version = str((reg.manifest or {}).get("version") or "")
+        version = text((reg.manifest or {}).get("version"))
     else:
         version = discovered[module_id]["version"]
     row = session.scalar(

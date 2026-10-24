@@ -21,7 +21,7 @@
             :key="m.id"
             type="button"
             class="switcher-item"
-            :class="{ active: m.id === activeModule, muted: m.online === false }"
+            :class="{ active: m.id === (shellModule?.id || activeModule), muted: m.online === false }"
             role="option"
             @click="goModule(m)"
           >
@@ -55,39 +55,42 @@
             <div class="nav-group-menu" role="menu">
               <template v-for="sub in item.items" :key="sub.id">
                 <div v-if="sub.items?.length" class="nav-subgroup">
-                  <RouterLink
+                  <MenuLink
                     v-if="sub.path"
                     :to="sub.path"
+                    :module-id="moduleId"
                     class="nav-subgroup-label"
                     role="menuitem"
                     @click="closeMenus"
                   >
                     {{ sub.label }}
-                  </RouterLink>
+                  </MenuLink>
                   <div v-else class="nav-subgroup-label">{{ sub.label }}</div>
-                  <RouterLink
+                  <MenuLink
                     v-for="child in sub.items"
                     :key="child.id"
                     :to="child.path || '#'"
+                    :module-id="moduleId"
                     class="nav-subchild"
                     role="menuitem"
                     @click="closeMenus"
                   >
                     {{ child.label }}
-                  </RouterLink>
+                  </MenuLink>
                 </div>
-                <RouterLink
+                <MenuLink
                   v-else
                   :to="sub.path || '#'"
+                  :module-id="moduleId"
                   role="menuitem"
                   @click="closeMenus"
                 >
                   {{ sub.label }}
-                </RouterLink>
+                </MenuLink>
               </template>
             </div>
           </div>
-          <RouterLink v-else-if="item.path" :to="item.path">{{ item.label }}</RouterLink>
+          <MenuLink v-else-if="item.path" :to="item.path" :module-id="moduleId">{{ item.label }}</MenuLink>
         </template>
       </nav>
       <div class="systray">
@@ -272,44 +275,48 @@
             <div v-show="isSideGroupOpen(item.id)" class="side-group-body">
               <template v-for="sub in item.items" :key="sub.id">
                 <div v-if="sub.items?.length" class="side-subgroup">
-                  <RouterLink
+                  <MenuLink
                     v-if="sub.path"
                     :to="sub.path"
+                    :module-id="moduleId"
                     class="side-link"
                     @click="closeMenus"
                   >
                     {{ sub.label }}
-                  </RouterLink>
+                  </MenuLink>
                   <div v-else class="side-link side-subgroup-label">{{ sub.label }}</div>
-                  <RouterLink
+                  <MenuLink
                     v-for="child in sub.items"
                     :key="child.id"
                     :to="child.path || '#'"
+                    :module-id="moduleId"
                     class="side-link side-sublink"
                     @click="closeMenus"
                   >
                     {{ child.label }}
-                  </RouterLink>
+                  </MenuLink>
                 </div>
-                <RouterLink
+                <MenuLink
                   v-else
                   :to="sub.path || '#'"
+                  :module-id="moduleId"
                   class="side-link"
                   @click="closeMenus"
                 >
                   {{ sub.label }}
-                </RouterLink>
+                </MenuLink>
               </template>
             </div>
           </div>
-          <RouterLink
+          <MenuLink
             v-else-if="item.path"
             :to="item.path"
+            :module-id="moduleId"
             class="side-link side-top-link"
             @click="closeMenus"
           >
             {{ item.label }}
-          </RouterLink>
+          </MenuLink>
         </template>
       </aside>
       <main class="main">
@@ -485,6 +492,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import SvgIcon from '@modoor/widget/SvgIcon'
+import MenuLink from './MenuLink.vue'
 import { resolveSysTrayWidget } from './sysTray'
 import { provideRecordGateway } from '../recordGateway'
 import {
@@ -547,12 +555,23 @@ const openNavGroup = ref<string | null>(null)
 /** 左侧分组展开状态。切到左侧导航时只展开当前页面所在分组 */
 const openSideGroups = ref<Set<string>>(new Set())
 const activeModule = ref(props.moduleId)
+/** 目录接口给出的壳层身份。被融合的模块跟声明方走。 */
+const shellModule = computed(() => {
+  const current = modules.value.find((item) => {
+    return item.id === activeModule.value
+  })
+  const shellId = current?.shell
+  if (!shellId) return current
+  const find = modules.value.find((item) => {
+    return item.id === shellId
+  })
+  return find || current
+})
 const menuLayout = computed(() => {
-  const mid = String(activeModule.value || props.moduleId || '').trim()
+  const mid = String(shellModule.value?.id || props.moduleId || '').trim()
   const personal = mid ? prefs.value.moduleMenus[mid] : undefined
   if (personal === 'side' || personal === 'top') return personal
-  const hit = modules.value.find((item) => item.id === mid)
-  return hit?.menuLayout === 'side' ? 'side' : 'top'
+  return shellModule.value?.menuLayout === 'side' ? 'side' : 'top'
 })
 const sysTrayWidget = computed(() => resolveSysTrayWidget(activeModule.value || props.moduleId))
 const logoSrc = '/logo.png'
@@ -615,10 +634,9 @@ const agentGuideDoc = computed(() => {
   ].join('\n')
 })
 
-const currentLabel = computed(() => {
-  const hit = modules.value.find((m) => m.id === activeModule.value)
-  return localizedAppLabel(hit, locale.value, 'Modoor')
-})
+const currentLabel = computed(() =>
+  localizedAppLabel(shellModule.value, locale.value, 'Modoor'),
+)
 
 function localizeMenu(
   item: { id: string; label: string; path?: string; items?: NavMenu[]; key?: string },
@@ -633,15 +651,17 @@ function localizeMenu(
 }
 
 const menus = computed(() => {
-  const hit = modules.value.find((m) => m.id === activeModule.value)
+  const hit = shellModule.value
   return (hit?.menus || []).map((item) => localizeMenu(item, hit?.i18n))
 })
 
 const switcherModules = computed(() =>
-  modules.value.map((m) => ({
-    ...m,
-    label: localizedAppLabel(m, locale.value, m.label),
-  })),
+  modules.value
+    .filter((mod) => mod.listed !== false)
+    .map((m) => ({
+      ...m,
+      label: localizedAppLabel(m, locale.value, m.label),
+    })),
 )
 
 const tenantName = computed(() => {
@@ -840,17 +860,17 @@ function selectRole(role: SwitchRole) {
 
 function goModule(m: ShellModule) {
   closeMenus()
+  if (m.id !== props.moduleId) {
+    if (m.href && /^https?:\/\//i.test(m.href)) {
+      location.href = m.href
+      return
+    }
+    if (m.path) location.href = m.path
+    return
+  }
   activeModule.value = m.id
-  if (m.id === props.moduleId) {
-    const local = m.menus?.[0]?.path || m.path
-    if (local) router.push(local)
-    return
-  }
-  if (m.href && /^https?:\/\//i.test(m.href)) {
-    location.href = m.href
-    return
-  }
-  if (m.path) router.push(m.path)
+  const local = m.menus?.[0]?.path || m.path
+  if (local) router.push(local)
 }
 
 async function selectTenant(tn: TenantOption) {
@@ -863,16 +883,20 @@ async function selectTenant(tn: TenantOption) {
   location.href = res.home || '/'
 }
 
+function layoutModuleId() {
+  return String(shellModule.value?.id || props.moduleId || '').trim()
+}
+
 function openUserSettings() {
   closeMenus()
-  const mid = String(activeModule.value || props.moduleId || '').trim()
+  const mid = layoutModuleId()
   const personal = mid ? prefs.value.moduleMenus[mid] : undefined
   draftMenuLayout.value = personal === 'side' || personal === 'top' ? personal : ''
   userSettingsOpen.value = true
 }
 
 function applyUserSettings() {
-  const mid = String(activeModule.value || props.moduleId || '').trim()
+  const mid = layoutModuleId()
   setModuleMenuLayout(mid, draftMenuLayout.value || null)
   userSettingsOpen.value = false
 }

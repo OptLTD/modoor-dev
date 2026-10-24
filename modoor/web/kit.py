@@ -12,12 +12,13 @@ from starlette.responses import RedirectResponse
 from modoor.core.ctx import Ctx
 from modoor.core.db import session_scope
 from modoor.core.settings import get_settings
-from modoor.platform.module_state import enabled_module_ids
+from modoor.platform.module_state import (
+    drop_blended_hosts, enabled_module_ids,
+)
+from modoor.support import text
 from modoor.web.nav import (
-    detect_module,
-    get_module_meta,
-    module_menus,
-    switcher_items,
+    detect_module, get_module_meta,
+    module_menus, switcher_items,
 )
 from builtin.base import domain as base_domain
 from builtin.base.domain import SystemUser
@@ -104,7 +105,7 @@ class ShellKit:
         from modoor.platform.services import list_services
 
         extra = {
-            str(svc.get("module_id") or svc.get("service_id") or "")
+            text(svc.get("module_id") or svc.get("service_id"))
             for svc in list_services()
         }
         extra.discard("")
@@ -156,7 +157,7 @@ class ShellKit:
             session, user, enabled, active_role=active_role
         )
 
-        raw = (next_url or "").strip()
+        raw = text(next_url, strip=True)
         href = raw
         if raw.startswith("http://") or raw.startswith("https://"):
             path = urlparse(raw).path or "/"
@@ -209,7 +210,7 @@ class ShellKit:
             session, user, enabled, active_role=active_role
         )
         apps: list[dict[str, Any]] = []
-        for item in switcher_items(enabled, allowed_modules=allowed):
+        for item in drop_blended_hosts(switcher_items(enabled, allowed_modules=allowed)):
             i18n = item.get("i18n") or {}
             zh = i18n.get("zh-CN") if isinstance(i18n, dict) else {}
             en = i18n.get("en-US") if isinstance(i18n, dict) else {}
@@ -344,10 +345,10 @@ class ShellKit:
                 zh = {}
             if not isinstance(en, dict):
                 en = {}
-            fallback = str(item.get("label") or item.get("id") or "")
+            fallback = text(item.get("label") or item.get("id"))
             return (
-                str(zh.get("app.label") or zh.get("label") or fallback),
-                str(en.get("app.label") or en.get("label") or fallback),
+                text(zh.get("app.label") or zh.get("label") or fallback),
+                text(en.get("app.label") or en.get("label") or fallback),
             )
 
         switcher_view: list[dict[str, Any]] = []
@@ -363,7 +364,7 @@ class ShellKit:
             else:
                 meta = get_module_meta(current_module) or {}
                 zh_title, en_title = _app_titles(meta)
-                brand_zh = zh_title or str(meta.get("label") or current_module)
+                brand_zh = zh_title or text(meta.get("label")) or current_module
                 brand_en = en_title or brand_zh
 
         menu_view: list[dict[str, Any]] = []
@@ -378,12 +379,12 @@ class ShellKit:
                 en_pack = {}
 
             def _localize_menu(item: dict[str, Any]) -> dict[str, Any]:
-                mid = str(item.get("id") or "")
-                fallback = str(item.get("label") or mid)
+                mid = text(item.get("id"))
+                fallback = text(item.get("label")) or mid
                 out = {
                     **item,
-                    "label_zh": str(zh_pack.get(mid) or fallback),
-                    "label_en": str(en_pack.get(mid) or fallback),
+                    "label_zh": text(zh_pack.get(mid) or fallback),
+                    "label_en": text(en_pack.get(mid) or fallback),
                 }
                 kids = list(item.get("items") or [])
                 if kids:

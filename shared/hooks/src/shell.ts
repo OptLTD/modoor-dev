@@ -37,6 +37,10 @@ export type ShellModule = {
   /** Flat i18n from module.yaml; `app.label` + keys matching entity id|key. */
   i18n?: ManifestI18n
   menus?: ShellMenu[]
+  /** False when this module is blended into another and stays out of the switcher. */
+  listed?: boolean
+  /** Title, menus, and layout follow this module. */
+  shell?: string
 }
 
 export type ShellCatalog = {
@@ -51,12 +55,13 @@ export async function fetchShellCatalog() {
   const catalog = await get<ShellCatalog>('/api/shell/modules')
   const gate = catalog.access
   rememberAccess(gate)
+  const modules = (catalog.modules || []).map((mod) => ({
+    ...mod,
+    menus: mod.menus ? filterMenus(mod.menus, gate) : mod.menus,
+  }))
   return {
     ...catalog,
-    modules: (catalog.modules || []).map((mod) => ({
-      ...mod,
-      menus: mod.menus ? filterMenus(mod.menus, gate) : mod.menus,
-    })),
+    modules,
   }
 }
 
