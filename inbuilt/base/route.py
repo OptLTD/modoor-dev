@@ -344,7 +344,7 @@ def api_list_modules(request: Request) -> dict[str, Any]:
     with session_scope() as session:
         sync_discovered_modules(session, kit().tenant())
         modules = list_modules(session, kit().tenant())
-        from inbuilt.base.global_settings import get_menu_layouts
+        from inbuilt.base.setting import get_menu_layouts
 
         layouts = get_menu_layouts(session, ctx_of(user))
     for item in modules:
@@ -357,7 +357,7 @@ def api_module_menu(request: Request, module_id: str, body: ModuleMenuLayout) ->
     user = require_user(request)
     try:
         with session_scope() as session:
-            from inbuilt.base.global_settings import save_module_menu_layout
+            from inbuilt.base.setting import save_module_menu_layout
 
             layout = save_module_menu_layout(session, ctx_of(user), module_id, body.layout)
         return {"ok": True, "module_id": module_id, "layout": layout}
@@ -395,16 +395,16 @@ class GlobalSettingsBody(BaseModel):
 
 
 def _global_payload(session, user, ctx, request: Request) -> dict[str, Any]:
-    from inbuilt.base.global_settings import (
+    from inbuilt.base.setting import (
         TIME_FORMATS,
         TIMEZONES,
-        get_global_settings,
-        user_can_edit_global,
+        get_settings,
+        user_can_edit,
     )
 
     return {
-        "settings": get_global_settings(session, ctx),
-        "canEdit": user_can_edit_global(
+        "settings": get_settings(session, ctx),
+        "canEdit": user_can_edit(
             session, ctx, user_id=int(user.id), active_role=acting_role(request)
         ),
         "timezones": [
@@ -430,13 +430,13 @@ def api_put_global(request: Request, body: GlobalSettingsBody) -> dict[str, Any]
     try:
         with session_scope() as session:
             ctx = ctx_of(user)
-            from inbuilt.base.global_settings import save_global_settings, user_can_edit_global
+            from inbuilt.base.setting import save_settings, user_can_edit
 
-            if not user_can_edit_global(
+            if not user_can_edit(
                 session, ctx, user_id=int(user.id), active_role=acting_role(request)
             ):
                 raise base_domain.AppError("permission_denied", "global settings require an administrator")
-            save_global_settings(
+            save_settings(
                 session,
                 ctx,
                 body.model_dump(),

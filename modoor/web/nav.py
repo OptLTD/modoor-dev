@@ -696,7 +696,7 @@ def registry_catalog(
                     user_id=int(user.id),
                     active_role=active_role,
                 )
-            from inbuilt.base.global_settings import get_menu_layouts
+            from inbuilt.base.setting import get_menu_layouts
 
             menu_layouts = get_menu_layouts(
                 session,
@@ -714,7 +714,7 @@ def registry_catalog(
                     session, tenant_name, tenant_id=settings.modoor_tenant_id
                 )["tenant"]["id"]
             )
-            from inbuilt.base.global_settings import get_menu_layouts
+            from inbuilt.base.setting import get_menu_layouts
 
             menu_layouts = get_menu_layouts(
                 session,

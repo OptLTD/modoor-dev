@@ -186,10 +186,10 @@ class ShellKit:
         enabled: set[str],
         allowed: set[str] | None,
     ) -> tuple[str | None, str]:
-        from inbuilt.base.global_settings import get_global_settings, landing_module
+        from inbuilt.base.setting import get_settings, landing_module
 
         mid = landing_module(
-            get_global_settings(session, self.ctx(user)),
+            get_settings(session, self.ctx(user)),
             enabled=enabled,
             allowed=allowed,
         )

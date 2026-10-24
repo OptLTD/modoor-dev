@@ -2,15 +2,15 @@
 
 from __future__ import annotations
 
-from inbuilt.base.global_settings import (
+from inbuilt.base.setting import (
     landing_module,
-    normalize_global_settings,
+    normalize_settings,
     normalize_menu_layouts,
 )
 
 
 def test_normalize_keeps_known_values_and_drops_unknown():
-    out = normalize_global_settings(
+    out = normalize_settings(
         {
             "locale": "en",
             "timezone": "Asia/Tokyo",
@@ -24,7 +24,7 @@ def test_normalize_keeps_known_values_and_drops_unknown():
         "timeFormat": "YYYY-MM-DD HH:mm",
         "defaultModule": "freight",
     }
-    bad = normalize_global_settings(
+    bad = normalize_settings(
         {"locale": "fr", "timezone": "Mars/Base", "timeFormat": "hh:mm", "defaultModule": "../x"}
     )
     assert bad["locale"] == "zh-CN"

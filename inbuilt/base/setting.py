@@ -38,7 +38,7 @@ TIME_FORMATS = (
 _MODULE_RE = re.compile(r"^[a-z][a-z0-9_-]{0,63}$")
 
 
-def default_global_settings() -> dict[str, str]:
+def default_settings() -> dict[str, str]:
     return {
         "locale": "zh-CN",
         "timezone": "Asia/Shanghai",
@@ -47,8 +47,8 @@ def default_global_settings() -> dict[str, str]:
     }
 
 
-def normalize_global_settings(raw: Any) -> dict[str, str]:
-    out = default_global_settings()
+def normalize_settings(raw: Any) -> dict[str, str]:
+    out = default_settings()
     if not isinstance(raw, dict):
         return out
     locale = str(raw.get("locale") or "").strip().lower().replace("_", "-")
@@ -68,20 +68,20 @@ def normalize_global_settings(raw: Any) -> dict[str, str]:
     return out
 
 
-def get_global_settings(session: Session, ctx: Ctx) -> dict[str, str]:
+def get_settings(session: Session, ctx: Ctx) -> dict[str, str]:
     row = base_domain.get_config(session, ctx, mod=GLOBAL_MOD, type=GLOBAL_TYPE)
     data = row.data if row is not None else None
-    return normalize_global_settings(data)
+    return normalize_settings(data)
 
 
-def save_global_settings(
+def save_settings(
     session: Session,
     ctx: Ctx,
     raw: Any,
     *,
     enabled: set[str],
 ) -> dict[str, str]:
-    data = normalize_global_settings(raw)
+    data = normalize_settings(raw)
     mid = data["defaultModule"]
     if mid and mid not in enabled:
         raise AppError("validation_error", "default module is not enabled")
@@ -96,7 +96,7 @@ def save_global_settings(
     return data
 
 
-def user_can_edit_global(
+def user_can_edit(
     session: Session,
     ctx: Ctx,
     *,
