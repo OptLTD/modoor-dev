@@ -3,8 +3,11 @@
  * ITEMS 明细表：走 FormSheet（jspreadsheet），对齐 duolali SheetForm 交互。
  * 保留原 GroupTable 的 props 契约，供 SchemaForm / RecordDialog 无感切换。
  */
+import { defineAsyncComponent } from 'vue'
 import type { FormMode, ReferDict, SchemaField } from '@modoor/hooks'
-import FormSheet from './FormSheet.vue'
+
+/** jspreadsheet 只在出现明细表时加载，不进列表页主包。 */
+const FormSheet = defineAsyncComponent(() => import('./FormSheet.vue'))
 
 defineProps<{
   title: string

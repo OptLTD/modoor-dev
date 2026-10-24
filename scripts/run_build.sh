@@ -6,6 +6,15 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
+# make dev sources .env; make build must too, or external addons look tools-only.
+# An explicit MODOOR_ADDON_ROOT (make image) stays as passed.
+if [[ -z "${MODOOR_ADDON_ROOT:-}" && -f "${ROOT}/.env" ]]; then
+  set -a
+  # shellcheck disable=SC1091
+  source "${ROOT}/.env"
+  set +a
+fi
+
 MODULES=("$@")
 if [[ ${#MODULES[@]} -eq 0 ]]; then
   echo "usage: make build <module> [module...]"

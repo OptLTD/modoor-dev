@@ -13,13 +13,53 @@ source "${ROOT}/scripts/webui_url.sh"
 DO_BUILD=0
 MODULES=()
 
+if [[ -f "${ROOT}/.env" ]]; then
+  set -a
+  # shellcheck disable=SC1091
+  source "${ROOT}/.env"
+  set +a
+fi
+
+addon_root() {
+  local root="${MODOOR_ADDON_ROOT:-${ROOT}/addon}"
+  if [[ "${root}" != /* ]]; then
+    root="${ROOT}/${root}"
+  fi
+  if [[ -d "${root}" ]]; then
+    (cd "${root}" && pwd)
+  else
+    echo "${root}"
+  fi
+}
+
+ADDON_ROOT="$(addon_root)"
+
 default_modules() {
   local m
   for m in base doc wiki sale skill fleet freight capacity dispatch flow; do
-    if [[ -d "${ROOT}/addon/${m}/webui" || -d "${ROOT}/builtin/${m}/webui" ]]; then
+    if [[ -d "${ADDON_ROOT}/${m}/webui" || -d "${ROOT}/addon/${m}/webui" || -d "${ROOT}/builtin/${m}/webui" ]]; then
       echo "${m}"
     fi
   done
+}
+
+# First hit with index.html wins: external addon, in-repo addon, builtin.
+dist_for() {
+  local name="$1"
+  local candidate
+  local -a candidates=()
+  candidates+=("${ADDON_ROOT}/${name}/webui/dist")
+  if [[ "${ADDON_ROOT}" != "${ROOT}/addon" ]]; then
+    candidates+=("${ROOT}/addon/${name}/webui/dist")
+  fi
+  candidates+=("${ROOT}/builtin/${name}/webui/dist")
+  for candidate in "${candidates[@]}"; do
+    if [[ -d "${candidate}" && -f "${candidate}/index.html" ]]; then
+      (cd "${candidate}" && pwd)
+      return 0
+    fi
+  done
+  return 1
 }
 
 free_port() {
@@ -61,23 +101,22 @@ if [[ "${DO_BUILD}" == "1" ]]; then
   "${ROOT}/scripts/run_build.sh" "${MODULES[@]}"
 fi
 
+DIST_PATHS=()
 for name in "${MODULES[@]}"; do
-  dist="${ROOT}/addon/${name}/webui/dist"
-  if [[ ! -d "${dist}" ]]; then
-    dist="${ROOT}/builtin/${name}/webui/dist"
-  fi
-  if [[ ! -d "${dist}" || ! -f "${dist}/index.html" ]]; then
-    echo "!! missing dist for ${name}: addon|builtin/${name}/webui/dist" >&2
+  if ! dist="$(dist_for "${name}")"; then
+    echo "!! missing dist for ${name}" >&2
+    echo "   looked in ${ADDON_ROOT}/${name}/webui/dist" >&2
+    if [[ "${ADDON_ROOT}" != "${ROOT}/addon" ]]; then
+      echo "             ${ROOT}/addon/${name}/webui/dist" >&2
+    fi
+    echo "             ${ROOT}/builtin/${name}/webui/dist" >&2
     echo "   run: make build ${name}" >&2
     echo "   or:  make preview BUILD=1 ${name}" >&2
     exit 1
   fi
+  DIST_PATHS+=("${dist}")
 done
 
-set -a
-# shellcheck disable=SC1091
-source .env
-set +a
 modoor_load_webui_url
 
 # API serves dist itself — do not reverse-proxy vite preview.
@@ -89,13 +128,9 @@ export MODOOR_WEBUI_URL
 echo ""
 echo "API / login  ${MODOOR_WEBUI_URL}/login"
 echo "mode         preview (API mounts dist, no vite)"
-for mid in "${MODULES[@]:-}"; do
-  [[ -z "${mid}" ]] && continue
-  if [[ -d "${ROOT}/builtin/${mid}/webui/dist" ]]; then
-    printf "  /mod/%-6s → builtin/%s/webui/dist\n" "${mid}" "${mid}"
-  else
-    printf "  /mod/%-6s → addon/%s/webui/dist\n" "${mid}" "${mid}"
-  fi
+for i in "${!MODULES[@]}"; do
+  [[ -z "${MODULES[$i]}" ]] && continue
+  printf "  /mod/%-8s → %s\n" "${MODULES[$i]}" "${DIST_PATHS[$i]}"
 done
 echo "static       ${MODOOR_WEBUI_STATIC_MODULES}"
 echo ""
