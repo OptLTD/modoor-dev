@@ -60,7 +60,7 @@ REFRESH_TTL_SECONDS = TOKEN_TTL_SECONDS * 7
 
 
 def public_base_url() -> str:
-    return str(get_settings().modoor_webui_url or "").rstrip("/")
+    return str(get_settings().modoor_module_gate or "").rstrip("/")
 
 
 def mcp_resource_url() -> str:

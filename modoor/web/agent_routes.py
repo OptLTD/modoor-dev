@@ -22,7 +22,7 @@ PRODUCT = "modoor(木牍)"
 
 def _base_url(request: Request | None = None) -> str:
     settings = get_settings()
-    configured = str(settings.modoor_webui_url or "").rstrip("/")
+    configured = str(settings.modoor_module_gate or "").rstrip("/")
     if configured:
         return configured
     if request is not None:

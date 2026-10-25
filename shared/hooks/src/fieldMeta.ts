@@ -166,7 +166,7 @@ export function mergeRefers(schemaRefers?: ReferDict, resultRefers?: ReferDict):
   return { ...(schemaRefers || {}), ...(resultRefers || {}) }
 }
 
-export function normalizeReferDict(raw?: Record<string, unknown> | ReferDict): ReferDict {
+export function normalizeRefer(raw?: Record<string, unknown> | ReferDict): ReferDict {
   const out: ReferDict = {}
   if (!raw) return out
   for (const [k, v] of Object.entries(raw)) {
@@ -181,7 +181,7 @@ export async function loadDropdownRefers(
   schemaRefers?: ReferDict,
   extra?: ReferDict,
 ): Promise<ReferDict> {
-  let merged = mergeRefers(normalizeReferDict(schemaRefers), extra || {})
+  let merged = mergeRefers(normalizeRefer(schemaRefers), extra || {})
   const relationModels = new Set<string>()
   for (const f of fields) {
     if (ftypeOf(f) !== 'RELATION') continue

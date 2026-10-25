@@ -1,20 +1,18 @@
 # Modoor app. Postgres is external (DATABASE_URL).
 # Host 80, 443, and 8765 all reach the process on container port 8765.
-# No certs: HTTP on that port. MODOOR_MODULE_GATE stays http://...
-# TLS: put fullchain.pem and privkey.pem in ./certs (or MODOOR_SSL_DIR)
-# and set MODOOR_MODULE_GATE=https://<host>. The app serves HTTPS and
-# redirects plain HTTP to that URL.
+# No certs: HTTP on that port.
+# TLS: put fullchain.pem and privkey.pem in ./certs (or MODOOR_SSL_DIR).
+# The app serves HTTPS and redirects plain HTTP to the public URL.
 # Do not mount the pem paths themselves; a missing file is created as a directory.
 
 services:
   modoor:
-    image: ${MODOOR_IMAGE:-optltd/modoor:lyghh}
+    image: ${MODOOR_IMAGE:-optltd/modoor:latest}
     restart: unless-stopped
     env_file:
       - .env
     environment:
       DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL}
-      MODOOR_MODULE_GATE: ${MODOOR_MODULE_GATE:-${MODOOR_WEBUI_URL:-http://127.0.0.1:8765}}
       MODOOR_STORAGE_ROOT: /data/storage
       MODOOR_PY_CACHE: /var/cache/modoor/py
     extra_hosts:

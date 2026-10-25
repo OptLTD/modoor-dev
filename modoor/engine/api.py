@@ -217,7 +217,7 @@ def api_agent_connect(request: Request) -> dict[str, Any]:
         if row is None or not row.active:
             raise HTTPException(status_code=401, detail="login required")
         tok = base_domain.ensure_agent_token(session, row)
-        base = str(settings.modoor_webui_url or "").rstrip("/")
+        base = str(settings.modoor_module_gate or "").rstrip("/")
         mcp_url = f"{base}/mcp"
         auth_url = f"{base}/auth"
         oauth_issuer = base
@@ -368,6 +368,32 @@ def api_search(request: Request, body: dict[str, Any] = Body(default_factory=dic
     try:
         with session_scope() as session:
             return get_engine().search(session, _ctx(user), body)
+    except Exception as exc:  # noqa: BLE001
+        raise _err(exc) from exc
+
+
+@router.get("/api/record/related")
+def api_related(request: Request) -> Any:
+    """关联字段下拉：返回 values + header（带 label）+ refers。"""
+    user = _require_user(request)
+    params = request.query_params
+    model = str(params.get("model") or "").strip()
+    keyword = str(params.get("query") or params.get("uukey") or "").strip()
+    using = str(params.get("using") or "default").strip() or "default"
+    try:
+        size = int(params.get("size") or 30)
+    except (TypeError, ValueError):
+        size = 30
+    try:
+        with session_scope() as session:
+            return get_engine().related(
+                session,
+                _ctx(user),
+                model=model,
+                keyword=keyword,
+                using=using,
+                size=size,
+            )
     except Exception as exc:  # noqa: BLE001
         raise _err(exc) from exc
 

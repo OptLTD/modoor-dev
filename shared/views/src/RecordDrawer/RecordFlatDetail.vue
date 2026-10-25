@@ -9,7 +9,7 @@ import {
   searchRecords,
   fetchInputSchema,
   formVisibleFields,
-  normalizeReferDict,
+  normalizeRefer,
   displayFieldValue,
   type SchemaField,
   type ReferDict,
@@ -60,7 +60,7 @@ async function load() {
       if (!row) throw new Error(t('widget.recordNotFound') || '未找到关联记录')
       uk = rowUUKey(row)
       values.value = row
-      refers.value = normalizeReferDict(res.refers)
+      refers.value = normalizeRefer(res.refers)
     }
     if (!uk) throw new Error(t('widget.missingKey') || '缺少记录编号')
     oplogApi?.setTarget(props.model, uk)
@@ -68,21 +68,21 @@ async function load() {
     let res = await fetchInputSchema(props.model, using, 'DETAIL', uk)
     fields.value = res.input?.fields || []
     if (res.input?.values) values.value = res.input.values as Record<string, unknown>
-    refers.value = normalizeReferDict(res.input?.refers as ReferDict)
+    refers.value = normalizeRefer(res.input?.refers as ReferDict)
     const next = detailUsing(props.model, values.value)
     if (next !== using) {
       using = next
       res = await fetchInputSchema(props.model, using, 'DETAIL', uk)
       fields.value = res.input?.fields || []
       if (res.input?.values) values.value = res.input.values as Record<string, unknown>
-      refers.value = normalizeReferDict(res.input?.refers as ReferDict)
+      refers.value = normalizeRefer(res.input?.refers as ReferDict)
     }
     if (!values.value) {
       const found = await searchRecords(props.model, 'default', 1, 1, {
         query: { 'basic.uukey': uk },
       })
       values.value = (found.values || [])[0] || { 'basic.uukey': uk }
-      refers.value = normalizeReferDict(found.refers)
+      refers.value = normalizeRefer(found.refers)
     }
   } catch (e) {
     error.value = e instanceof Error ? e.message : String(e)

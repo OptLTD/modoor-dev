@@ -17,10 +17,10 @@ def resolve_entry(ctx: EntryContext) -> WebEntry | None:
     public_home = join_web_mount(home)
     dist = ctx.module_root / "webui" / "dist"
     if ctx.env == "dev":
-        return WebEntry(mode="url", target=f"{ctx.webui_url}{public_home}", base=base)
+        return WebEntry(mode="url", target=f"{ctx.module_gate}{public_home}", base=base)
     if dist.is_dir():
         return WebEntry(mode="static", target=str(dist), base=base)
-    return WebEntry(mode="url", target=f"{ctx.webui_url}{public_home}", base=base)
+    return WebEntry(mode="url", target=f"{ctx.module_gate}{public_home}", base=base)
 
 
 def register(app: FastAPI, kit: ShellKit) -> None:

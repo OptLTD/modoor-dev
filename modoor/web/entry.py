@@ -39,8 +39,8 @@ class EntryContext:
     tenant_id: str | None = None
 
     @property
-    def webui_url(self) -> str:
-        return (self.settings.modoor_webui_url or "").rstrip("/")
+    def module_gate(self) -> str:
+        return (self.settings.modoor_module_gate or "").rstrip("/")
 
     @property
     def module_webui_url(self) -> str | None:
@@ -58,7 +58,7 @@ class EntryContext:
 
 def _detect_env(settings: Settings) -> str:
     # Prefer explicit flag later; for now: non-default webui host ⇒ likely dev proxy
-    url = (settings.modoor_webui_url or "").lower()
+    url = (settings.modoor_module_gate or "").lower()
     if "127.0.0.1" in url or "localhost" in url:
         return "dev"
     return "prod"
@@ -154,7 +154,7 @@ def _path_on_gate(target: str) -> str:
     from modoor.core.settings import public_module_gate
 
     settings = get_settings()
-    public = public_module_gate(settings.modoor_webui_url)
+    public = public_module_gate(settings.modoor_module_gate)
     if raw.startswith(("http://", "https://")):
         parsed = urlparse(raw)
         path = parsed.path or "/"
@@ -163,7 +163,7 @@ def _path_on_gate(target: str) -> str:
         if public and _same_origin(parsed, urlparse(public)):
             return f"{public}{path}"
         listen = urlparse(f"http://{settings.modoor_web_host}:{settings.modoor_web_port}")
-        gate = urlparse((settings.modoor_webui_url or "").strip() or "http://127.0.0.1:8765")
+        gate = urlparse((settings.modoor_module_gate or "").strip() or "http://127.0.0.1:8765")
         if _same_origin(parsed, listen) or _same_origin(parsed, gate):
             return f"{public}{path}" if public else path
         return raw

@@ -5,7 +5,7 @@ import { normalizeDropdownCellValue } from './dropdown'
 import { exportRows } from '@modoor/hooks'
 import { buildDependsTriggers } from './sheetFormula'
 import { appAlert, appConfirm, appToast } from '@modoor/hooks'
-import { applyStickyOrder, normalizeReferDict, type ReferDict } from '@modoor/hooks'
+import { applyStickyOrder, normalizeRefer, type ReferDict } from '@modoor/hooks'
 import { fieldKey, rowToUpsertPayload, rowUUKey } from '@modoor/hooks'
 import type { SchemaSheetProps, SheetRow, SheetWorksheet } from './types'
 import {
@@ -178,7 +178,7 @@ export function useSchemaSheet(props: ToRefs<SchemaSheetProps>) {
       if (mode.value === 'import') {
         referCache.value = await gateway.loadDropdownRefers(
           editableFields.value,
-          normalizeReferDict(table.value.refers),
+          normalizeRefer(table.value.refers),
           {},
         )
         if (seq !== reloadSeq) return
@@ -204,8 +204,8 @@ export function useSchemaSheet(props: ToRefs<SchemaSheetProps>) {
       if (seq !== reloadSeq) return
       referCache.value = await gateway.loadDropdownRefers(
         editableFields.value,
-        normalizeReferDict(table.value.refers),
-        normalizeReferDict(res.refers),
+        normalizeRefer(table.value.refers),
+        normalizeRefer(res.refers),
       )
       if (seq !== reloadSeq) return
       const list = (res.values || []).map((raw) =>

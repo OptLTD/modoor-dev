@@ -15,7 +15,7 @@ import {
   isNumericField,
   isSortableField,
   mergeRefers,
-  normalizeReferDict,
+  normalizeRefer,
   pickFieldValue,
   referOptions,
   convertReferValue,
@@ -851,8 +851,8 @@ export function useSchemaTable(
       facets.value = (res.facets || {}) as Record<string, SearchFacet>
       count.value = res.count ?? rows.value.length
       theRefers.value = mergeRefers(
-        normalizeReferDict(props.table.refers as ReferDict),
-        normalizeReferDict(res.refers),
+        normalizeRefer(props.table.refers as ReferDict),
+        normalizeRefer(res.refers),
       )
       selectedKeys.value = []
     } catch (e) {
@@ -1070,7 +1070,7 @@ export function useSchemaTable(
         const batch = res.values || []
         if (!batch.length) break
         all.push(...batch)
-        Object.assign(theRefers.value, normalizeReferDict(res.refers))
+        Object.assign(theRefers.value, normalizeRefer(res.refers))
         if (batch.length < pageSize) break
         pageNo += 1
       }
@@ -1157,7 +1157,7 @@ export function useSchemaTable(
 
   onMounted(() => {
     loadWidths()
-    theRefers.value = normalizeReferDict(props.table.refers as ReferDict)
+    theRefers.value = normalizeRefer(props.table.refers as ReferDict)
     const req = props.table.request
     if (req?.page) page.value = req.page
     if (req?.size != null) {

@@ -7,7 +7,7 @@ import {
   fetchInputSchema,
   fetchSchema,
   formVisibleFields,
-  normalizeReferDict,
+  normalizeRefer,
   displayFieldValue,
   rowUUKey,
   searchRecords,
@@ -187,7 +187,7 @@ async function loadRelated(tab: RecordEntityTab) {
     relatedFields.value = want as SchemaField[]
     const res = await searchRecords(model, using, 1, 50, { query })
     relatedRows.value = res.values || []
-    relatedRefers.value = normalizeReferDict(res.refers)
+    relatedRefers.value = normalizeRefer(res.refers)
   } catch (e) {
     relatedError.value = e instanceof Error ? e.message : String(e)
   } finally {
@@ -221,7 +221,7 @@ async function load() {
       if (!row) throw new Error(t('widget.recordNotFound') || '未找到关联记录')
       uk = rowUUKey(row)
       values.value = row
-      refers.value = normalizeReferDict(res.refers)
+      refers.value = normalizeRefer(res.refers)
     }
     if (!uk) throw new Error(t('widget.missingKey') || '缺少记录编号')
     resolvedKey.value = uk
@@ -229,13 +229,13 @@ async function load() {
     const res = await fetchInputSchema(props.model, 'default', 'DETAIL', uk)
     fields.value = res.input?.fields || []
     if (res.input?.values) values.value = res.input.values as Record<string, unknown>
-    refers.value = normalizeReferDict(res.input?.refers as ReferDict)
+    refers.value = normalizeRefer(res.input?.refers as ReferDict)
     if (!values.value) {
       const found = await searchRecords(props.model, 'default', 1, 1, {
         query: { 'basic.uukey': uk },
       })
       values.value = (found.values || [])[0] || { 'basic.uukey': uk }
-      refers.value = normalizeReferDict(found.refers)
+      refers.value = normalizeRefer(found.refers)
     }
     activeTab.value = (props.config.tabs || [])[0]?.id || 'overview'
   } catch (e) {

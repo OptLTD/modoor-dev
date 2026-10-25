@@ -166,15 +166,14 @@ class Settings(BaseSettings):
     modoor_aliyun_sms_ak_secret: str = Field(default="", alias="MODOOR_ALIYUN_SMS_AK_SECRET")
     modoor_aliyun_sms_sign: str = Field(default="", alias="MODOOR_ALIYUN_SMS_SIGN")
     modoor_aliyun_sms_template: str = Field(default="", alias="MODOOR_ALIYUN_SMS_TEMPLATE")
-    modoor_webui_url: str = Field(
-        default="http://127.0.0.1:8765",
-        validation_alias=AliasChoices("MODOOR_MODULE_GATE", "MODOOR_WEBUI_URL"),
+    modoor_module_gate: str = Field(
+        default="http://127.0.0.1:8765", alias="MODOOR_MODULE_GATE",
         description="Listen address when empty or intranet. A public URL is the link origin; listen stays local.",
     )
     # Short form: base=5175,wiki=5176 (host from MODULE_GATE). Full URLs still accepted.
     modoor_module_urls: str = Field(
-        default="base=5175,wiki=5176,sale=5177,skill=5178,doc=5179,fleet=5180,freight=5181,capacity=5182,dispatch=5183,flow=5184",
-        alias="MODOOR_MODULE_URLS",
+        default="base=5175,wiki=5176,sale=5177,skill=5178,doc=5179,fleet=5180,flow=5181",
+        alias="MODOOR_MODULE_URLS", description="Comma-separated list of module URLs.",
     )
     # Dev/preview: reverse-proxy module frontends on the API port, e.g.
     # base=5175,wiki=5176 (same short form as MODULE_URLS)
@@ -202,6 +201,9 @@ class Settings(BaseSettings):
     modoor_jobs_poll_seconds: float = Field(default=0.5, alias="MODOOR_JOBS_POLL_SECONDS")
     # Tests: load every on-disk module domain (ignore yaml enabled).
     modoor_load_all_modules: bool = Field(default=False, alias="MODOOR_LOAD_ALL_MODULES")
+    # 天地图：浏览器 Key（域名）/ 服务端 Key（出口 IP）
+    tianditu_browser_tk: str = Field(default="", alias="TIANDITU_BROWSER_TK")
+    tianditu_server_tk: str = Field(default="", alias="TIANDITU_SERVER_TK")
 
     @model_validator(mode="after")
     def _normalize_tenant_admin_webui(self) -> Settings:
@@ -230,7 +232,7 @@ class Settings(BaseSettings):
             elif user:
                 object.__setattr__(self, "modoor_admin_username", user)
 
-        raw_gate = (self.modoor_webui_url or "").strip()
+        raw_gate = (self.modoor_module_gate or "").strip()
         if public_module_gate(raw_gate):
             host, port = "127.0.0.1", 8765
         else:

@@ -14,10 +14,10 @@ def resolve_entry(ctx: EntryContext) -> WebEntry | None:
     public = join_web_mount(base)
     dist = ctx.module_root / "webui" / "dist"
     if ctx.env == "dev":
-        return WebEntry(mode="url", target=f"{ctx.webui_url}{public}", base=base)
+        return WebEntry(mode="url", target=f"{ctx.module_gate}{public}", base=base)
     if dist.is_dir():
         return WebEntry(mode="static", target=str(dist), base=base)
-    return WebEntry(mode="url", target=f"{ctx.webui_url}{public}", base=base)
+    return WebEntry(mode="url", target=f"{ctx.module_gate}{public}", base=base)
 
 
 def register(app: FastAPI, kit: ShellKit) -> None:

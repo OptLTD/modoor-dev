@@ -454,7 +454,7 @@ def _href_on_gate(path: str) -> str:
     from modoor.core.settings import public_module_gate
 
     raw = str(path or "")
-    base = public_module_gate(get_settings().modoor_webui_url)
+    base = public_module_gate(get_settings().modoor_module_gate)
     if not base or raw.startswith(("http://", "https://")):
         return raw
     if not raw.startswith("/"):
@@ -670,7 +670,7 @@ def registry_catalog(
     from modoor.core.settings import public_module_gate
 
     settings = get_settings()
-    base = public_module_gate(settings.modoor_webui_url) or (public_base or "").rstrip("/")
+    base = public_module_gate(settings.modoor_module_gate) or (public_base or "").rstrip("/")
     tenant_id = getattr(user, "tenant", None)
     tenant_name = settings.modoor_tenant
     access = {"unrestricted": False, "abilities": []}

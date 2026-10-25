@@ -316,6 +316,101 @@ class EngineService:
         codes = adapter.alloc_serials(session, ctx, count, kind_s)
         return {"codes": list(codes or [])}
 
+    def related(
+        self,
+        session: Session,
+        ctx: Ctx,
+        *,
+        model: str,
+        keyword: str = "",
+        using: str = "default",
+        size: int = 30,
+    ) -> dict[str, Any]:
+        """关联选择器：sticky 列头 + 关键字模糊搜（编号 / SUBJECT）。"""
+        model = str(model or "").strip()
+        if not model:
+            raise AppError("validation_error", "model required")
+        using = str(using or "default").strip() or "default"
+        size = clamp_page_size(size)
+        keyword = str(keyword or "").strip()
+
+        bundle = get_bundle(model)
+        table = project_table(bundle, using=using, scene="SEARCH", page=1, size=size)
+        header = _related_header(table)
+        subject_key = next(
+            (
+                str(f.get("uukey") or "")
+                for f in (table.get("fields") or [])
+                if isinstance(f, dict) and str(f.get("ftype") or "").upper() == "SUBJECT"
+            ),
+            "",
+        )
+        query: dict[str, Any] = {}
+        if keyword:
+            if subject_key:
+                query = {
+                    "GROUP:OR": {
+                        "basic.uukey:LIKE": keyword,
+                        f"{subject_key}:LIKE": keyword,
+                    }
+                }
+            else:
+                query = {"basic.uukey:LIKE": keyword}
+
+        found = self.search(
+            session,
+            ctx,
+            {
+                "model": model,
+                "using": using,
+                "scene": "SEARCH",
+                "page": 1,
+                "size": size,
+                "query": query,
+            },
+        )
+        return {
+            "values": list(found.get("values") or []),
+            "header": header,
+            "refers": dict(found.get("refers") or {}),
+        }
+
+
+def _related_header(table: dict[str, Any]) -> list[dict[str, Any]]:
+    """关联下拉列头：sticky 优先，否则前几列；必要时补 SUBJECT。"""
+    fields = [f for f in (table.get("fields") or []) if isinstance(f, dict)]
+    by_key = {str(f.get("uukey") or ""): f for f in fields if f.get("uukey")}
+    origin = table.get("origin") if isinstance(table.get("origin"), dict) else {}
+    for key, raw in origin.items():
+        if key not in by_key and isinstance(raw, dict):
+            by_key[key] = {**raw, "uukey": key}
+
+    sticky = [str(k) for k in (table.get("sticky") or []) if str(k or "").strip()]
+    picked: list[dict[str, Any]] = []
+    for key in sticky:
+        src = by_key.get(key)
+        if src:
+            picked.append(src)
+    if not picked:
+        picked = [f for f in fields if f.get("shown") is not False][:6]
+
+    subject = next(
+        (f for f in fields if str(f.get("ftype") or "").upper() == "SUBJECT"),
+        None,
+    )
+    subject_key = str((subject or {}).get("uukey") or "")
+    if subject and subject_key and not any(str(f.get("uukey") or "") == subject_key for f in picked):
+        picked = [subject, *picked][:6]
+
+    out: list[dict[str, Any]] = []
+    for f in picked:
+        uukey = str(f.get("uukey") or f.get("index") or "").strip()
+        if not uukey:
+            continue
+        label = str(f.get("label") or f.get("title") or "").strip() or uukey
+        out.append({**f, "uukey": uukey, "label": label})
+    return out
+
 
 def _asset_ids(raw: Any) -> list[str]:
     if raw is None or raw == "":

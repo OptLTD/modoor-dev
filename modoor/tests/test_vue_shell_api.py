@@ -133,3 +133,16 @@ def test_registry_catalog_with_ticket_without_session(client: TestClient):
     profile = catalog.json().get("profile") or {}
     assert profile.get("username")
     assert profile.get("tenant") == user["tenant"]
+
+
+def test_record_related(client: TestClient):
+    logged = client.post("/api/auth/login", json={"username": "admin", "password": "admin123"})
+    assert logged.status_code == 200
+    res = client.get("/api/record/related", params={"model": "base.user", "query": ""})
+    assert res.status_code == 200, res.text
+    body = res.json()
+    assert isinstance(body.get("header"), list) and body["header"]
+    assert isinstance(body.get("values"), list)
+    assert isinstance(body.get("refers"), dict)
+    assert all(h.get("uukey") and h.get("label") for h in body["header"])
+

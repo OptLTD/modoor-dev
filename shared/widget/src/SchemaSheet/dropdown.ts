@@ -1,7 +1,7 @@
 import type { SchemaField } from '@modoor/hooks'
 import {
   mergeRefers,
-  normalizeReferDict,
+  normalizeRefer,
   referOptions,
   convertReferValue,
   type ReferDict,
@@ -50,4 +50,4 @@ export function dropdownSource(
 }
 
 // re-export helpers used elsewhere
-export { mergeRefers, normalizeReferDict }
+export { mergeRefers, normalizeRefer as normalizeReferDict }

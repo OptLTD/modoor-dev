@@ -8,7 +8,7 @@ import {
   displayFieldValue,
   entityLabel,
   fetchSchema,
-  normalizeReferDict,
+  normalizeRefer,
   resolveModelTitle,
   get,
   searchRecords,
@@ -148,7 +148,7 @@ async function loadTable(key: string, card: ChartCard) {
     const res = await searchRecords(model, using, 1, card.query?.limit ?? 50, {
       query: chartSearchQuery(card),
     })
-    const refers: ReferDict = normalizeReferDict({
+    const refers: ReferDict = normalizeRefer({
       ...((schema.table.refers || {}) as Record<string, unknown>),
       ...((res.refers || {}) as Record<string, unknown>),
     })

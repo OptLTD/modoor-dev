@@ -154,7 +154,7 @@ def mobile_entries(request: Request) -> list[dict[str, Any]]:
             session, user, enabled, active_role=role
         )
     catalog = get_ui_catalog()
-    base = public_module_gate(get_settings().modoor_webui_url) or str(request.base_url).rstrip("/")
+    base = public_module_gate(get_settings().modoor_module_gate) or str(request.base_url).rstrip("/")
     groups: list[dict[str, Any]] = []
     for mid in discover_mobile_ids():
         if not _mobile_open(mid, enabled=enabled, allowed=allowed, catalog=catalog):

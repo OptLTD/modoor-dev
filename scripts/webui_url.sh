@@ -18,7 +18,7 @@ modoor_gate_is_public() {
 }
 
 modoor_load_webui_url() {
-  local url="${MODOOR_MODULE_GATE:-${MODOOR_WEBUI_URL:-http://127.0.0.1:8765}}"
+  local url="${MODOOR_MODULE_GATE:-http://127.0.0.1:8765}"
   url="${url%"${url##*[![:space:]]}"}"
   url="${url#"${url%%[![:space:]]*}"}"
   url="${url%/}"
@@ -60,7 +60,7 @@ modoor_load_webui_url() {
     return
   fi
   # Default console URL when env omitted
-  if [[ -z "${MODOOR_MODULE_GATE:-}${MODOOR_WEBUI_URL:-}" ]]; then
+  if [[ -z "${MODOOR_MODULE_GATE:-}" ]]; then
     MODOOR_MODULE_GATE="http://127.0.0.1:8765"
     HOST="127.0.0.1"
     PORT="8765"

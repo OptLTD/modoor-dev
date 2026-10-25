@@ -9,7 +9,7 @@ import {
   fetchSchema,
   formatDateTimeDisplay,
   loadDropdownRefers,
-  normalizeReferDict,
+  normalizeRefer,
   useI18n,
   type RecordOplogItem,
   type ReferDict,
@@ -187,7 +187,7 @@ async function load() {
     fieldMeta.value = meta
     refers.value = await loadDropdownRefers(
       Object.values(meta),
-      normalizeReferDict(sk?.table?.refers),
+      normalizeRefer(sk?.table?.refers),
     )
   } catch (e) {
     error.value = e instanceof Error ? e.message : String(e)

@@ -19,7 +19,7 @@ import {
   isOnlyDate,
   isOnlyMonth,
   isRequired,
-  normalizeReferDict,
+  normalizeRefer,
   type FormMode,
   type ReferDict,
 } from '@modoor/hooks'
@@ -177,7 +177,7 @@ export function useRecordDialog(props: RecordDialogProps, emit: RecordDialogEmit
       inputValues.value = res.input?.values ?? null
       inputRefers.value = await loadDropdownRefers(
         inputFields.value,
-        normalizeReferDict(res.input?.refers),
+        normalizeRefer(res.input?.refers),
       )
     } catch (e) {
       inputFields.value = props.fields?.length ? props.fields : null
