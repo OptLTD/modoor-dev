@@ -50,4 +50,4 @@ export function dropdownSource(
 }
 
 // re-export helpers used elsewhere
-export { mergeRefers, normalizeRefer as normalizeReferDict }
+export { mergeRefers, normalizeRefer }

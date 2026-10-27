@@ -528,8 +528,9 @@ def api_shell_modules(request: Request):
     return _apps_catalog(request, user=user)
 
 
-@app.post("/auth/switch")
+@app.post("/tenant/switch")
 def switch_tenant_form(request: Request, tenant_id: int = Form(...)):
+    """HTML 表单切租户。勿放 /auth/* —— MCP OAuth 已 mount 整棵 /auth。"""
     user = kit.require_user(request)
     with session_scope() as session:
         switched = base_domain.switch_login_tenant(

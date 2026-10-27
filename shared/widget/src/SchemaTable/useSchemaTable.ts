@@ -1055,13 +1055,13 @@ export function useSchemaTable(
 
   async function exportByQuery() {
     try {
-      const pageSize = 100
-      const max = 500
+      const pageSize = 1000
+      const maxRows = 50000
       const all: Record<string, unknown>[] = []
       let pageNo = 1
       let total = Infinity
       const q = buildQuery()
-      while (all.length < max && all.length < total) {
+      while (all.length < maxRows && all.length < total) {
         const res = await gateway.searchRecords(props.table.model, using.value, pageNo, pageSize, {
           query: q,
           order: isDigestMode.value ? undefined : order.value || undefined,
@@ -1078,11 +1078,11 @@ export function useSchemaTable(
         error.value = t('widget.noExportData')
         return
       }
-      if (total > max && !confirm(t('widget.exportTruncated', { total, max }))) return
+      if (total > maxRows && !confirm(t('widget.exportTruncated', { total, max: maxRows }))) return
       await exportRows({
         title: props.table.title?.trim() || props.table.model,
         fields: displayFields.value,
-        rows: all.slice(0, max),
+        rows: all.slice(0, maxRows),
         refers: theRefers.value,
       })
     } catch (e) {

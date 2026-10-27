@@ -196,8 +196,7 @@
             </button>
             <div v-if="openMenu === 'tenant'" class="systray-menu" role="menu">
               <div class="systray-menu-header">
-                <div class="name">{{ t('shell.tenant') }}</div>
-                <div class="sub">{{ t('shell.tenantSub') }}</div>
+                <div class="name">{{ t('shell.workspace') }}</div>
               </div>
               <button
                 v-for="tn in tenants"
@@ -231,8 +230,8 @@
             </button>
             <div v-if="openMenu === 'avatar'" class="systray-menu" role="menu">
               <div class="systray-menu-header">
-                <div class="name">{{ user.realname || user.username }}</div>
-                <div class="sub">{{ user.username }} · {{ tenantName }}</div>
+                <div class="name">{{ user.realname }}</div>
+                <div class="sub">{{ tenantName }}</div>
               </div>
               <button type="button" class="menu-link" role="menuitem" @click="openAgentConnect">
                 {{ t('shell.connectAgentGuide') }}

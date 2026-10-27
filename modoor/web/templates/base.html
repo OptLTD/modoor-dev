@@ -1048,11 +1048,10 @@
         </button>
         <div class="systray-menu" role="menu">
           <div class="systray-menu-header">
-            <div class="name" data-i18n="tenant">租户</div>
-            <div class="sub" data-i18n="tenantSub">当前工作区</div>
+            <div class="name" data-i18n="workspace">当前工作区</div>
           </div>
           {% for t in tenants %}
-          <form method="post" action="/auth/switch" style="margin:0">
+          <form method="post" action="/tenant/switch" style="margin:0">
             <input type="hidden" name="tenant_id" value="{{ t.id }}" />
             <button type="submit" class="menu-link {% if t.name == tenant or t.id == tenant_id %}active{% endif %}"
               role="menuitem">{{ t.name }}</button>
@@ -1070,7 +1069,7 @@
         <div class="systray-menu" role="menu">
           <div class="systray-menu-header">
             <div class="name">{{ current_user.display_name }}</div>
-            <div class="sub">{{ current_user.username }} · {{ tenant }}</div>
+            <div class="sub">{{ tenant }}</div>
           </div>
           <button type="button" class="menu-link js-agent-connect" role="menuitem" data-i18n="connectAgentGuide">
             接入到 Agent
@@ -1141,7 +1140,7 @@
           inbox: "消息",
           inboxEmpty: "暂无消息",
           tenant: "租户",
-          tenantSub: "当前工作区",
+          workspace: "工作区",
           role: "角色",
           switchRole: "切换角色",
           logout: "退出登录",
