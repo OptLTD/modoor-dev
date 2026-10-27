@@ -13,6 +13,8 @@ defineProps<{
   fields: SchemaField[]
   modelValue: Record<string, FilterDraft>
   refers?: ReferDict
+  /** 字段 key → 下拉选项（facet / refers） */
+  options?: Record<string, { label: string; value: string }[]>
 }>()
 
 const emit = defineEmits<{
@@ -45,6 +47,7 @@ const filterPanelRef = ref<{
       :refers="refers"
       :fields="fields"
       :model-value="modelValue"
+      :options-by-key="options"
       @reset="emit('reset')"
       @update="emit('update', $event)"
     />

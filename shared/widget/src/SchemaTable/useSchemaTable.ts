@@ -148,6 +148,20 @@ export function useSchemaTable(
     }
     return out
   })
+  /** 条件筛选下拉：facet unique 优先，否则 refers（STRINGS/KEYWORDS 也能多选） */
+  const panelFilterOptions = computed((): Record<string, { value: string; label: string }[]> => {
+    const out: Record<string, { value: string; label: string }[]> = {}
+    for (const f of panelFilterFields.value) {
+      const opts = selectOptionsOf(f)
+        .map((o) => ({
+          value: String(o.value ?? ''),
+          label: String(o.label ?? o.value ?? ''),
+        }))
+        .filter((o) => o.value !== '')
+      if (opts.length) out[fieldKey(f)] = opts
+    }
+    return out
+  })
   const digestMetricKeys = computed(() => {
     const d = digestMeta.value
     if (!d) return new Set<string>()
@@ -247,7 +261,9 @@ export function useSchemaTable(
     const all = fields.value.filter((f) => f.field)
     const byId = new Map(all.map((f) => [fieldId(f), f]))
     const pinned = pinnedFieldIds(all)
-    if (pinned) {
+    // fields 钉死仅作默认可见集；用户已有列设置后可增删列
+    const prefsOn = !!(order?.length || hiddenKeys?.length)
+    if (pinned && !prefsOn) {
       const pinnedSet = new Set(pinned)
       const keys = [...pinned]
       for (const f of all) {
@@ -585,7 +601,11 @@ export function useSchemaTable(
       if (requireOptions && !selectOptionsOf(f).length) return null
       return 'relation'
     }
-    if (facetOptions(f)) return 'select'
+    // 有 facet 的字段（含 STRINGS/KEYWORDS）与表头一致：多选 IN
+    if (facetOptions(f)) {
+      if (requireOptions && !selectOptionsOf(f).length) return null
+      return 'relation'
+    }
     if (ft === 'OPTIONAL' || hasReferOptions(f)) {
       if (requireOptions && !optionsOf(f).length) return null
       return 'select'
@@ -1277,6 +1297,7 @@ export function useSchemaTable(
       togglePanelFilter,
       closePanelFilter,
       panelFilterFields,
+      panelFilterOptions,
       fieldForFilter,
       quickFilterGroups,
       quickSelectValue,

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * 右侧数据源抽屉：内嵌 SchemaTable，按 fixedQuery 过滤（报表下钻用）。
+ * 右侧数据源抽屉：内嵌带列设置的 SchemaTable，按 fixedQuery 过滤（报表下钻用）。
  * 单元格 SERIALNO / RELATION 点击打开嵌套 RecordDrawer。
  */
 import { computed, ref, watch } from 'vue'
@@ -9,13 +9,25 @@ import {
   fetchSchema,
   resolveModelTitle,
   useI18n,
+  type SchemaClick,
   type SchemaField,
   type SchemaTable,
 } from '@modoor/hooks'
-import SchemaTableView from '@modoor/widget/SchemaTable'
+import { SkmTblWithPrefs as SchemaTableView } from '../SkmTblPrefs'
 import RecordDrawer from '../RecordDrawer/RecordDrawer.vue'
 import RecordFlatDetail from '../RecordDrawer/RecordFlatDetail.vue'
 import { resolveRecordView } from '../RecordDrawer/recordViews'
+
+function isExportSelectedClick(c: SchemaClick) {
+  const action = String(c.action || '').toUpperCase()
+  const uk = String(c.uukey || '').toLowerCase()
+  return (
+    action === 'RECORD.EXPORT.SELECTED' ||
+    action === 'EXPORT.SELECTED' ||
+    uk === 'export.selected' ||
+    uk === 'record.export.selected'
+  )
+}
 
 const props = defineProps<{
   open: boolean
@@ -52,9 +64,18 @@ const detailUukey = ref('')
 const detailLookup = ref<Record<string, unknown> | undefined>()
 const detailTitle = ref('')
 
+const tableRef = ref<{
+  exportSelected: () => Promise<void>
+} | null>(null)
+
 const detailView = computed(() =>
   detailOpen.value ? resolveRecordView(detailModel.value) : undefined,
 )
+
+/** 只保留「导出选中」；新建/删除等不进抽屉 */
+function drawerClicks(raw: SchemaClick[] | undefined): SchemaClick[] {
+  return (Array.isArray(raw) ? raw : []).filter(isExportSelectedClick)
+}
 
 const table = computed((): SchemaTable | null => {
   if (!schema.value || !props.model) return null
@@ -63,7 +84,7 @@ const table = computed((): SchemaTable | null => {
     model: props.model,
     using: props.using || schema.value.using || 'default',
     title: props.title || schema.value.title,
-    clicks: [],
+    clicks: drawerClicks(schema.value.clicks),
     request: {
       page: 1,
       size: 50,
@@ -122,6 +143,12 @@ async function onRecordClick(payload: {
   detailOpen.value = true
 }
 
+async function onButtonClick(payload: { click: SchemaClick }) {
+  if (isExportSelectedClick(payload.click)) {
+    await tableRef.value?.exportSelected()
+  }
+}
+
 watch(
   () => [props.open, props.model, props.using, JSON.stringify(props.fixedQuery || {})] as const,
   ([open]) => {
@@ -143,15 +170,17 @@ watch(
         <div class="td-body">
           <p v-if="loading" class="muted pad">{{ t('widget.loading') }}</p>
           <p v-else-if="error" class="error pad">{{ error }}</p>
-          <SchemaTableView
-            v-else-if="table"
-            :key="remountKey"
-            class="td-table"
-            :table="table"
-            :using="table.using"
-            :fields="props.fields"
-            @record-click="onRecordClick"
-          />
+          <div v-else-if="table" class="td-table">
+            <SchemaTableView
+              :key="remountKey"
+              ref="tableRef"
+              :table="table"
+              :using="table.using"
+              :fields="props.fields"
+              @button-click="onButtonClick"
+              @record-click="onRecordClick"
+            />
+          </div>
         </div>
       </aside>
     </div>
@@ -216,8 +245,16 @@ watch(
   flex-direction: column;
   overflow: hidden;
 }
-/* SchemaTable 根节点即 .table-wrap；页面靠 .workspace .table-wrap 拉高，抽屉需自行补齐 */
+/* SkmTblWithPrefs 是多根且 inheritAttrs=false，class 挂不到 .table-wrap；外包一层接高度链 */
 .td-table {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.td-table :deep(.table-wrap) {
   flex: 1 1 auto;
   min-height: 0;
   height: 100%;

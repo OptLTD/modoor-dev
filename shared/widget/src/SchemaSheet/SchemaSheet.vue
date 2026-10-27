@@ -9,6 +9,7 @@ const props = defineProps<{
   request?: SchemaRequest
   mode?: 'modify' | 'import'
   autoHeight?: boolean
+  fields?: string[]
 }>()
 
 const {

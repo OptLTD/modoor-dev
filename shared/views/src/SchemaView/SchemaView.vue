@@ -92,9 +92,26 @@
         >
           {{ t('widget.importExcel') }}
         </button>
-        
+      </template>
+      <template v-if="viewMode !== 'table'" #toolbar-right>
+        <button
+          type="button"
+          class="icon-btn"
+          :class="{ active: sheetPrefs.open }"
+          :title="t('widget.columns')"
+          :aria-pressed="sheetPrefs.open"
+          @click="sheetPrefs.toggleOpen()"
+        >
+          <SvgIcon name="columns" />
+        </button>
       </template>
     </SchemaTable>
+
+    <TablePrefs
+      v-if="viewMode === 'modify' || viewMode === 'import'"
+      :prefs="sheetPrefs"
+      hide-filter
+    />
 
     <SchemaSheet
       v-if="table && sheetTable && (viewMode === 'modify' || viewMode === 'import')"
@@ -104,6 +121,7 @@
       :table="sheetTable"
       :request="sheetRequest"
       :mode="viewMode"
+      :fields="sheetVisibleFields"
     />
 
     <RecordDialog
@@ -170,21 +188,28 @@
 import { computed, defineAsyncComponent, nextTick, ref, watch } from 'vue'
 import {
   accessAllows,
+  applyStickyOrder,
   appToast,
   cachedAccess,
   entityLabel,
   fetchSchema,
+  fetchTableColumns,
   resolveModelTitle,
   rememberModelTitle,
   invokeRecordHandles,
   rowUUKey,
+  saveTableColumns,
   useI18n,
   type AccessGate,
   type SchemaClick,
+  type SchemaField,
   type SchemaRequest,
   type SchemaTable as SchemaTableData,
+  type TableColumnLayout,
 } from '@modoor/hooks'
-import { SkmTblWithPrefs as SchemaTable } from '../SkmTblPrefs'
+import SvgIcon from '@modoor/widget/SvgIcon'
+import { SkmTblWithPrefs as SchemaTable, TablePrefs, useTablePrefs } from '../SkmTblPrefs'
+import type { TableLayoutHost } from '../SkmTblPrefs'
 import RecordDialog from '../RecordDialog/RecordDialog.vue'
 import RecordDrawer, { RecordFlatDetail, resolveRecordView } from '../RecordDrawer'
 import TableDrawer from '../TableDrawer'
@@ -402,6 +427,98 @@ const sheetTable = computed((): SchemaTableData | null => {
   }
 })
 
+/** 批量 sheet 列设置（using=sheet，与列表列设置分离） */
+const sheetColumnOrder = ref<string[] | null>(null)
+const sheetColumnHidden = ref<string[] | null>(null)
+
+function sheetFieldId(f: SchemaField) {
+  return f.uukey || String(f.field || '')
+}
+
+function sheetStickyKeys(fields: SchemaField[], sticky?: string[]) {
+  const keys = sticky?.length ? [...sticky] : ['basic.uukey']
+  return keys.filter((k) => fields.some((f) => f.uukey === k || `basic.${f.field}` === k))
+}
+
+function buildSheetColumnItems(order: string[] | null, hiddenKeys: string[] | null) {
+  const fields = (sheetTable.value?.fields || []).filter((f) => f.field && f.field !== 'model')
+  const byId = new Map(fields.map((f) => [sheetFieldId(f), f]))
+  const sticky = sheetStickyKeys(fields, sheetTable.value?.sticky)
+  let keys: string[]
+  if (order?.length) {
+    keys = order.filter((k) => byId.has(k))
+    for (const f of fields) {
+      const id = sheetFieldId(f)
+      if (!keys.includes(id)) keys.push(id)
+    }
+  } else {
+    const shown = fields.filter((f) => f.shown !== false).map(sheetFieldId)
+    const rest = fields.filter((f) => f.shown === false).map(sheetFieldId)
+    keys = [...applyStickyOrder(shown, sticky), ...rest]
+  }
+  const hidden = new Set(hiddenKeys ?? fields.filter((f) => f.shown === false).map(sheetFieldId))
+  const visible = keys.filter((id) => !hidden.has(id))
+  const concealed = keys.filter((id) => hidden.has(id))
+  const ordered = [...applyStickyOrder(visible, sticky), ...concealed]
+  return ordered.map((id) => {
+    const f = byId.get(id)!
+    return { id, label: String(f.label || f.field || id), visible: !hidden.has(id) }
+  })
+}
+
+const sheetVisibleFields = computed(() =>
+  buildSheetColumnItems(sheetColumnOrder.value, sheetColumnHidden.value)
+    .filter((item) => item.visible)
+    .map((item) => item.id),
+)
+
+const sheetPrefsHost: TableLayoutHost = {
+  model: computed(() => String(sheetTable.value?.model || activeModel.value || '')),
+  using: computed(() => String(sheetTable.value?.using || 'sheet')),
+  snapshot: () => {
+    const order = sheetColumnOrder.value
+    const hidden = sheetColumnHidden.value
+    if (!order?.length && !hidden?.length) return null
+    return { order: order || [], hidden: hidden || [] }
+  },
+  apply: (layout: TableColumnLayout | null) => {
+    if (!layout || (!layout.order.length && !layout.hidden.length)) {
+      sheetColumnOrder.value = null
+      sheetColumnHidden.value = null
+      return
+    }
+    sheetColumnOrder.value = layout.order.length ? [...layout.order] : null
+    sheetColumnHidden.value = layout.hidden.length ? [...layout.hidden] : null
+  },
+  save: () => {
+    const model = String(sheetTable.value?.model || activeModel.value || '').trim()
+    const using = String(sheetTable.value?.using || 'sheet')
+    if (!model) return
+    const order = sheetColumnOrder.value
+    const hidden = sheetColumnHidden.value
+    const layout =
+      order?.length || hidden?.length
+        ? { order: order || [], hidden: hidden || [] }
+        : null
+    saveTableColumns(model, using, layout)
+  },
+  buildColumnItems: buildSheetColumnItems,
+  buildFilterItems: () => [],
+}
+
+const sheetPrefs = useTablePrefs(() => sheetPrefsHost)
+
+async function loadSheetColumnPrefs(model: string, using: string) {
+  const layout = await fetchTableColumns(model, using)
+  if (!layout || (!layout.order.length && !layout.hidden.length)) {
+    sheetColumnOrder.value = null
+    sheetColumnHidden.value = null
+    return
+  }
+  sheetColumnOrder.value = layout.order.length ? [...layout.order] : null
+  sheetColumnHidden.value = layout.hidden.length ? [...layout.hidden] : null
+}
+
 const sheetRequest = computed((): SchemaRequest => {
   if (viewMode.value === 'modify') {
     return {
@@ -488,8 +605,11 @@ async function loadSheetSchema() {
       sheet: res.table.sheet,
       others: res.table.others,
     }
+    await loadSheetColumnPrefs(res.model, res.using || 'sheet')
   } catch (e) {
     sheetSchema.value = null
+    sheetColumnOrder.value = null
+    sheetColumnHidden.value = null
     appToast(e instanceof Error ? e.message : String(e), 'error')
   }
 }
@@ -519,6 +639,9 @@ async function ensureImportMode() {
 async function exitSheet() {
   viewMode.value = 'table'
   sheetSchema.value = null
+  sheetPrefs.close()
+  sheetColumnOrder.value = null
+  sheetColumnHidden.value = null
   await tableRef.value?.reload()
 }
 

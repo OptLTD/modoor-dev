@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /**
  * SkmTbl（SchemaTable）+ 列设置 + 条件筛选（View 层页面组合）。
- * 下钻等纯展示场景请直接用 @modoor/widget/SchemaTable。
+ * 列表页与 TableDrawer 下钻统一用本包装；不要再裸引 SchemaTable 否则会缺列设置。
  */
 import { computed, ref, useAttrs, watch } from 'vue'
 import { useI18n } from '@modoor/hooks'
@@ -59,6 +59,7 @@ type TableFilterApi = {
   panelFilterOpen: boolean
   activeFilterCount: number
   panelFilterFields: SchemaField[]
+  panelFilterOptions: Record<string, { label: string; value: string }[]>
   appliedFilters: Record<string, FilterDraft>
   togglePanelFilter: () => void
   closePanelFilter: () => void
@@ -91,6 +92,7 @@ const showFilterBtn = computed(() => !props.hideFilter)
 const filterOpen = computed(() => !!tableRef.value?.api.filter.panelFilterOpen)
 const filterCount = computed(() => tableRef.value?.api.filter.activeFilterCount || 0)
 const filterFields = computed(() => tableRef.value?.api.filter.panelFilterFields || [])
+const filterOptions = computed(() => tableRef.value?.api.filter.panelFilterOptions || {})
 const filterValue = computed(() => tableRef.value?.api.filter.appliedFilters || {})
 const filterRefers = computed(() => tableRef.value?.api.list.theRefers)
 
@@ -132,7 +134,10 @@ defineExpose({
     @request-change="emit('request-change', $event)"
     @refresh="emit('refresh')"
   >
-    <template v-if="showPrefsBtn || showFilterBtn" #toolbar-right>
+    <template
+      v-if="showPrefsBtn || showFilterBtn || $slots['toolbar-right']"
+      #toolbar-right
+    >
       <button
         v-if="showPrefsBtn"
         type="button"
@@ -144,6 +149,7 @@ defineExpose({
       >
         <SvgIcon name="columns" />
       </button>
+      <slot name="toolbar-right" />
       <button
         v-if="showFilterBtn"
         type="button"
@@ -166,8 +172,9 @@ defineExpose({
     v-if="showFilterBtn"
     :open="filterOpen"
     :fields="filterFields"
-    :model-value="filterValue"
     :refers="filterRefers"
+    :options="filterOptions"
+    :model-value="filterValue"
     @close="tableRef?.api.filter.closePanelFilter()"
     @reset="tableRef?.api.filter.clearAllFilters()"
     @update="tableRef?.api.filter.onPanelFilters($event)"

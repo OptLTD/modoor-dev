@@ -54,14 +54,25 @@ export function useSchemaSheet(props: ToRefs<SchemaSheetProps>) {
   })
 
   const editableFields = computed(() => {
-    const all = table.value.fields.filter(
-      (f) => f.field && f.field !== 'model' && f.shown !== false,
+    const byKey = new Map(
+      table.value.fields
+        .filter((f) => f.field && f.field !== 'model')
+        .map((f) => [f.uukey, f]),
     )
-    const keys = applyStickyOrder(
-      all.map((f) => f.uukey),
-      stickyKeys.value,
-    )
-    const byKey = new Map(all.map((f) => [f.uukey, f]))
+    const pinned = (props.fields?.value || [])
+      .map((k) => String(k || '').trim())
+      .filter((k) => k && byKey.has(k))
+    let keys: string[]
+    if (pinned.length) {
+      // 冻结列始终保留，即使列设置里关掉了
+      const keep = new Set([...stickyKeys.value.filter((k) => byKey.has(k)), ...pinned])
+      keys = [...keep]
+    } else {
+      keys = table.value.fields
+        .filter((f) => f.field && f.field !== 'model' && f.shown !== false)
+        .map((f) => f.uukey)
+    }
+    keys = applyStickyOrder(keys, stickyKeys.value)
     return keys.map((k) => byKey.get(k)).filter(Boolean) as typeof table.value.fields
   })
 
@@ -509,6 +520,7 @@ export function useSchemaSheet(props: ToRefs<SchemaSheetProps>) {
       () => request.value?.size,
       () => table.value.fields.map((f) => f.uukey).join(','),
       () => (table.value.sticky || []).join(','),
+      () => (props.fields?.value || []).join(','),
       () => JSON.stringify(table.value.refers || {}),
       () => JSON.stringify(request.value?.query || {}),
     ],

@@ -13,6 +13,8 @@ export type SchemaSheetProps = {
   mode?: 'modify' | 'import'
   /** 高度随行数增高，外层不再钉死 */
   autoHeight?: boolean
+  /** 可见列（uukey 顺序）；空则跟 schema shown */
+  fields?: string[]
 }
 
 export type RecalcPending = { row: number; col: number; triggerUukey: string }

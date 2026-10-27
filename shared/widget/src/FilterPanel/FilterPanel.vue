@@ -15,6 +15,8 @@ const props = withDefaults(
     fields: SchemaField[]
     modelValue: Record<string, FilterDraft>
     refers?: ReferDict
+    /** 字段 key → 下拉选项（facet unique 等，优先于 refers） */
+    optionsByKey?: Record<string, SelectOption[]>
     /** 放进抽屉时隐藏自带标题，重置/应用由外层 footer 提供 */
     bare?: boolean
     /** 勾选后改动自动提交，行为与旧版一致 */
@@ -161,6 +163,16 @@ function optionsOf(f: SchemaField) {
   return referOptions(f, refers.value)
 }
 function valueOptions(f: SchemaField): SelectOption[] {
+  const fk = fieldKey(f)
+  const fromMap = props.optionsByKey?.[fk] || props.optionsByKey?.[f.uukey]
+  if (fromMap?.length) {
+    return fromMap
+      .map((o) => ({
+        label: String(o.label ?? o.value ?? ''),
+        value: String(o.value ?? ''),
+      }))
+      .filter((o) => o.value !== '')
+  }
   return optionsOf(f)
     .map((o) => ({
       label: String(o.label ?? o.value ?? ''),
@@ -172,11 +184,12 @@ function ftypeOf(f: SchemaField) {
   return String(f.ftype || '').toUpperCase()
 }
 function hasOptions(f: SchemaField) {
-  return optionsOf(f).length > 0
+  return valueOptions(f).length > 0
 }
+/** 与表头一致：有可选值即可多选（含 STRINGS/KEYWORDS 的 facet） */
 function isChoiceField(f: SchemaField): boolean {
-  const t = ftypeOf(f)
-  return (t === 'OPTIONAL' || t === 'RELATION') && hasOptions(f)
+  if (ftypeOf(f) === 'DATETIME') return false
+  return hasOptions(f)
 }
 
 function multiValue(f: SchemaField): string[] {
