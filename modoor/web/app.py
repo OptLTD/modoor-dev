@@ -362,9 +362,10 @@ def home(request: Request):
         return RedirectResponse("/login", status_code=303)
     request.session.pop("active_module", None)
     with session_scope() as session:
-        role = acting_role(request)
-        apps = kit.workbench_apps(session, user, active_role=role)
-        groups = kit.workbench_groups(session, user, active_role=role)
+        # 与 kit.render 同一套默认：超管无 cookie 时按 SUPERUSER 算模块，避免托盘已显示却无卡片
+        role, _roles, _set = kit.resolve_acting(session, request, user)
+        apps = kit.workbench_apps(session, user, active_role=role or None)
+        groups = kit.workbench_groups(session, user, active_role=role or None)
     return kit.render(request, "home.html", {"apps": apps, "groups": groups})
 
 
@@ -537,14 +538,27 @@ def switch_tenant_form(request: Request, tenant_id: int = Form(...)):
             session, base_id=user.base_id, tenant_id=int(tenant_id)
         )
         request.session["user_id"] = switched.id
+        acting_code, _roles, set_cookie = kit.resolve_acting(
+            session, request, switched
+        )
         mid, href = kit.landing_for_user(
-            session, switched, active_role=acting_role(request)
+            session, switched, active_role=acting_code or None
         )
         if mid:
             request.session["active_module"] = mid
         else:
             request.session.pop("active_module", None)
-    return RedirectResponse(href, status_code=303)
+    response = RedirectResponse(href, status_code=303)
+    if set_cookie:
+        from modoor.web.acting import ROLE_COOKIE
+
+        response.set_cookie(
+            ROLE_COOKIE,
+            base_domain.SUPERUSER_CODE,
+            path="/",
+            samesite="lax",
+        )
+    return response
 
 
 @app.get("/go/{module_id}")

@@ -1014,7 +1014,7 @@
         </div>
       </div>
 
-      {% if switch_roles is defined and switch_roles|length > 1 %}
+      {% if switch_roles is defined and switch_roles|length > 0 %}
       <div class="systray-item" data-dropdown>
         <button type="button" class="systray-btn" aria-haspopup="true" aria-expanded="false" data-i18n-aria="role"
           data-i18n-title="role" aria-label="角色" title="角色">
@@ -1379,16 +1379,19 @@
           var userId = btn.getAttribute("data-user-id") || "";
           if (!code || !userId) return;
           var active = btn.classList.contains("active");
+          var onlyOne = document.querySelectorAll(".js-switch-role").length <= 1;
+          // 仅一个可选角色时不允许清空（否则首页无模块）
+          var next = active && !onlyOne ? "" : code;
           var secure = location.protocol === "https:" ? "; Secure" : "";
           try {
             localStorage.setItem("modoor.activeRoleUser", userId);
             localStorage.setItem("modoor.activeRoleChosen:" + userId, "1");
-            localStorage.setItem("modoor.activeRole:" + userId, active ? "" : code);
+            localStorage.setItem("modoor.activeRole:" + userId, next);
           } catch (err) { }
-          if (active) {
+          if (!next) {
             document.cookie = "modoor_role=; Path=/; Max-Age=0; SameSite=Lax" + secure;
           } else {
-            document.cookie = "modoor_role=" + encodeURIComponent(code) + "; Path=/; SameSite=Lax" + secure;
+            document.cookie = "modoor_role=" + encodeURIComponent(next) + "; Path=/; SameSite=Lax" + secure;
           }
           location.reload();
         });

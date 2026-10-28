@@ -306,19 +306,37 @@ def api_switch(request: Request, body: SwitchTenantBody) -> dict[str, Any]:
             )
             tenants = base_domain.list_login_tenants(session, base_id=switched.base_id)
             request.session["user_id"] = switched.id
+            acting_code, switch_roles, set_cookie = shell.resolve_acting(
+                session, request, switched
+            )
             mid, href = shell.landing_for_user(
-                session, switched, active_role=acting_role(request)
+                session, switched, active_role=acting_code or None
             )
             if mid:
                 request.session["active_module"] = mid
             else:
                 request.session.pop("active_module", None)
-            return {
+            payload = {
                 "ok": True,
-                "user": _user_payload(switched, tenants=tenants),
+                "user": _user_payload(
+                    switched, tenants=tenants, switch_roles=switch_roles or None
+                ),
                 "module": mid,
                 "home": href,
+                "acting_role": acting_code or "",
             }
+            if set_cookie:
+                from modoor.web.acting import ROLE_COOKIE
+
+                response = JSONResponse(payload)
+                response.set_cookie(
+                    ROLE_COOKIE,
+                    base_domain.SUPERUSER_CODE,
+                    path="/",
+                    samesite="lax",
+                )
+                return response
+            return payload
     except AppError as exc:
         raise _err(exc) from exc
 
@@ -326,6 +344,8 @@ def api_switch(request: Request, body: SwitchTenantBody) -> dict[str, Any]:
 @router.post("/api/auth/logout")
 def api_logout(request: Request) -> JSONResponse:
     request.session.clear()
+    # 与 /logout 一致：清 remember，否则下次请求会被自动登回
+    request.scope["modoor_clear_remember"] = True
     return clear_acting_role_cookie(JSONResponse({"ok": True}))
 
 @router.post("/api/record/schema")

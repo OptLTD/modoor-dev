@@ -58,14 +58,14 @@ def parse_depends_from_formula(code: str) -> list[str]:
 
 
 def ensure_field_depends(field: dict[str, Any]) -> dict[str, Any]:
-    """Mutate field.extra.depends when formula exists but depends missing."""
+    """Keep field.extra.depends aligned with identifiers in formula.
+
+    Formula is the source of truth: stale depends (e.g. after a low-table
+    formula override that left config depends untouched) are replaced.
+    """
     extra = dict(field.get("extra") or {})
     code = formula_text(extra)
     if not code:
-        field["extra"] = extra
-        return field
-    deps = extra.get("depends")
-    if isinstance(deps, list) and any(str(d).strip() for d in deps):
         field["extra"] = extra
         return field
     extra["depends"] = parse_depends_from_formula(code)

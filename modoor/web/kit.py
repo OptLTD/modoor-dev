@@ -118,6 +118,29 @@ class ShellKit:
             active_role=active_role,
         )
 
+    def resolve_acting(
+        self, session, request: Request, user: SystemUser
+    ) -> tuple[str, list[dict[str, str]], bool]:
+        """Effective acting role for this request.
+
+        Superusers with no cookie/header default to ``SUPERUSER`` (full access).
+        Returns ``(acting_code, switch_roles, set_default_cookie)``.
+        """
+        from modoor.web.acting import acting_role
+
+        acting_code = acting_role(request) or ""
+        switch_roles: list[dict[str, str]] = []
+        set_default_cookie = False
+        held = base_domain.list_user_roles(
+            session, self.ctx(user), user_id=user.id
+        )["roles"]
+        if base_domain.holds_superuser(held):
+            switch_roles = base_domain.list_switch_roles(session, self.ctx(user))
+            if not acting_code:
+                acting_code = base_domain.SUPERUSER_CODE
+                set_default_cookie = True
+        return acting_code, switch_roles, set_default_cookie
+
     def first_usable_module(
         self,
         session,
@@ -286,6 +309,7 @@ class ShellKit:
         ctx = dict(context or {})
         user = self.current_user(request)
         active_tenant = int(user.tenant) if user is not None else self.tenant()
+        set_default_super_cookie = False
         with session_scope() as session:
             enabled = self.enabled(session, active_tenant)
             tenants: list[dict[str, Any]] = []
@@ -303,14 +327,9 @@ class ShellKit:
                     row = session.get(base_domain.SystemTenant, active_tenant)
                     if row is not None:
                         tenant_label = row.name
-                from modoor.web.acting import acting_role
-
-                acting_code = acting_role(request) or ""
-                held = base_domain.list_user_roles(
-                    session, self.ctx(user), user_id=user.id
-                )["roles"]
-                if base_domain.holds_superuser(held):
-                    switch_roles = base_domain.list_switch_roles(session, self.ctx(user))
+                acting_code, switch_roles, set_default_super_cookie = self.resolve_acting(
+                    session, request, user
+                )
                 allowed_modules = self.allowed_modules_for(
                     session, user, enabled, active_role=acting_code or None
                 )
@@ -421,7 +440,16 @@ class ShellKit:
                 "inbox_messages": [],
             }
         )
-        return self.templates.TemplateResponse(request, name, ctx, status_code=status_code)
+        response = self.templates.TemplateResponse(request, name, ctx, status_code=status_code)
+        if set_default_super_cookie:
+            from modoor.web.acting import ROLE_COOKIE
+
+            response.set_cookie(
+                ROLE_COOKIE,
+                base_domain.SUPERUSER_CODE,
+                path="/", samesite="lax",
+            )
+        return response
 
 
 _kit: ShellKit | None = None

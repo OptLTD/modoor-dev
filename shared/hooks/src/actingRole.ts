@@ -59,13 +59,20 @@ export function clearActingRole() {
   document.cookie = `${ROLE_COOKIE}=; Path=/; Max-Age=0; SameSite=Lax`
 }
 
-/** Cached choice when it is still in the list. An explicit empty choice stays empty. */
+/**
+ * Cached choice when it is still in the list.
+ * Superuser defaults to SUPERUSER (full access), not the first business role.
+ * An explicit empty choice stays empty — except when SUPERUSER is the only option.
+ */
 export function resolveActingRole(userId: string | number, roles: SwitchRole[]): string {
+  const hasSuper = roles.some((role) => role.code === SUPERUSER_CODE)
+  const onlySuper = roles.length === 1 && hasSuper
   if (typeof localStorage === 'undefined') {
-    return roles.find((role) => role.code !== SUPERUSER_CODE)?.code || SUPERUSER_CODE
+    return hasSuper ? SUPERUSER_CODE : ''
   }
   const cached = localStorage.getItem(actingRoleStorageKey(userId)) || ''
   if (cached && roles.some((role) => role.code === cached)) return cached
+  if (onlySuper) return SUPERUSER_CODE
   if (!cached && localStorage.getItem(chosenKey(userId)) === '1') return ''
-  return roles.find((role) => role.code !== SUPERUSER_CODE)?.code || SUPERUSER_CODE
+  return hasSuper ? SUPERUSER_CODE : ''
 }

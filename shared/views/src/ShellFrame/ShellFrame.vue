@@ -144,7 +144,7 @@
           </div>
 
           <div
-            v-if="switchRoles.length > 1"
+            v-if="switchRoles.length"
             class="systray-item"
             :class="{ open: openMenu === 'role' }"
             @click.stop
@@ -851,7 +851,10 @@ function selectRole(role: SwitchRole) {
     closeMenus()
     return
   }
-  const next = role.code === activeRole.value ? '' : role.code
+  // 仅一项时不允许清空（否则首页无模块且再也选不回）
+  const canSwitch = switchRoles.value.length > 1;
+  const isCurrent = role.code === activeRole.value;
+  const next = isCurrent && canSwitch ? '' : role.code
   writeActingRole(user.value.id, next)
   closeMenus()
   location.reload()
@@ -879,6 +882,12 @@ async function selectTenant(tn: TenantOption) {
   }
   closeMenus()
   const res = await switchTenant(tn.id)
+  // 切租户后 user id 变了，按新租户的 switch_roles 重写 acting role（超管默认 SUPERUSER）
+  const nextUser = res.user
+  const roles = nextUser?.switch_roles || []
+  if (roles.length && nextUser?.id != null) {
+    writeActingRole(nextUser.id, resolveActingRole(nextUser.id, roles))
+  }
   location.href = res.home || '/'
 }
 
