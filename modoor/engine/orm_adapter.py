@@ -1266,7 +1266,7 @@ class ColsOrmAdapter(ModelAdapter):
         kind: str | None = None,
     ) -> list[str]:
         _ = kind
-        n = max(0, min(int(count or 0), 100))
+        n = max(0, min(int(count or 0), 5000))
         if n <= 0:
             return []
         prefix, width = self._serial_meta()

@@ -83,7 +83,7 @@ class ModelAdapter(ABC):
         kind: str | None = None,
     ) -> list[str]:
         """Reserve consecutive business serials (no row insert). Default: empty placeholders."""
-        n = max(0, min(int(count or 0), 100))
+        n = max(0, min(int(count or 0), 5000))
         return [""] * n
 
     def autofill(

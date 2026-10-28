@@ -1,6 +1,17 @@
 import type { SchemaField } from './record'
 import { readGlobalSettings } from './globalSettings'
 
+function fieldHasFormula(extra: SchemaField['extra']): boolean {
+  if (!extra) return false
+  const f = extra.formula
+  if (f != null && f !== '' && !(typeof f === 'boolean' && !f)) {
+    if (typeof f === 'boolean') return true
+    if (String(f).trim() !== '') return true
+  }
+  const d = extra.display
+  return typeof d === 'string' && d.includes('[') && d.includes(']')
+}
+
 export type FilterDraft = {
   op: string
   value: string
@@ -235,7 +246,7 @@ export function injectRowIdentity(
   payload['basic.uukey'] = uk
 }
 
-/** Sheet 行 → upsert batch 项 */
+/** Sheet 行 → upsert batch 项（空值也带上，便于清空数值列；公式列只读不提交） */
 export function rowToUpsertPayload(
   row: Record<string, string>,
   fields: SchemaField[],
@@ -245,10 +256,11 @@ export function rowToUpsertPayload(
   if (uk) injectRowIdentity(out, { uukey: uk })
 
   for (const f of fields) {
+    if (fieldHasFormula(f.extra)) continue
     const fk = fieldKey(f)
     const raw = row[fk] ?? row[f.field] ?? ''
     const v = raw == null ? '' : String(raw)
-    if (!v.trim() && f.field !== 'uukey') continue
+    if (f.field === 'uukey' && !v.trim()) continue
     assignFieldPayload(out, f, v)
   }
   return out

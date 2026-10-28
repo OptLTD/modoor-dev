@@ -680,7 +680,7 @@ async function onAddN() {
     return
   }
   await ensureImportMode()
-  await sheetRef.value?.addRows?.(Math.min(n, 100))
+  await sheetRef.value?.addRows?.(Math.min(n, 5000))
 }
 
 function onImportExcel() {

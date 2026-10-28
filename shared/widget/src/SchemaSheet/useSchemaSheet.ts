@@ -256,6 +256,9 @@ export function useSchemaSheet(props: ToRefs<SchemaSheetProps>) {
     await addRows(1)
   }
 
+  /** 批量导入 / 加行上限（与后端 alloc_serials 一致） */
+  const SHEET_ROWS_MAX = 5000
+
   async function addRows(n = 1) {
     if (mode.value === 'modify') {
       await appAlert('批量编辑不支持新增行')
@@ -274,7 +277,7 @@ export function useSchemaSheet(props: ToRefs<SchemaSheetProps>) {
       (before[0] || []).every((cell) => String(cell ?? '').trim() === '')
     let countN = Math.floor(Number(n) || 1)
     if (countN < 1) countN = 1
-    if (countN > 100) countN = 100
+    if (countN > SHEET_ROWS_MAX) countN = SHEET_ROWS_MAX
     let codes: string[] = []
     try {
       const docKind =
@@ -334,9 +337,13 @@ export function useSchemaSheet(props: ToRefs<SchemaSheetProps>) {
       )
     }
     const colFields = headers.map(mapCol)
-    await addRows(Math.min(dataRows.length, 100))
+    const take = Math.min(dataRows.length, SHEET_ROWS_MAX)
+    if (dataRows.length > SHEET_ROWS_MAX) {
+      appToast(`Excel 共 ${dataRows.length} 行，单次最多导入 ${SHEET_ROWS_MAX} 行`, 'error')
+    }
+    await addRows(take)
     const all = readSheetRows()
-    for (let i = 0; i < Math.min(dataRows.length, all.length); i++) {
+    for (let i = 0; i < Math.min(take, all.length); i++) {
       const row = all[i]
       if (!row) continue
       dataRows[i].forEach((cell, ci) => {
@@ -354,7 +361,7 @@ export function useSchemaSheet(props: ToRefs<SchemaSheetProps>) {
     dirty.syncAllDirtyClasses()
     // 与粘贴相同：写入后按依赖列批量 autofill（如车牌带出能源类型）
     recalc.schedulePasteBurstEnd()
-    appToast(`已导入 ${Math.min(dataRows.length, all.length)} 行`)
+    appToast(`已导入 ${Math.min(take, all.length)} 行`)
   }
 
   function selectedRows(): SheetRow[] {
