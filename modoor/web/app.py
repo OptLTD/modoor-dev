@@ -141,7 +141,7 @@ def _login_message(exc: AppError) -> str:
 
 
 def _login_prefill(request: Request) -> tuple[str, bool]:
-    username = (request.cookies.get(LOGIN_NAME_COOKIE) or "").strip() or "admin"
+    username = (request.cookies.get(LOGIN_NAME_COOKIE) or "").strip()
     remember = request.cookies.get(LOGIN_REMEMBER_FLAG) == "1"
     return username, remember
 
@@ -189,7 +189,7 @@ def _complete_login(
         request.session["active_module"] = mid
     else:
         request.session.pop("active_module", None)
-    request.scope["modoor_session_persist"] = bool(remember)
+    request.scope["session_persist"] = bool(remember)
     token = issue_remember_token(user) if remember else None
     response = RedirectResponse(href, status_code=303)
     apply_login_cookies(
@@ -399,7 +399,7 @@ def home_profile(request: Request):
 @app.post("/logout")
 def logout(request: Request):
     request.session.clear()
-    request.scope["modoor_clear_remember"] = True
+    request.scope["clear_remember"] = True
     accept = request.headers.get("accept") or ""
     if "application/json" in accept:
         return clear_acting_role_cookie(JSONResponse({"ok": True}))

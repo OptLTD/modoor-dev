@@ -107,6 +107,10 @@ export async function fetchSchema(model: string, using = 'default', scene = 'SEA
   return res
 }
 
+export async function queryRecord(model: string, query: any) {
+  return post<any>('/api/record/query', { model, query })
+}
+
 export async function searchRecords(
   model: string,
   using = 'default',

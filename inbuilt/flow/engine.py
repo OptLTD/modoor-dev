@@ -399,7 +399,7 @@ def _run_score(session: Session, inst: FlowInstance, config: dict[str, Any]) -> 
 def _open_approval(
     session: Session, inst: FlowInstance, node: dict[str, Any], config: dict[str, Any]
 ) -> None:
-    levels = config.get("levels") or [{"role": "admin"}]
+    levels = config.get("levels") or [{"role": "superuser"}]
     # find first incomplete level
     existing = list(
         session.scalars(

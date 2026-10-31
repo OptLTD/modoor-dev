@@ -6,6 +6,7 @@ import { computed, inject, ref, watch } from 'vue'
 import {
   rowUUKey,
   useI18n,
+  queryRecord,
   searchRecords,
   fetchInputSchema,
   formVisibleFields,
@@ -46,21 +47,19 @@ function detailUsing(model: string, row: Record<string, unknown> | null): string
 
 async function load() {
   if (!props.model) return
-  loading.value = true
   error.value = ''
   fields.value = []
   values.value = null
+  loading.value = true
   try {
     let uk = String(props.uukey || '').trim()
     if (!uk && props.lookup && Object.keys(props.lookup).length) {
-      const res = await searchRecords(props.model, 'default', 1, 1, {
-        query: props.lookup,
-      })
-      const row = (res.values || [])[0]
-      if (!row) throw new Error(t('widget.recordNotFound') || '未找到关联记录')
-      uk = rowUUKey(row)
-      values.value = row
-      refers.value = normalizeRefer(res.refers)
+      const res = await queryRecord(props.model, props.lookup)
+      if (!res || !res.record) {
+        throw new Error(t('widget.recordNotFound') || '未找到关联记录')
+      }
+      uk = rowUUKey(res.record)
+      values.value = res.record
     }
     if (!uk) throw new Error(t('widget.missingKey') || '缺少记录编号')
     oplogApi?.setTarget(props.model, uk)

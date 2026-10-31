@@ -135,17 +135,17 @@ def restore_remembered_session(request: Request) -> int | None:
     payload = _read_remember(token)
     if payload is None:
         if token:
-            request.scope["modoor_clear_remember"] = True
+            request.scope["clear_remember"] = True
         return None
     with session_scope() as session:
         user = base_domain.load_user(session, payload["user_id"])
         if user is None or not user.active:
-            request.scope["modoor_clear_remember"] = True
+            request.scope["clear_remember"] = True
             return None
         current = _password_stamp(user)
         stamp = payload["stamp"]
         if len(stamp) != len(current) or not hmac.compare_digest(current, stamp):
-            request.scope["modoor_clear_remember"] = True
+            request.scope["clear_remember"] = True
             return None
         username = user.username
         user_id = int(user.id)
@@ -309,9 +309,9 @@ class SessionPersistMiddleware:
         async def send_wrapper(message):
             if message["type"] == "http.response.start":
                 headers = list(message.get("headers") or [])
-                if scope.get("modoor_session_persist") is False:
+                if scope.get("session_persist") is False:
                     headers = _browser_session_cookie(headers)
-                if scope.get("modoor_clear_remember"):
+                if scope.get("clear_remember"):
                     headers.append((b"set-cookie", _clear_cookie(REMEMBER_COOKIE)))
                 message["headers"] = headers
             await send(message)

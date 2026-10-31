@@ -76,7 +76,7 @@ def _user_from_session(request: Request) -> SystemUser | None:
         user = base_domain.load_user(session, user_id)
         if user is None or not user.active:
             request.session.pop("user_id", None)
-            request.scope["modoor_clear_remember"] = True
+            request.scope["clear_remember"] = True
             return None
         _ = (user.username, user.realname, user.current)
         if user.login is not None:
@@ -345,7 +345,7 @@ def api_switch(request: Request, body: SwitchTenantBody) -> dict[str, Any]:
 def api_logout(request: Request) -> JSONResponse:
     request.session.clear()
     # 与 /logout 一致：清 remember，否则下次请求会被自动登回
-    request.scope["modoor_clear_remember"] = True
+    request.scope["clear_remember"] = True
     return clear_acting_role_cookie(JSONResponse({"ok": True}))
 
 @router.post("/api/record/schema")
@@ -366,6 +366,18 @@ def api_input(request: Request, body: dict[str, Any] = Body(default_factory=dict
     try:
         with session_scope() as session:
             payload = get_engine().input_schema(session, _ctx(user), body)
+            payload["access"] = _access_gate(session, user, request)
+            return payload
+    except Exception as exc:  # noqa: BLE001
+        raise _err(exc) from exc
+
+
+@router.post("/api/record/query")
+def api_query(request: Request, body: dict[str, Any] = Body(default_factory=dict)) -> Any:
+    user = _require_user(request)
+    try:
+        with session_scope() as session:
+            payload = get_engine().query(session, _ctx(user), body)
             payload["access"] = _access_gate(session, user, request)
             return payload
     except Exception as exc:  # noqa: BLE001

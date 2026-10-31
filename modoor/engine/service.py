@@ -7,9 +7,9 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
-from modoor.core.log import log_delete, log_upsert
 from modoor.core.ctx import Ctx
 from modoor.core.errors import AppError
+from modoor.core.log import log, log_delete, log_upsert
 from modoor.engine.adapters import get_adapter
 from modoor.engine.formula import apply_formulas, ensure_fields_depends
 from modoor.engine.project import build_source, merge_dict_key_refers, project_input, project_table
@@ -264,6 +264,39 @@ class EngineService:
                 "values": values,
             },
         )
+
+    def query(
+        self,
+        session: Session,
+        ctx: Ctx,
+        body: dict[str, Any],
+    ) -> dict[str, Any]:
+        model = str(body.get("model") or "").strip()
+        if not model:
+            raise AppError("validation_error", "model required")
+        query = body.get("query") or {}
+        if not isinstance(query, dict):
+            raise AppError("validation_error", "query must be a dict")
+
+        bundle = get_bundle(model)
+        table = project_table(
+            bundle,
+            using="default",
+            scene="SEARCH",
+            page=1, size=1,
+            query=query,
+            order=None,
+        )
+   
+        adapter = get_adapter(model)
+        values, count, _ = adapter.search(
+            session, ctx, query=query, page=1, size=1, order=None,
+            field_keys=[f["uukey"] for f in table["fields"]],
+        )
+        log(ctx, "query", model=model, query=query, count=count)
+        if count == 0:
+            return None
+        return {"record": values[0], "query": query}
 
     def upsert(
         self,

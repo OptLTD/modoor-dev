@@ -1701,7 +1701,7 @@ def list_user_roles(session: Session, ctx: Ctx, *, user_id: int) -> dict[str, An
 
 
 def holds_superuser(roles: list[dict[str, Any]]) -> bool:
-    """True when the user holds a live ``SUPERUSER`` role. Lowercase and ``admin`` do not count."""
+    """True when the user holds a live ``SUPERUSER`` role."""
     for role in roles:
         if str(role.get("code") or "") != SUPERUSER_CODE:
             continue
