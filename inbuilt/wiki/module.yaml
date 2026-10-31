@@ -20,9 +20,15 @@ exports:
   skills: []
   menus:
     - id: wiki.home
-      label: Projects
+      label: Wiki
       path: /wiki
       seqno: 10
+      access:
+        - wiki.project.read
+        - wiki.project.write
+        - wiki.page.read
+        - wiki.page.write
+        - wiki.page.delete
 
 ability:
   - wiki.project.read
@@ -36,7 +42,7 @@ risk_default: medium
 i18n:
   zh-CN:
     app.label: 知识库
-    wiki.home: 项目
+    wiki.home: 知识库
     wiki.project.read: 读取项目
     wiki.project.write: 管理项目
     wiki.page.read: 读取页面
@@ -44,4 +50,9 @@ i18n:
     wiki.page.delete: 删除页面
   en-US:
     app.label: Wiki
-    wiki.home: Projects
+    wiki.home: Wiki
+    wiki.project.read: Read projects
+    wiki.project.write: Manage projects
+    wiki.page.read: Read pages
+    wiki.page.write: Manage pages
+    wiki.page.delete: Delete pages

@@ -33,7 +33,7 @@ from modoor.engine.oplog import diff_row_values
 from modoor.core.security import hash_password, verify_password
 from modoor.core.state import STATE_ON, as_on, is_on
 
-_CODE_RE = re.compile(r"^[a-z][a-z0-9_-]{1,63}$")
+_CODE_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_-]{1,63}$")
 
 
 class SystemTenant(Base):
@@ -569,11 +569,12 @@ def _norm_code(code: str, *, field: str = "code") -> str:
     raw = (code or "").strip()
     if raw == SUPERUSER_CODE:
         return raw
-    value = raw.lower()
+    # 角色编码保留大小写（前缀 ROLE）；其它非法字符仍拒绝
+    value = raw
     if not _CODE_RE.match(value):
         raise AppError(
             "validation_error",
-            f"{field} must match ^[a-z][a-z0-9_-]{{1,63}}$",
+            f"{field} must match ^[A-Za-z][A-Za-z0-9_-]{{1,63}}$",
         )
     return value
 
@@ -1533,8 +1534,8 @@ def create_role(
     if code:
         code = _norm_code(code)
     else:
-        prefix, width = _serialno("base.role", default_prefix="role")
-        prefix = prefix.strip().lower() or "role"
+        prefix, width = _serialno("base.role", default_prefix="ROLE")
+        prefix = (prefix.strip() or "ROLE").upper()
         code = _next_uukey(
             session,
             SystemRole,
@@ -1546,7 +1547,7 @@ def create_role(
     if session.scalar(
         select(SystemRole).where(
             SystemRole.tenant == ctx.tenant,
-            SystemRole.code == code,
+            func.lower(SystemRole.code) == code.lower(),
         )
     ):
         raise AppError("conflict", f"role code already exists: {code}")
@@ -1843,6 +1844,52 @@ def allowed_modules_for_user(
     return {mid for mid in candidates if module_allowed_by_abilities(mid, abilities)}
 
 
+def _perm_menu_item(node: dict[str, Any], abilities: list[str] | None = None) -> dict[str, Any]:
+    codes = abilities
+    if codes is None:
+        codes = [str(a) for a in (node.get("access") or []) if str(a).strip()]
+    return {
+        "id": str(node.get("id") or ""),
+        "label": str(node.get("label") or node.get("id") or ""),
+        "abilities": codes,
+    }
+
+
+def _item_ability_codes(item: dict[str, Any]) -> list[str]:
+    codes = [str(a) for a in (item.get("abilities") or []) if str(a).strip()]
+    for child in item.get("children") or []:
+        if isinstance(child, dict):
+            codes.extend(_item_ability_codes(child))
+    return codes
+
+
+def _expand_perm_items(nodes: list[Any]) -> list[dict[str, Any]]:
+    """Keep nested menus as ``children`` so role UI can group under the parent.
+
+    Parent keeps only ``access`` codes not already granted by descendants
+    (e.g. ``fleet.import`` beside tab-level import abilities).
+    """
+    out: list[dict[str, Any]] = []
+    for child in nodes:
+        if not isinstance(child, dict):
+            continue
+        nested_raw = [c for c in (child.get("items") or []) if isinstance(c, dict)]
+        nested = _expand_perm_items(nested_raw) if nested_raw else []
+        if nested:
+            covered = {a for item in nested for a in _item_ability_codes(item)}
+            own = [
+                str(a)
+                for a in (child.get("access") or [])
+                if str(a).strip() and str(a).strip() not in covered
+            ]
+            item = _perm_menu_item(child, own)
+            item["children"] = nested
+            out.append(item)
+        elif child.get("access"):
+            out.append(_perm_menu_item(child))
+    return out
+
+
 def _permission_groups(menus: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Menu sections whose leaves declare ``access``. Empty when a module has none."""
     groups: list[dict[str, Any]] = []
@@ -1850,15 +1897,7 @@ def _permission_groups(menus: list[dict[str, Any]]) -> list[dict[str, Any]]:
     for menu in menus:
         if not isinstance(menu, dict):
             continue
-        kids = [
-            {
-                "id": str(child.get("id") or ""),
-                "label": str(child.get("label") or child.get("id") or ""),
-                "abilities": [str(a) for a in (child.get("access") or []) if str(a).strip()],
-            }
-            for child in (menu.get("items") or [])
-            if isinstance(child, dict) and child.get("access")
-        ]
+        kids = _expand_perm_items(menu.get("items") or [])
         if kids:
             groups.append(
                 {
@@ -1868,16 +1907,26 @@ def _permission_groups(menus: list[dict[str, Any]]) -> list[dict[str, Any]]:
                 }
             )
         elif menu.get("access"):
-            loose.append(
-                {
-                    "id": str(menu.get("id") or ""),
-                    "label": str(menu.get("label") or menu.get("id") or ""),
-                    "abilities": [str(a) for a in menu.get("access") or [] if str(a).strip()],
-                }
-            )
+            loose.append(_perm_menu_item(menu))
     if loose:
         groups.insert(0, {"id": "", "label": "", "items": loose})
     return groups
+
+
+def _ability_catalog_rank(manifest: dict[str, Any]) -> tuple[int, int, str]:
+    """业务模块靠前，基础 / platform（含 base）靠后。"""
+    mid = str(manifest.get("id") or "")
+    tags = [str(t).strip() for t in (manifest.get("tags") or []) if str(t).strip()]
+    tags_l = {t.lower() for t in tags}
+    if mid == "base" or "platform" in tags_l or "基础" in tags:
+        bucket = 2
+    elif "业务" in tags or "business" in tags_l:
+        bucket = 0
+    else:
+        bucket = 1
+    from modoor.support import seqno
+
+    return (bucket, seqno(manifest.get("seqno"), 1000), mid)
 
 
 def list_ability_catalog(
@@ -1888,14 +1937,17 @@ def list_ability_catalog(
     """Ability codes for modules this tenant has enabled, grouped by module.
 
     Disabled modules stay out of role management. ``base`` is always listed.
+    Business-tagged modules are listed before platform / base.
     """
     from modoor.platform.module_state import discover_manifests, enabled_module_ids
 
     enabled = enabled_module_ids(session, ctx.tenant) | {"base"}
+    ranked = sorted(
+        (m for m in discover_manifests(settings) if m["id"] in enabled),
+        key=_ability_catalog_rank,
+    )
     modules: list[dict[str, Any]] = []
-    for m in discover_manifests(settings):
-        if m["id"] not in enabled:
-            continue
+    for m in ranked:
         abilities = [str(a) for a in (m.get("ability") or []) if str(a).strip()]
         if not abilities:
             continue

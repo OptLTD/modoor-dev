@@ -18,11 +18,12 @@ exports:
     - skill.read
     - skill.write
   skills: []
-  menus: []
-  # - id: skill.catalog
-  #   label: Catalog
-  #   path: /skill
-  #   seqno: 10
+  menus:
+    - id: skill.catalog
+      label: Catalog
+      path: /skill
+      seqno: 10
+      access: [skill.read, skill.write]
 
 ability:
   - skill.read

@@ -172,34 +172,46 @@ class ColsOrmAdapter(ModelAdapter):
         return self._json_number(getattr(self.entity_cls, group), field)
 
     def _resolve(self, session: Session, ctx: Ctx, key: str) -> Any | None:
+        from modoor.core.state import STATE_ON
+
         cls = self.entity_cls
         k = str(key or "").strip()
         if not k:
             return None
         row = session.get(cls, k)
-        if row is not None and row.tenant == ctx.tenant:
+        if (
+            row is not None
+            and row.tenant == ctx.tenant
+            and (not hasattr(row, "state") or row.state == STATE_ON)
+        ):
             return row
         if hasattr(cls, "uukey"):
-            row = session.scalar(
-                select(cls).where(cls.tenant == ctx.tenant, cls.uukey == k).limit(1)
-            )
+            cond = [cls.tenant == ctx.tenant, cls.uukey == k]
+            if hasattr(cls, "state"):
+                cond.append(cls.state == STATE_ON)
+            row = session.scalar(select(cls).where(*cond).limit(1))
             if row is not None:
                 return row
         return None
 
     def _resolve_fk_id(self, session: Session, ctx: Ctx, target_cls: type, key: str) -> str:
+        from modoor.core.state import STATE_ON
+
         k = str(key or "").strip()
         if not k:
             return k
         row = session.get(target_cls, k)
-        if row is not None and getattr(row, "tenant", None) == ctx.tenant:
+        if (
+            row is not None
+            and getattr(row, "tenant", None) == ctx.tenant
+            and (not hasattr(row, "state") or row.state == STATE_ON)
+        ):
             return str(row.id)
         if hasattr(target_cls, "uukey"):
-            row = session.scalar(
-                select(target_cls)
-                .where(target_cls.tenant == ctx.tenant, target_cls.uukey == k)
-                .limit(1)
-            )
+            cond = [target_cls.tenant == ctx.tenant, target_cls.uukey == k]
+            if hasattr(target_cls, "state"):
+                cond.append(target_cls.state == STATE_ON)
+            row = session.scalar(select(target_cls).where(*cond).limit(1))
             if row is not None:
                 return str(row.id)
         return k
@@ -479,7 +491,14 @@ class ColsOrmAdapter(ModelAdapter):
                     out[sk] = 0.0
             return out
 
-        base_where = [cls.tenant == ctx.tenant]
+        base_where: list[Any] = [cls.tenant == ctx.tenant]
+        # Soft-delete: same as search/_scoped_select — hide deleted unless query filters state
+        if hasattr(cls, "state") and not any(
+            t.field in ("basic.state", "basic.enable") for t in terms
+        ):
+            from modoor.core.state import STATE_ON
+
+            base_where.append(cls.state == STATE_ON)
         grouped = select(*g_exprs, *a_exprs).where(*base_where).group_by(*g_exprs)
         grouped = self._apply_terms(grouped, terms)
 

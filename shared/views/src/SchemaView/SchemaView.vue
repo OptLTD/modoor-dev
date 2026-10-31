@@ -38,10 +38,6 @@
       </div>
     </div>
 
-    <p v-if="bootError" class="error">{{ bootError }}</p>
-    <p v-if="sheetError" class="error">{{ sheetError }}</p>
-    <p v-if="sheetMessage" class="muted pad-msg">{{ sheetMessage }}</p>
-
     <input
       ref="sheetFileRef"
       type="file"
@@ -300,7 +296,6 @@ const sheetSchema = ref<SchemaTableData | null>(null)
 const schemaTitle = ref('')
 /** 页签切换不改大标题；只在进入新页面时重新取一次。 */
 const pinnedTitle = ref('')
-const bootError = ref('')
 const tableRef = ref<{
   reload: () => Promise<void>
   getListRequest?: () => {
@@ -535,8 +530,6 @@ const sheetRequest = computed((): SchemaRequest => {
 })
 
 const sheetBusy = computed(() => !!sheetRef.value?.saving)
-const sheetError = computed(() => sheetRef.value?.error || '')
-const sheetMessage = computed(() => sheetRef.value?.message || '')
 
 function onTableRequestChange(req: {
   page: number
@@ -555,7 +548,6 @@ function onTableRequestChange(req: {
 
 async function boot(model: string, usingKey: string) {
   if (!model) return
-  bootError.value = ''
   viewMode.value = 'table'
   accessGate.value = undefined
   table.value = null
@@ -583,7 +575,7 @@ async function boot(model: string, usingKey: string) {
     rememberModelTitle(res.model, nextTitle)
     if (!pinnedTitle.value) pinnedTitle.value = nextTitle
   } catch (e) {
-    bootError.value = e instanceof Error ? e.message : String(e)
+    appToast(e instanceof Error ? e.message : String(e), 'error')
   }
 }
 
@@ -872,7 +864,10 @@ function openDigestDrill(row: Record<string, unknown>) {
     group_by?: Array<{ index?: string; format?: string }>
   }
   const groups = Array.isArray(meta.group_by) ? meta.group_by : []
-  const q: Record<string, unknown> = { ...(cur.request?.query || {}) }
+  // 用列表当前筛选（listRequest），勿用 boot 时的 schema 默认 request.query
+  const q: Record<string, unknown> = {
+    ...(listRequest.value.query ?? cur.request?.query ?? {}),
+  }
   const tips: string[] = []
   for (const g of groups) {
     const key = String(g?.index || '').trim()
@@ -1231,17 +1226,9 @@ watch(
 .hidden-file {
   display: none;
 }
-.pad-msg {
-  padding: 0 16px 8px;
-  font-size: 0.85rem;
-}
 .sheet-pane {
   flex: 1;
   min-height: 0;
-}
-.error {
-  color: #b91c1c;
-  margin: 0 16px 0.5rem;
 }
 .muted {
   color: var(--muted, #78716c);

@@ -36,7 +36,7 @@ def test_user_role_assign():
 
         role = base_domain.create_role(session, ctx, name="Ops Lead")
         role_id = role["id"]
-        assert str(role["code"]).startswith("role")
+        assert str(role["code"]).startswith("ROLE")
 
         base_domain.assign_role(session, ctx, user_id=user_id, role_id=role_id)
         roles = base_domain.list_user_roles(session, ctx, user_id=user_id)

@@ -18,11 +18,14 @@ exports:
     - doc.read
     - doc.upload
   skills: []
-  menus: []
-    # - id: doc.assets
-    #   label: Document
-    #   path: /doc
-    #   seqno: 10
+  menus:
+    - id: doc.assets
+      label: Document
+      path: /doc
+      seqno: 10
+      access:
+        - doc.asset.read
+        - doc.asset.write
 
 ability:
   - doc.asset.read

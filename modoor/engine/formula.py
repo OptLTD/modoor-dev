@@ -29,6 +29,11 @@ _ALLOWED_FUNCS = frozenset(
 )
 
 
+def normalize_formula(code: str) -> str:
+    """压平换行/多空格，便于 ast.parse。"""
+    return " ".join(str(code or "").split())
+
+
 def formula_text(extra: dict[str, Any] | None) -> str:
     if not isinstance(extra, dict):
         return ""
@@ -37,7 +42,8 @@ def formula_text(extra: dict[str, Any] | None) -> str:
         return ""
     if isinstance(raw, bool):
         return ""
-    return str(raw).strip()
+    # 字段设置里公式常带换行，ast.parse 不接受；压成单行空格
+    return normalize_formula(str(raw))
 
 
 def parse_depends_from_formula(code: str) -> list[str]:
@@ -73,8 +79,75 @@ def ensure_field_depends(field: dict[str, Any]) -> dict[str, Any]:
     return field
 
 
+def find_formula_dependency_cycle(fields: list[dict[str, Any]]) -> list[str] | None:
+    """若公式字段互相引用成环，返回一条环路径（首尾同节点）；否则 None。
+
+    仅看「公式字段 → 公式字段」边；引用普通输入字段不算环。
+    自引用（公式里写了自己）视为环。
+    """
+    work = [ensure_field_depends(dict(f)) for f in fields if isinstance(f, dict)]
+    formula_keys = {
+        _field_key(f)
+        for f in work
+        if _field_key(f)
+        and formula_text(f.get("extra") if isinstance(f.get("extra"), dict) else None)
+    }
+    if not formula_keys:
+        return None
+
+    graph: dict[str, list[str]] = {}
+    for f in work:
+        key = _field_key(f)
+        if key not in formula_keys:
+            continue
+        deps = _depends_of(f)
+        if key in deps:
+            return [key, key]
+        graph[key] = [d for d in deps if d in formula_keys and d != key]
+
+    visiting: set[str] = set()
+    visited: set[str] = set()
+    stack: list[str] = []
+
+    def dfs(node: str) -> list[str] | None:
+        if node in visiting:
+            idx = stack.index(node)
+            return stack[idx:] + [node]
+        if node in visited:
+            return None
+        visiting.add(node)
+        stack.append(node)
+        for nxt in graph.get(node, []):
+            hit = dfs(nxt)
+            if hit:
+                return hit
+        stack.pop()
+        visiting.remove(node)
+        visited.add(node)
+        return None
+
+    for key in graph:
+        hit = dfs(key)
+        if hit:
+            return hit
+    return None
+
+
+def assert_no_formula_cycles(fields: list[dict[str, Any]]) -> None:
+    """公式字段存在循环依赖时抛 ValueError（供保存/计算上报用户）。"""
+    cycle = find_formula_dependency_cycle(fields)
+    if not cycle:
+        return
+    path = " → ".join(cycle)
+    raise ValueError(f"公式字段存在循环依赖: {path}")
+
+
 def ensure_fields_depends(fields: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Fill missing depends from formula, then expand transitive formula deps (option-worth style)."""
+    """Fill missing depends from formula, then expand transitive formula deps (option-worth style).
+
+    展开时遇环会截断（不抛错），便于 schema 仍能返回；环应在保存/计算时用
+    ``assert_no_formula_cycles`` 拦截。
+    """
     out = [ensure_field_depends(dict(f)) for f in fields]
     by_key = {_field_key(f): f for f in out if _field_key(f)}
 
@@ -85,7 +158,6 @@ def ensure_fields_depends(fields: list[dict[str, Any]]) -> list[dict[str, Any]]:
         f = by_key.get(key)
         if not f:
             return []
-        extra = f.get("extra") if isinstance(f.get("extra"), dict) else {}
         deps = list(_depends_of(f))
         acc: list[str] = []
         for d in deps:
@@ -136,7 +208,7 @@ def _depends_of(f: dict[str, Any]) -> list[str]:
 
 def _layer_by_depends(items: list[dict[str, Any]]) -> list[list[dict[str, Any]]]:
     key_set = {_field_key(f) for f in items}
-    remaining = { _field_key(f): f for f in items if _field_key(f) }
+    remaining = {_field_key(f): f for f in items if _field_key(f)}
     layers: list[list[dict[str, Any]]] = []
     while remaining:
         layer: list[dict[str, Any]] = []
@@ -146,10 +218,10 @@ def _layer_by_depends(items: list[dict[str, Any]]) -> list[list[dict[str, Any]]]
                 continue
             layer.append(f)
         if not layer:
-            # cycle / unresolved — dump rest in schema order
-            layer = list(remaining.values())
-            layers.append(layer)
-            break
+            stuck = sorted(remaining.keys())
+            raise ValueError(
+                "公式字段存在循环依赖: " + " → ".join(stuck[:8]) + ("…" if len(stuck) > 8 else "")
+            )
         for f in layer:
             remaining.pop(_field_key(f), None)
         layers.append(layer)
@@ -472,8 +544,11 @@ class _SafeEval(ast.NodeVisitor):
                 return args[1]
             return args[2] if len(args) > 2 else 0
         if key == "IFS":
+            # 与 Excel 一致：必须是 condition/value 成对；无匹配时请写 true, 默认值
             if len(args) < 2 or len(args) % 2 != 0:
-                raise ValueError("IFS expects condition/value pairs")
+                raise ValueError(
+                    "IFS 需要成对的条件/值（与 Excel 一致）；无匹配默认请写 true, 默认值"
+                )
             for i in range(0, len(args), 2):
                 if _truthy(args[i]):
                     return args[i + 1]
@@ -481,8 +556,45 @@ class _SafeEval(ast.NodeVisitor):
         raise ValueError(f"unsupported function: {name}")
 
 
+def validate_formula(code: str) -> str:
+    """校验公式可解析，且 IFS/IF 参数个数合法。返回规范化后的公式文本。
+
+    失败抛 ValueError，供字段/公式设置保存或计算路径上报给用户。
+    """
+    text = normalize_formula(code)
+    if not text:
+        return ""
+    try:
+        tree = ast.parse(text, mode="eval")
+    except SyntaxError as exc:
+        tip = getattr(exc, "msg", None) or str(exc)
+        raise ValueError(f"公式语法错误: {tip}") from exc
+
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        name = ""
+        if isinstance(node.func, ast.Name):
+            name = node.func.id
+        elif isinstance(node.func, ast.Attribute):
+            name = node.func.attr
+        key = name.upper()
+        argc = len(node.args)
+        if key == "IFS":
+            if argc < 2 or argc % 2 != 0:
+                raise ValueError(
+                    "IFS 需要成对的条件/值（与 Excel 一致）；无匹配默认请写 true, 默认值"
+                )
+        elif key == "IF":
+            if argc < 2 or argc > 3:
+                raise ValueError("IF 需要 2 或 3 个参数：IF(条件, 真值, 假值?)")
+    return text
+
+
 def eval_formula(code: str, objects: dict[str, Any]) -> Any:
-    tree = ast.parse(code, mode="eval")
+    text = normalize_formula(code)
+    validate_formula(text)
+    tree = ast.parse(text, mode="eval")
     return _SafeEval(objects).visit(tree)
 
 
@@ -514,8 +626,18 @@ def stored_digits(extra: dict[str, Any] | None) -> int | None:
 
 
 def apply_formulas(fields: list[dict[str, Any]], flat: dict[str, Any]) -> dict[str, Any]:
-    """Evaluate all formula fields; return full flat map (input merged with formula outputs)."""
+    """Evaluate all formula fields; return full flat map (input merged with formula outputs).
+
+    公式非法或求值失败时抛错（不再静默跳过），便于用户回字段/公式设置修正。
+    """
+    from modoor.core.errors import AppError
+
     work_fields = [dict(f) for f in fields]
+    try:
+        assert_no_formula_cycles(work_fields)
+    except ValueError as exc:
+        raise AppError("formula_error", str(exc)) from exc
+
     items = _collect_formula_fields(work_fields)
     objects = _flat_to_objects(work_fields, dict(flat or {}))
     if not items:
@@ -526,17 +648,32 @@ def apply_formulas(fields: list[dict[str, Any]], flat: dict[str, Any]) -> dict[s
         dep_keys.update(_depends_of(it))
     _fill_numeric_defaults(work_fields, objects, dep_keys)
 
-    for layer in _layer_by_depends(items):
+    try:
+        layers = _layer_by_depends(items)
+    except ValueError as exc:
+        raise AppError("formula_error", str(exc)) from exc
+
+    for layer in layers:
         for f in layer:
             code = formula_text(f.get("extra") if isinstance(f.get("extra"), dict) else None)
             if not code:
                 continue
+            key = _field_key(f) or str(f.get("field") or "formula")
+            label = str(f.get("label") or key)
             try:
                 result = eval_formula(code, objects)
-            except Exception:
-                continue
+            except Exception as exc:  # noqa: BLE001
+                raise AppError(
+                    "formula_error",
+                    f"字段「{label}」({key}) 公式计算失败: {exc}",
+                    {"field": key, "formula": code},
+                ) from exc
             if isinstance(result, float) and (math.isnan(result) or math.isinf(result)):
-                continue
+                raise AppError(
+                    "formula_error",
+                    f"字段「{label}」({key}) 公式结果无效 (NaN/Inf)",
+                    {"field": key, "formula": code},
+                )
             extra = f.get("extra") if isinstance(f.get("extra"), dict) else {}
             prec = stored_digits(extra)
             if prec is not None and isinstance(result, (int, float)) and not isinstance(result, bool):

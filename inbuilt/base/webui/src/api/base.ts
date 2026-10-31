@@ -119,7 +119,12 @@ export async function rolesBundle() {
         groups?: {
           id: string
           label: string
-          items: { id: string; label: string; abilities: string[] }[]
+          items: {
+            id: string
+            label: string
+            abilities: string[]
+            children?: { id: string; label: string; abilities: string[] }[]
+          }[]
         }[]
       }[]
       abilities: string[]

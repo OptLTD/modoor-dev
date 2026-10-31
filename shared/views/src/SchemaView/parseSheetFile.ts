@@ -23,12 +23,21 @@ export function sheetFileKind(name: string, mime = ''): 'csv' | 'excel' | 'other
 function cellToString(value: unknown): string {
   const text = value == null ? '' : String(value).trim()
   if (!text) return ''
+  // 兼容 Excel 美式：2026/10/28 5:26 PM、斜杠日期、未补零小时
   const match = text.match(
-    /^(\d{4})[-/.年](\d{1,2})[-/.月](\d{1,2})日?(?:\s+(\d{1,2}:\d{2}(?::\d{2})?))?$/,
+    /^(\d{4})[-/.年](\d{1,2})[-/.月](\d{1,2})日?(?:[T\s]+(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM|am|pm)?)?$/,
   )
   if (!match) return text
   const ymd = `${match[1]}-${match[2].padStart(2, '0')}-${match[3].padStart(2, '0')}`
-  return match[4] ? `${ymd} ${match[4]}` : ymd
+  if (!match[4]) return ymd
+  let hour = Number(match[4])
+  const ap = (match[7] || '').toUpperCase()
+  if (ap === 'PM' && hour < 12) hour += 12
+  if (ap === 'AM' && hour === 12) hour = 0
+  const hh = String(hour).padStart(2, '0')
+  const mm = match[5]
+  const ss = (match[6] || '00').padStart(2, '0')
+  return `${ymd} ${hh}:${mm}:${ss}`
 }
 
 export async function parseExcelGrid(buf: ArrayBuffer): Promise<SheetGrid> {

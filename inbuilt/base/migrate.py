@@ -12,6 +12,7 @@ def migrate(conn) -> None:
     _ensure_user_login_columns(conn)
     _ensure_login_device(conn)
     _ensure_base_tbl(conn)
+    _uppercase_role_serial_codes(conn)
 
 
 def _col_type(conn, table: str, column: str) -> tuple[str, int | None] | None:
@@ -129,6 +130,52 @@ def _ensure_base_tbl(conn) -> None:
             """
         )
     )
+
+
+def _uppercase_role_serial_codes(conn) -> None:
+    """``role00001`` → ``ROLE00001``（与新建角色前缀一致）。
+
+    用户/权限挂在 role.id 上，改 code 不影响授权。跳过已存在同名大写编码的行。
+    """
+    if _col_type(conn, "base_role", "code") is None:
+        return
+    dialect = getattr(getattr(conn, "dialect", None), "name", "") or ""
+    if dialect == "postgresql":
+        conn.execute(
+            text(
+                """
+                UPDATE base_role AS r
+                SET code = upper(r.code)
+                WHERE r.code ~ '^[rR][oO][lL][eE][0-9]+$'
+                  AND r.code <> upper(r.code)
+                  AND NOT EXISTS (
+                    SELECT 1
+                    FROM base_role AS x
+                    WHERE x.tenant = r.tenant
+                      AND x.code = upper(r.code)
+                      AND x.id <> r.id
+                  )
+                """
+            )
+        )
+        return
+    # SQLite / 其它：逐行改写
+    rows = conn.execute(text("SELECT id, tenant, code FROM base_role")).fetchall()
+    taken = {(int(r[1]), str(r[2])) for r in rows}
+    for role_id, tenant, code in rows:
+        raw = str(code or "")
+        if not raw or raw == raw.upper():
+            continue
+        if not raw.lower().startswith("role") or not raw[4:].isdigit():
+            continue
+        nxt = raw.upper()
+        if (int(tenant), nxt) in taken:
+            continue
+        conn.execute(
+            text("UPDATE base_role SET code = :code WHERE id = :id"),
+            {"code": nxt, "id": role_id},
+        )
+        taken.add((int(tenant), nxt))
 
 
 def _ensure_oplog_model_column(conn) -> None:

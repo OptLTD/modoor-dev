@@ -20,6 +20,7 @@ import {
   isOptionalField,
   isRelationField,
 } from './fieldKinds'
+import { ensureSheetLocaleSync } from '../SchemaSheet/sheetLocale'
 import 'jsuites/dist/jsuites.css'
 import 'jspreadsheet-ce/dist/jspreadsheet.css'
 
@@ -244,6 +245,7 @@ function mountGrid() {
   const columns = buildColumns()
   const data = rowsToMatrix()
   const width = props.tableWidth || '100%'
+  ensureSheetLocaleSync()
   const created = jspreadsheet(el, {
     worksheets: [
       {

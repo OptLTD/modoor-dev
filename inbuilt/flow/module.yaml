@@ -27,10 +27,12 @@ exports:
       label: Approval Center
       path: /flow/inbox
       seqno: 10
+      access: [flow.read, flow.approve]
     - id: flow.config
       label: Flow Setup
       path: /flow/definitions
       seqno: 20
+      access: [flow.read, flow.write]
 
 ability:
   - flow.read

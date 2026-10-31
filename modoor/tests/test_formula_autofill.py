@@ -8,10 +8,15 @@ from fastapi.testclient import TestClient
 from modoor.core.settings import get_settings
 from modoor.engine.formula import (
     apply_formulas,
+    assert_no_formula_cycles,
     ensure_fields_depends,
     eval_formula,
+    find_formula_dependency_cycle,
+    formula_text,
     parse_depends_from_formula,
+    validate_formula,
 )
+from modoor.core.errors import AppError
 from modoor.engine.registry import clear_bundle_cache
 from modoor.engine.service import reload_engine_caches
 from modoor.web.app import app
@@ -128,6 +133,25 @@ def test_layered_formulas():
 def test_ifs_and_if():
     assert float(eval_formula('IFS(1==2, 10, true, 20)', {})) == 20.0
     assert float(eval_formula('IF(3>1, 5, 0)', {})) == 5.0
+    # 与 Excel 一致：奇数参数非法
+    with pytest.raises(ValueError, match="成对"):
+        validate_formula('IFS(1==2, 10, 30)')
+    with pytest.raises(ValueError, match="成对"):
+        eval_formula('IFS(1==2, 10, 30)', {})
+    # 换行会被压平
+    assert (
+        float(
+            eval_formula(
+                formula_text(
+                    {
+                        "formula": "IF(3>1, 5, 0) / 2 *\nIFS(true, 4)",
+                    }
+                ),
+                {},
+            )
+        )
+        == 10.0
+    )
     env = {"basic": {"tanks": 2}, "mileage": {"national": 100}}
     code = "IFS(basic.tanks==2, mileage.national*0.7, basic.tanks==3, mileage.national*0.8, true, 0)"
     assert abs(float(eval_formula(code, env)) - 70.0) < 1e-6
@@ -141,6 +165,61 @@ def test_ifs_and_if():
     )
     # 1000*120*0.641/1000 + 10*1000/1000 = 76.92 + 10 = 86.92
     assert abs(float(eval_formula(freight, env2)) - 86.92) < 1e-6
+
+
+def test_apply_formulas_raises_on_bad_formula():
+    fields = [
+        {
+            "uukey": "expense.x",
+            "field": "x",
+            "group": "expense",
+            "ftype": "NUMERIC",
+            "label": "测试",
+            "extra": {"formula": "IFS(1==2, 10, 30)"},
+        }
+    ]
+    with pytest.raises(AppError, match="公式计算失败"):
+        apply_formulas(fields, {})
+
+
+def test_formula_cycle_detected_and_raises():
+    fields = [
+        {
+            "uukey": "expense.a",
+            "field": "a",
+            "group": "expense",
+            "ftype": "NUMERIC",
+            "extra": {"formula": "expense.b+1"},
+        },
+        {
+            "uukey": "expense.b",
+            "field": "b",
+            "group": "expense",
+            "ftype": "NUMERIC",
+            "extra": {"formula": "expense.a+1"},
+        },
+    ]
+    cycle = find_formula_dependency_cycle(fields)
+    assert cycle is not None
+    assert cycle[0] == cycle[-1]
+    with pytest.raises(ValueError, match="循环依赖"):
+        assert_no_formula_cycles(fields)
+    with pytest.raises(AppError, match="循环依赖"):
+        apply_formulas(fields, {})
+
+
+def test_formula_self_ref_is_cycle():
+    fields = [
+        {
+            "uukey": "expense.a",
+            "field": "a",
+            "group": "expense",
+            "ftype": "NUMERIC",
+            "extra": {"formula": "expense.a+1"},
+        },
+    ]
+    with pytest.raises(ValueError, match="循环依赖"):
+        assert_no_formula_cycles(fields)
 
 
 @pytest.fixture()

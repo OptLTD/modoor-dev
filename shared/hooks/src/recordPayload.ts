@@ -158,8 +158,48 @@ export function formatMonthInputValue(raw: unknown): string {
   return calendarInCompanyZone(s, 'YYYY-MM') || s.slice(0, 7)
 }
 
+/** Excel / 粘贴常见：斜杠日期、未补零小时、12 小时制 AM/PM、T 与空格混用 */
+const LOOSE_DT =
+  /^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})(?:[T\s]+(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM)?)?$/i
+const LOOSE_YM = /^(\d{4})[-/.](\d{1,2})/
+
+function pad2(n: number | string): string {
+  return String(n).padStart(2, '0')
+}
+
+function parseLooseDateTime(raw: string): {
+  year: string
+  month: string
+  day: string
+  hour: string
+  minute: string
+  second: string
+  hasTime: boolean
+} | null {
+  const m = raw.trim().match(LOOSE_DT)
+  if (!m) return null
+  let hour = Number(m[4] ?? 0)
+  const hasTime = m[4] != null
+  const ap = (m[7] || '').toUpperCase()
+  if (ap === 'PM' && hour < 12) hour += 12
+  if (ap === 'AM' && hour === 12) hour = 0
+  return {
+    year: m[1],
+    month: pad2(m[2]),
+    day: pad2(m[3]),
+    hour: pad2(hour),
+    minute: pad2(m[5] ?? 0),
+    second: pad2(m[6] ?? 0),
+    hasTime,
+  }
+}
+
 export function formatDateTimeInputValue(raw: unknown): string {
   if (raw == null || raw === '') return ''
+  const loose = parseLooseDateTime(String(raw))
+  if (loose) {
+    return `${loose.year}-${loose.month}-${loose.day}T${loose.hour}:${loose.minute}`
+  }
   const s = String(raw).replace(' ', 'T')
   if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(s)) return s.slice(0, 16)
   if (/^\d{4}-\d{2}-\d{2}/.test(s)) return `${s.slice(0, 10)}T00:00`
@@ -175,6 +215,10 @@ export function dateTimeKindFromExtra(extra: Record<string, unknown> | undefined
   return 'DATETIME'
 }
 
+/**
+ * 提交前把表格/Excel 里的松散时间补齐为后端可解析的 ISO 形态。
+ * 例：`2026/10/28 5:26 PM` → `2026-10-28T17:26:00`
+ */
 export function normalizeDateTimeStoreValue(
   raw: string,
   kind: boolean | DateTimeKind = false,
@@ -182,12 +226,25 @@ export function normalizeDateTimeStoreValue(
   const s = String(raw || '').trim()
   if (!s) return ''
   const mode: DateTimeKind = kind === true ? 'ONLYDATE' : kind === false ? 'DATETIME' : kind
-  if (mode === 'ONLYMONTH') {
-    const ym = s.length >= 7 ? s.slice(0, 7) : s
-    // ORM 存完整时间；展示仍按月。取当月 1 日便于 timeTerm。
-    return /^\d{4}-\d{2}$/.test(ym) ? `${ym}-01T00:00:00` : s
+  const loose = parseLooseDateTime(s)
+  if (loose) {
+    const ymd = `${loose.year}-${loose.month}-${loose.day}`
+    if (mode === 'ONLYMONTH') return `${loose.year}-${loose.month}-01T00:00:00`
+    if (mode === 'ONLYDATE') return ymd
+    return `${ymd}T${loose.hour}:${loose.minute}:${loose.second}`
   }
-  if (mode === 'ONLYDATE') return s.slice(0, 10)
+  if (mode === 'ONLYMONTH') {
+    const ym = s.match(LOOSE_YM)
+    if (ym) return `${ym[1]}-${pad2(ym[2])}-01T00:00:00`
+    const slice = s.length >= 7 ? s.slice(0, 7) : s
+    // ORM 存完整时间；展示仍按月。取当月 1 日便于 timeTerm。
+    return /^\d{4}-\d{2}$/.test(slice) ? `${slice}-01T00:00:00` : s
+  }
+  if (mode === 'ONLYDATE') {
+    const d = parseLooseDateTime(`${s.slice(0, 10)}`)
+    return d ? `${d.year}-${d.month}-${d.day}` : s.slice(0, 10)
+  }
+  // 已带偏移的 ISO 等：只把首个日期-时间空格换成 T
   return s.includes('T') ? s : s.replace(' ', 'T')
 }
 

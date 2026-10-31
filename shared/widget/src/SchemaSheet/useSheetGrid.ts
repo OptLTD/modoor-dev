@@ -20,6 +20,7 @@ import {
 } from './dropdown'
 import { loadColWidths, resolveColWidth, saveColWidth } from './colWidth'
 import { dateTimeKind, isOnlyDate } from '@modoor/hooks'
+import { ensureSheetLocaleSync } from './sheetLocale'
 
 type OverflowSnapshot = {
   el: HTMLElement
@@ -404,6 +405,7 @@ export function useSheetGrid(deps: SheetGridDeps) {
     const h = auto
       ? HEADER_H + rowCount * ROW_H + 4
       : Math.max(host.value.clientHeight || 0, 200)
+    ensureSheetLocaleSync()
     const instance = jspreadsheet(host.value, {
       autoIncrement: false,
       onselection: handleSelection,

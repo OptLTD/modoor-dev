@@ -91,39 +91,79 @@
                     @change="toggleModule(g, ($event.target as HTMLInputElement).checked)"
                   />
                   <strong>{{ moduleLabel(g) }}</strong>
-                  <span class="muted">{{ g.module_id }}</span>
+                  <span class="muted">{{ g.module_id.toUpperCase() }}</span>
                 </label>
               </header>
               <template v-if="g.groups?.length">
                 <section v-for="grp in g.groups" :key="grp.id || g.module_id" class="perm-subgroup">
                   <h3 v-if="grp.label">{{ abilityLabel(g, grp.id) }}</h3>
                   <div class="ability-grid">
-                    <div v-for="item in grp.items" :key="item.id" class="ability-item perm-menu">
-                      <span class="ability-name">{{ abilityLabel(g, item.id) }}</span>
-                      <span class="perm-verbs">
-                        <label
-                          v-for="verb in permVerbs"
-                          v-show="verbCodes(item, verb).length"
-                          :key="verb"
-                          class="perm-verb"
-                          :class="{ 'is-alert': verb === 'alert' }"
+                    <div
+                      v-for="item in grp.items"
+                      :key="item.id"
+                      class="perm-branch"
+                      :class="{ 'has-children': !!item.children?.length }"
+                    >
+                      <div class="ability-item perm-menu">
+                        <span class="ability-name">{{ abilityLabel(g, item.id) }}</span>
+                        <span class="perm-verbs">
+                          <label
+                            v-for="verb in permVerbs"
+                            v-show="verbCodes(item, verb).length"
+                            :key="verb"
+                            class="perm-verb"
+                            :class="{ 'is-alert': verb === 'alert' }"
+                          >
+                            <input
+                              type="checkbox"
+                              :checked="codesOn(verbCodes(item, verb))"
+                              @change="toggleCodes(verbCodes(item, verb), ($event.target as HTMLInputElement).checked)"
+                            />
+                            {{ verbLabel(verb) }}
+                          </label>
+                          <label v-for="code in extraCodes(item)" :key="code" class="perm-verb">
+                            <input
+                              type="checkbox"
+                              :checked="draftSet.has(code)"
+                              @change="toggleAbility(code, ($event.target as HTMLInputElement).checked)"
+                            />
+                            {{ abilityLabel(g, code) }}
+                          </label>
+                        </span>
+                      </div>
+                      <div v-if="item.children?.length" class="perm-children">
+                        <div
+                          v-for="child in item.children"
+                          :key="child.id"
+                          class="ability-item perm-menu"
                         >
-                          <input
-                            type="checkbox"
-                            :checked="codesOn(verbCodes(item, verb))"
-                            @change="toggleCodes(verbCodes(item, verb), ($event.target as HTMLInputElement).checked)"
-                          />
-                          {{ verbLabel(verb) }}
-                        </label>
-                        <label v-for="code in extraCodes(item)" :key="code" class="perm-verb">
-                          <input
-                            type="checkbox"
-                            :checked="draftSet.has(code)"
-                            @change="toggleAbility(code, ($event.target as HTMLInputElement).checked)"
-                          />
-                          {{ abilityLabel(g, code) }}
-                        </label>
-                      </span>
+                          <span class="ability-name">{{ abilityLabel(g, child.id) }}</span>
+                          <span class="perm-verbs">
+                            <label
+                              v-for="verb in permVerbs"
+                              v-show="verbCodes(child, verb).length"
+                              :key="verb"
+                              class="perm-verb"
+                              :class="{ 'is-alert': verb === 'alert' }"
+                            >
+                              <input
+                                type="checkbox"
+                                :checked="codesOn(verbCodes(child, verb))"
+                                @change="toggleCodes(verbCodes(child, verb), ($event.target as HTMLInputElement).checked)"
+                              />
+                              {{ verbLabel(verb) }}
+                            </label>
+                            <label v-for="code in extraCodes(child)" :key="code" class="perm-verb">
+                              <input
+                                type="checkbox"
+                                :checked="draftSet.has(code)"
+                                @change="toggleAbility(code, ($event.target as HTMLInputElement).checked)"
+                              />
+                              {{ abilityLabel(g, code) }}
+                            </label>
+                          </span>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </section>
@@ -263,6 +303,7 @@ type PermItem = {
   id: string
   label: string
   abilities: string[]
+  children?: PermItem[]
 }
 
 type PermGroup = {
@@ -305,9 +346,51 @@ const pickedUserIds = ref<number[]>([])
 const selected = computed(() => roles.value.find((r) => r.id === selectedId.value) || null)
 const draftSet = computed(() => new Set(draftAbilities.value))
 const dirty = computed(() => JSON.stringify([...draftAbilities.value].sort()) !== savedSnapshot.value)
+function itemAbilityCodes(item: PermItem): string[] {
+  const codes = [...(item.abilities || [])]
+  for (const child of item.children || []) codes.push(...itemAbilityCodes(child))
+  return codes
+}
+
 function visibleAbilities(g: AbilityGroup) {
   if (!g.groups?.length) return g.abilities
-  return g.groups.flatMap((grp) => grp.items.flatMap((item) => item.abilities))
+  return g.groups.flatMap((grp) => grp.items.flatMap((item) => itemAbilityCodes(item)))
+}
+
+function itemMatchesQuery(
+  g: AbilityGroup,
+  item: PermItem,
+  q: string,
+  grpLabel: string,
+): boolean {
+  const name = abilityLabel(g, item.id).toLowerCase()
+  if (
+    item.id.toLowerCase().includes(q) ||
+    name.includes(q) ||
+    grpLabel.toLowerCase().includes(q)
+  ) {
+    return true
+  }
+  return (item.children || []).some((child) => itemMatchesQuery(g, child, q, grpLabel))
+}
+
+function filterPermItem(g: AbilityGroup, item: PermItem, q: string, grpLabel: string): PermItem | null {
+  if (!q || itemMatchesQuery(g, item, q, grpLabel)) {
+    if (!item.children?.length) return item
+    const children = item.children
+      .map((child) => filterPermItem(g, child, q, grpLabel))
+      .filter((child): child is PermItem => child != null)
+    // 父级命中时保留全部子项；仅子项命中时只保留命中的子项
+    const parentHit =
+      item.id.toLowerCase().includes(q) ||
+      abilityLabel(g, item.id).toLowerCase().includes(q) ||
+      grpLabel.toLowerCase().includes(q)
+    return {
+      ...item,
+      children: parentHit || !q ? item.children : children,
+    }
+  }
+  return null
 }
 
 const flatCatalog = computed(() => catalog.value.flatMap((g) => visibleAbilities(g)))
@@ -356,11 +439,11 @@ const filteredCatalog = computed(() => {
         const groups = g.groups
           .map((grp) => ({
             ...grp,
-            items: grp.items.filter((item) => {
-              if (moduleHit) return true
-              const name = abilityLabel(g, item.id).toLowerCase()
-              return item.id.toLowerCase().includes(q) || name.includes(q) || grp.label.toLowerCase().includes(q)
-            }),
+            items: moduleHit
+              ? grp.items
+              : grp.items
+                  .map((item) => filterPermItem(g, item, q, grp.label))
+                  .filter((item): item is PermItem => item != null),
           }))
           .filter((grp) => grp.items.length)
         return { ...g, groups }
@@ -789,38 +872,76 @@ onMounted(() => {
 
 .ability-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(460px, 1fr));
-  gap: 6px 10px;
+  gap: 8px 16px;
+  align-items: start;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.ability-grid > .perm-branch {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.perm-branch.has-children {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 6px 8px;
+  border: 1px solid var(--line, #e2e6eb);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--panel, #fff) 92%, var(--muted, #6b6458) 8%);
+}
+
+.perm-children {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px 12px;
+  padding-left: 14px;
+  border-left: 2px solid var(--line, #d0d5dd);
+  margin-left: 4px;
 }
 
 .ability-item {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 6px;
   font-size: 0.85rem;
   cursor: pointer;
   min-width: 0;
+  max-width: 100%;
 }
 
 .ability-name {
-  line-height: 1.2;
+  line-height: 1.35;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .perm-menu {
   justify-content: flex-start;
-  gap: 14px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  column-gap: 14px;
+  row-gap: 6px;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .perm-menu .ability-name {
-  flex: none;
+  flex: 0 0 auto;
+  max-width: 100%;
+  padding-top: 1px;
 }
 
 .perm-verbs {
   display: flex;
-  gap: 10px;
-  flex-shrink: 0;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  flex: 1 1 8rem;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .perm-verb {
@@ -829,6 +950,14 @@ onMounted(() => {
   gap: 4px;
   color: var(--muted);
   cursor: pointer;
+  white-space: nowrap;
+}
+
+@media (max-width: 900px) {
+  .ability-grid,
+  .perm-children {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 .perm-verb.is-alert {

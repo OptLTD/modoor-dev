@@ -117,7 +117,7 @@ registerMessages('base', {
     filterAbilities: '筛选能力点…',
     permView: '查看数据',
     permEdit: '编辑数据',
-    permAlert: '危险操作',
+    permAlert: '删除数据',
     filterUsers: '筛选用户…',
     selectedCount: '已选 {n} / {total}',
     noAbilities: '没有匹配的能力点',

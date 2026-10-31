@@ -30,18 +30,21 @@ exports:
       label: System
       seqno: 10
       items:
-      - id: base.users
-        label: Users
-        path: /base/users
-        seqno: 10
-      - id: base.roles
-        label: Roles
-        path: /base/roles
-        seqno: 20
-      - id: base.modules
-        label: Modules
-        path: /base/modules
-        seqno: 30
+        - id: base.users
+          label: Users
+          path: /base/users
+          seqno: 10
+          access: [base.user.read, base.user.write]
+        - id: base.roles
+          label: Roles
+          path: /base/roles
+          seqno: 20
+          access: [base.role.read, base.role.write]
+        - id: base.modules
+          label: Modules
+          path: /base/modules
+          seqno: 30
+          access: [base.app.read, base.app.write]
 
 ability:
   - base.app.read
