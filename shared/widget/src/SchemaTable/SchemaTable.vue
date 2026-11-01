@@ -296,12 +296,10 @@
                     v-if="api.filter.useFacetFilter(f)"
                     class="filter-input-wrap"
                   >
-                    <SelectBox
+                    <ChoiceList
                       searchable
-                      :model-value="api.filter.multiFilterValue(f)"
                       :options="api.filter.selectOptionsOf(f)"
-                      :multiple="true"
-                      :placeholder="t('widget.pleaseSelect')"
+                      :model-value="api.filter.multiFilterValue(f)"
                       @update:model-value="(v) => api.filter.onMultiFilterValue(f, v)"
                     />
                   </div>
@@ -312,12 +310,10 @@
                     "
                     class="filter-input-wrap"
                   >
-                    <SelectBox
+                    <ChoiceList
                       searchable
-                      :model-value="api.filter.multiFilterValue(f)"
                       :options="api.filter.optionsOf(f)"
-                      :multiple="true"
-                      :placeholder="t('widget.pleaseSelect')"
+                      :model-value="api.filter.multiFilterValue(f)"
                       @update:model-value="(v) => api.filter.onMultiFilterValue(f, v)"
                     />
                   </div>
@@ -563,6 +559,7 @@
 import { onMounted, onUnmounted } from 'vue'
 import { nextTick, ref, watch } from 'vue'
 import { useSchemaTable } from './useSchemaTable'
+import ChoiceList from '../SelectBox/ChoiceList.vue'
 import SelectBox from '../SelectBox/SelectBox.vue'
 import DateRange from '../DateRange/DateRange.vue'
 import Dropdown from '../Dropdown/Dropdown.vue'
@@ -1359,6 +1356,9 @@ defineExpose({
 .filter-pop:has(.filter-daterange) {
   width: auto;
   min-width: 14rem;
+}
+.filter-pop:has(.filter-choice) {
+  width: 16rem;
 }
 .filter-daterange {
   display: block;

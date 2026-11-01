@@ -20,6 +20,11 @@ const props = withDefaults(
     searchable?: boolean
     /** 嵌入外框时去掉自身边框 */
     borderless?: boolean
+    /**
+     * 下拉面板下边界（CSS 选择器或元素）。例如表头筛选气泡传 `.filter-pop`，
+     * 空间不足时向上展开，避免遮住气泡底部的“应用”按钮。
+     */
+    boundary?: string | HTMLElement
   }>(),
   {
     modelValue: '',
@@ -110,7 +115,15 @@ function updatePanelPos() {
   if (!el) return
   const r = el.getBoundingClientRect()
   const maxH = 260
-  const spaceBelow = window.innerHeight - r.bottom - 8
+  const bound =
+    typeof props.boundary === 'string'
+      ? document.querySelector<HTMLElement>(props.boundary)
+      : props.boundary || null
+  const lowerBound = bound
+    ? Math.min(window.innerHeight, bound.getBoundingClientRect().bottom)
+    : window.innerHeight
+  // 气泡内空间不足时向上展开，避免覆盖底部的操作按钮。
+  const spaceBelow = lowerBound - r.bottom - 8
   const placeUp = spaceBelow < 140 && r.top > spaceBelow
   panelStyle.value = {
     position: 'fixed',
@@ -126,7 +139,7 @@ function updatePanelPos() {
       : {
           top: `${r.bottom + 4}px`,
           bottom: 'auto',
-          maxHeight: `${Math.min(maxH, spaceBelow)}px`,
+          maxHeight: `${Math.max(80, Math.min(maxH, spaceBelow))}px`,
         }),
   }
 }

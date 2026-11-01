@@ -43,6 +43,7 @@ const filterFields = computed(() =>
 )
 
 const draft = reactive<Record<string, FilterDraft>>({})
+const bodyEl = ref<HTMLElement | null>(null)
 
 function ensure(f: SchemaField): FilterDraft {
   const fk = fieldKey(f)
@@ -261,7 +262,7 @@ defineExpose({ resetAll, apply, activeCount, dirty })
       </div>
     </div>
 
-    <div class="panel-body">
+    <div ref="bodyEl" class="panel-body">
       <div v-if="!filterFields.length" class="empty">暂无可筛选字段</div>
       <div v-for="f in filterFields" :key="f.uukey" class="filter-row">
         <div class="filter-head">
@@ -275,6 +276,7 @@ defineExpose({ resetAll, apply, activeCount, dirty })
           <div class="op-select-wrap">
             <SelectBox
               v-model="ensure(f).op"
+              :boundary="bodyEl || undefined"
               :options="filterOps(f)"
               :clearable="false"
               placeholder=""
@@ -284,6 +286,7 @@ defineExpose({ resetAll, apply, activeCount, dirty })
         <div v-if="showValue(ensure(f).op)" class="filter-value">
           <div v-if="isChoiceField(f)" class="grow">
             <SelectBox
+              :boundary="bodyEl || undefined"
               :model-value="multiValue(f)"
               :options="valueOptions(f)"
               :multiple="true"
