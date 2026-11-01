@@ -9,6 +9,7 @@ import {
   formVisibleFields,
   normalizeRefer,
   displayFieldValue,
+  parseLocationValue,
   rowUUKey,
   searchRecords,
   useI18n,
@@ -20,6 +21,7 @@ import {
 } from '@modoor/hooks'
 import RecordDialog from '../RecordDialog/RecordDialog.vue'
 import RecordFields from '../RecordDrawer/RecordFields.vue'
+import RecordMap from './RecordMap.vue'
 import { RECORD_DRAWER_OPLOG_KEY } from '../RecordDrawer/oplogContext'
 
 const props = defineProps<{
@@ -73,6 +75,11 @@ function pickValue(key: string) {
 }
 
 function displayOf(f: SchemaField) {
+  if (props.config.head?.locationAddress && f.ftype === 'LOCATION') {
+    const raw = pickValue(f.uukey || f.index || '')
+    const address = parseLocationValue(raw == null ? '' : String(raw)).address
+    if (address) return address
+  }
   return displayFieldValue(values.value || {}, f, { refers: refers.value })
 }
 
@@ -154,6 +161,15 @@ const overviewBlocks = computed(() => {
   }
   flush()
   return blocks
+})
+
+const mapValue = computed(() => {
+  const tab = activeTabDef.value
+  if (!tab || tab.kind !== 'map') return ''
+  const key = String(tab.mapField || '').trim()
+  if (!key) return ''
+  const raw = pickValue(key)
+  return typeof raw === 'string' ? raw : ''
 })
 
 const footActions = computed(() => props.config.actions || [])
@@ -311,6 +327,7 @@ function onFormSaved() {
             class="ec-head-fields"
             :fields="headFields"
             :display-of="displayOf"
+            :wide-fields="config.head?.wideFields"
           />
         </section>
       </slot>
@@ -349,6 +366,7 @@ function onFormSaved() {
               </template>
             </div>
           </template>
+          <RecordMap v-else-if="activeTabDef?.kind === 'map'" :value="mapValue" />
           <template v-else-if="activeTabDef?.kind === 'relation'">
             <p v-if="relatedLoading" class="muted">{{ t('widget.loading') }}</p>
             <p v-else-if="relatedError" class="error">{{ relatedError }}</p>

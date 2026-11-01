@@ -5,6 +5,7 @@ import {
   pickFieldValue,
   type DateTimeKind,
 } from './recordPayload'
+import { locationDisplayText } from './location'
 
 export type ReferDict = Record<string, Record<string, unknown>[]>
 export type FormMode = 'create' | 'modify'
@@ -85,6 +86,7 @@ export function displayFieldValue(
   const raw = pickFieldValue(row, f)
   const ft = ftypeOf(f)
   if (ft === 'DATETIME') return formatDateTimeDisplay(raw, dateTimeKind(f))
+  if (ft === 'LOCATION') return locationDisplayText(raw == null ? '' : String(raw))
   if (ft === 'OPTIONAL' || ft === 'RELATION') {
     return convertReferValue(f, raw, ctx?.refers)
   }

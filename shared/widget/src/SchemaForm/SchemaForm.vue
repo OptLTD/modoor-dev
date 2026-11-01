@@ -1,13 +1,15 @@
 <script setup lang="ts">
-import type { FormMode, SchemaField, ReferDict } from '@modoor/hooks'
+import type { FormMode, SchemaField, ReferDict, PlaceResult } from '@modoor/hooks'
 import { fieldKey, isMultiple, isOnlyDate, isOnlyMonth, isRequired, t } from '@modoor/hooks'
 import SelectBox from '../SelectBox'
 import FileField from './FileField.vue'
 import GroupTable from './GroupTable.vue'
+import LocationField from './LocationField.vue'
 import {
   fieldSelectOptions,
   isDateField,
   isFullRowField,
+  isLocationField,
   isNumericFormField,
   isOptionalField,
   isRelationField,
@@ -73,6 +75,22 @@ function optionsOf(f: SchemaField) {
   return fieldSelectOptions(f, props.refers, parentValue)
 }
 
+/** extra.latField / extra.lngField: full key (`basic.lat`) or a field name. */
+function placeCoordKey(f: SchemaField, extraKey: 'latField' | 'lngField') {
+  const raw = String(f.extra?.[extraKey] || '').trim()
+  if (!raw) return ''
+  if (raw.includes('.')) return raw
+  const hit = props.fields.find((item) => item.field === raw)
+  return hit ? fieldKey(hit) : raw
+}
+
+function onPlaceSelected(f: SchemaField, place: PlaceResult) {
+  const latKey = placeCoordKey(f, 'latField')
+  const lngKey = placeCoordKey(f, 'lngField')
+  if (latKey) props.form[latKey] = String(place.lat)
+  if (lngKey) props.form[lngKey] = String(place.lng)
+}
+
 /** label 中 `|` 表示换行（如 行驶时长|(小时)） */
 function labelLines(f: SchemaField): string[] {
   const raw = String(f.label || f.field || '')
@@ -131,6 +149,14 @@ function labelLines(f: SchemaField): string[] {
           v-model="form[fieldKey(f)] as string"
           :type="isOnlyMonth(f) ? 'month' : isOnlyDate(f) ? 'date' : 'datetime-local'"
           :disabled="!editable(f)"
+        />
+        <LocationField
+          v-else-if="isLocationField(f)"
+          :model-value="String(form[fieldKey(f)] ?? '')"
+          :disabled="!editable(f)"
+          :region="String(f.extra?.mapRegion || '')"
+          @update:model-value="form[fieldKey(f)] = $event"
+          @select="onPlaceSelected(f, $event)"
         />
         <input
           v-else-if="isNumericFormField(f)"

@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 from inbuilt.base.setting import (
+    env_map_settings,
     landing_module,
-    normalize_settings,
+    normalize_map_settings,
     normalize_menu_layouts,
+    normalize_settings,
 )
+from modoor.core.settings import get_settings
 
 
 def test_normalize_keeps_known_values_and_drops_unknown():
@@ -31,6 +34,33 @@ def test_normalize_keeps_known_values_and_drops_unknown():
     assert bad["timezone"] == "Asia/Shanghai"
     assert bad["timeFormat"] == "YYYY-MM-DD HH:mm:ss"
     assert bad["defaultModule"] == ""
+
+
+def test_map_settings_keep_provider_and_tokens():
+    out = normalize_map_settings(
+        {"provider": "AMAP", "token1": " key-1 ", "token2": "key-2"}
+    )
+    assert out == {"provider": "amap", "token1": "key-1", "token2": "key-2"}
+
+    bad = normalize_map_settings(
+        {"provider": "../evil", "token1": None, "token2": 123}
+    )
+    assert bad == {"provider": "tianditu", "token1": "", "token2": "123"}
+
+
+def test_env_map_settings_use_three_keys(monkeypatch):
+    monkeypatch.setenv("MODOOR_MAP_PROVIDER", "AMAP")
+    monkeypatch.setenv("MODOOR_MAP_TOKEN1", " key-1 ")
+    monkeypatch.setenv("MODOOR_MAP_TOKEN2", "")
+    get_settings.cache_clear()
+    try:
+        assert env_map_settings() == {
+            "provider": "amap",
+            "token1": "key-1",
+            "token2": "",
+        }
+    finally:
+        get_settings.cache_clear()
 
 
 def test_menu_layout_keeps_side_and_drops_top():

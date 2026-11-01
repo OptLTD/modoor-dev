@@ -173,12 +173,16 @@ export type RecordEntityHead = {
   subtitle?: string
   badge?: string
   fields?: string[]
+  /** LOCATION fields show the detailed address instead of the display name. */
+  locationAddress?: boolean
+  /** Head fields forced to a full row; [] keeps every field in the grid. */
+  wideFields?: string[]
 }
 
 export type RecordEntityTab = {
   id: string
   label: string
-  kind: 'fields' | 'relation'
+  kind: 'fields' | 'relation' | 'map'
   /** 字段 key 列表；可用 `---` 或 `|` 插入分割线 */
   fields?: string[]
   model?: string
@@ -188,6 +192,8 @@ export type RecordEntityTab = {
   /** current entity field providing the filter value, e.g. basic.uukey */
   queryFrom?: string
   query?: Record<string, unknown>
+  /** map tab: LOCATION field key (`display|lat,lng|address`) */
+  mapField?: string
 }
 
 export type RecordEntityAction = {

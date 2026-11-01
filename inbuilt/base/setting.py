@@ -10,13 +10,16 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
+from inbuilt.base import domain as base_domain
 from modoor.core.ctx import Ctx
 from modoor.core.errors import AppError
-from inbuilt.base import domain as base_domain
+from modoor.core.settings import get_settings as get_env_settings
 
 GLOBAL_MOD = "base"
 GLOBAL_TYPE = "global.settings"
 MENU_LAYOUT = "menu.layout"
+MAP_TYPE = "map.settings"
+MAP_PROVIDERS = ("tianditu", "amap", "baidu", "google")
 
 LOCALES = ("zh-CN", "en-US")
 TIMEZONES: tuple[tuple[str, str, str], ...] = (
@@ -92,6 +95,64 @@ def save_settings(
         type=GLOBAL_TYPE,
         data=data,
         title="全局设置",
+    )
+    return data
+
+
+def default_map_settings() -> dict[str, str]:
+    """地图地址搜索配置：一个供应商 + 两个 Token。
+
+    - 天地图：token1 = 浏览器 Key（优先），token2 = 服务端 Key（兜底）。
+    - 高德 / 百度 / Google：只使用 token1。
+    """
+    return {"provider": "tianditu", "token1": "", "token2": ""}
+
+
+def normalize_map_settings(raw: Any) -> dict[str, str]:
+    out = default_map_settings()
+    if not isinstance(raw, dict):
+        return out
+    provider = str(raw.get("provider") or "").strip().lower()
+    if provider in MAP_PROVIDERS:
+        out["provider"] = provider
+    for key in ("token1", "token2"):
+        out[key] = str(raw.get(key) or "").strip()[:512]
+    return out
+
+
+def env_map_settings() -> dict[str, str]:
+    """Bootstrap values from .env; used only when the database row is absent."""
+    s = get_env_settings()
+    return normalize_map_settings(
+        {
+            "provider": s.modoor_map_provider or "tianditu",
+            "token1": s.modoor_map_token1,
+            "token2": s.modoor_map_token2,
+        }
+    )
+
+
+def get_map_settings(session: Session, ctx: Ctx) -> dict[str, str]:
+    """Effective map settings: database row wins, .env is the bootstrap fallback."""
+    row = base_domain.get_config(session, ctx, mod=GLOBAL_MOD, type=MAP_TYPE)
+    if row is None:
+        return env_map_settings()
+    return normalize_map_settings(row.data)
+
+
+def save_map_settings(
+    session: Session,
+    ctx: Ctx,
+    raw: Any,
+) -> dict[str, str]:
+    data = normalize_map_settings(raw)
+    base_domain.upsert_config(
+        session,
+        ctx,
+        mod=GLOBAL_MOD,
+        type=MAP_TYPE,
+        data=data,
+        title="地图设置",
     )
     return data
 

@@ -201,10 +201,10 @@ class Settings(BaseSettings):
     modoor_jobs_poll_seconds: float = Field(default=0.5, alias="MODOOR_JOBS_POLL_SECONDS")
     # Tests: load every on-disk module domain (ignore yaml enabled).
     modoor_load_all_modules: bool = Field(default=False, alias="MODOOR_LOAD_ALL_MODULES")
-    # 天地图：浏览器 Key（域名）/ 服务端 Key（出口 IP）
-    tianditu_browser_tk: str = Field(default="", alias="TIANDITU_BROWSER_TK")
-    tianditu_server_tk: str = Field(default="", alias="TIANDITU_SERVER_TK")
-
+    # 地图地址搜索兜底配置（全局设置优先）。天地图：token1=浏览器 Key，token2=服务端 Key。
+    modoor_map_provider: str = Field(default="", alias="MODOOR_MAP_PROVIDER")
+    modoor_map_token1: str = Field(default="", alias="MODOOR_MAP_TOKEN1")
+    modoor_map_token2: str = Field(default="", alias="MODOOR_MAP_TOKEN2")
     @model_validator(mode="after")
     def _normalize_tenant_admin_webui(self) -> Settings:
         raw_tenant = _strip_wrapping_quotes(self.modoor_tenant or "") or "demo"

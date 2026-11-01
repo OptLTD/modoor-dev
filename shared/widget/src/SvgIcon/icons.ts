@@ -16,6 +16,7 @@ export type IconName =
   | 'bell'
   | 'shield'
   | 'building'
+  | 'search'
 
 export interface IconMark {
   d?: string
@@ -119,5 +120,9 @@ export const ICONS: Record<IconName, IconMark[]> = {
     { d: 'M2 14.2h12', sw: 1.4, cap: true },
     { d: 'M3.3 14.2V5.2L8 2.4l4.7 2.8v9', sw: 1.4, cap: true, join: true },
     { d: 'M6 14.2V10h4v4.2', sw: 1.4, cap: true, join: true },
+  ],
+  search: [
+    { circle: { cx: 7, cy: 7, r: 4.2 }, sw: 1.5 },
+    { d: 'M10.2 10.2 14 14', sw: 1.6, cap: true },
   ],
 }

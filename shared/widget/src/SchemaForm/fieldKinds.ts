@@ -30,6 +30,10 @@ export function isUploadField(f: SchemaField) {
   return String(f.ftype).toUpperCase() === 'UPLOADS'
 }
 
+export function isLocationField(f: SchemaField) {
+  return String(f.ftype).toUpperCase() === 'LOCATION'
+}
+
 export function uploadAccept(f: SchemaField) {
   const accept = String(f.extra?.acceptType || '').trim()
   if (accept) return accept

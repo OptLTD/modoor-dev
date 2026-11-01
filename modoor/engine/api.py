@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from fastapi import APIRouter, Body, HTTPException, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel
 
 from modoor.core.ctx import Ctx
@@ -402,6 +402,177 @@ def api_search(request: Request, body: dict[str, Any] = Body(default_factory=dic
             return get_engine().search(session, _ctx(user), body)
     except Exception as exc:  # noqa: BLE001
         raise _err(exc) from exc
+
+
+class MapSettingsBody(BaseModel):
+    provider: str
+    # None = keep the stored token; "" = clear it.
+    token1: str | None = None
+    token2: str | None = None
+
+
+def _map_settings_payload(session, user: SystemUser, request: Request) -> dict[str, Any]:
+    from inbuilt.base.setting import get_map_settings, user_can_edit
+    from modoor.core import maps
+
+    ctx = _ctx(user)
+    settings = get_map_settings(session, ctx)
+    can_edit = user_can_edit(
+        session, ctx, user_id=int(user.id), active_role=acting_role(request)
+    )
+    payload = maps.provider_config(settings)
+    payload.update(
+        {
+            # Tokens are write-only: never send them back to the browser.
+            "settings": {**settings, "token1": "", "token2": ""},
+            "canEdit": can_edit,
+            "token1Set": bool(settings["token1"]),
+            "token2Set": bool(settings["token2"]),
+        }
+    )
+    return payload
+
+
+@router.get("/api/map/config")
+def api_map_config(request: Request) -> Any:
+    """Key-free map capability for SchemaForm LOCATION fields."""
+    user = _require_user(request)
+    try:
+        from inbuilt.base.setting import get_map_settings
+        from modoor.core import maps
+
+        with session_scope() as session:
+            return maps.provider_config(get_map_settings(session, _ctx(user)))
+    except Exception as exc:
+        raise _err(exc) from exc
+
+
+@router.get("/api/map/settings")
+def api_map_settings(request: Request) -> Any:
+    """Map provider + tokens for the global-settings page (admin sees raw values)."""
+    user = _require_user(request)
+    try:
+        with session_scope() as session:
+            return _map_settings_payload(session, user, request)
+    except Exception as exc:
+        raise _err(exc) from exc
+
+
+@router.put("/api/map/settings")
+def api_map_settings_save(request: Request, body: MapSettingsBody) -> Any:
+    """Save map provider + tokens. Administrator only."""
+    user = _require_user(request)
+    try:
+        with session_scope() as session:
+            ctx = _ctx(user)
+            from inbuilt.base.setting import (
+                get_map_settings,
+                save_map_settings,
+                user_can_edit,
+            )
+            from modoor.core import maps
+
+            if not user_can_edit(
+                session, ctx, user_id=int(user.id), active_role=acting_role(request)
+            ):
+                raise AppError("permission_denied", "全局设置需要管理员权限")
+            provider = str(body.provider or "").strip().lower()
+            if provider not in maps.PROVIDERS:
+                raise AppError(
+                    "validation_error",
+                    f"未知地图供应商：{provider or '(空)'}",
+                )
+            current = get_map_settings(session, ctx)
+            provider_changed = provider != current["provider"]
+            # Tokens are provider-specific: switching provider must not reuse them.
+            if provider_changed:
+                token1 = "" if body.token1 is None else body.token1
+                token2 = "" if body.token2 is None else body.token2
+            else:
+                token1 = current["token1"] if body.token1 is None else body.token1
+                token2 = current["token2"] if body.token2 is None else body.token2
+            save_map_settings(
+                session,
+                ctx,
+                {"provider": provider, "token1": token1, "token2": token2},
+            )
+            return _map_settings_payload(session, user, request)
+    except Exception as exc:
+        raise _err(exc) from exc
+
+
+@router.get("/api/map/search")
+def api_map_search(request: Request) -> Any:
+    """Address autocomplete through the configured provider (keys stay server-side)."""
+    user = _require_user(request)
+    params = request.query_params
+    try:
+        limit = int(params.get("limit") or 8)
+    except (TypeError, ValueError):
+        limit = 8
+    try:
+        from inbuilt.base.setting import get_map_settings
+        from modoor.core import maps
+
+        with session_scope() as session:
+            settings = get_map_settings(session, _ctx(user))
+        return maps.search_address(
+            str(params.get("q") or ""),
+            settings,
+            provider=str(params.get("provider") or ""),
+            region=str(params.get("region") or ""),
+            limit=limit,
+        )
+    except Exception as exc:
+        raise _err(exc) from exc
+
+
+@router.get("/api/map/static")
+def api_map_static(request: Request) -> Response:
+    """Marker map image for a coordinate (keys stay server-side)."""
+    user = _require_user(request)
+    params = request.query_params
+    try:
+        lat = float(params.get("lat") or "")
+        lng = float(params.get("lng") or "")
+    except (TypeError, ValueError):
+        raise HTTPException(
+            status_code=400,
+            detail={"code": "validation_error", "message": "缺少有效坐标"},
+        ) from None
+    try:
+        zoom = int(params.get("zoom") or 15)
+    except (TypeError, ValueError):
+        zoom = 15
+    try:
+        width = int(params.get("width") or 640)
+    except (TypeError, ValueError):
+        width = 640
+    try:
+        height = int(params.get("height") or 360)
+    except (TypeError, ValueError):
+        height = 360
+    try:
+        from inbuilt.base.setting import get_map_settings
+        from modoor.core import maps
+
+        with session_scope() as session:
+            settings = get_map_settings(session, _ctx(user))
+        content, media_type = maps.static_map(
+            settings,
+            lat=lat,
+            lng=lng,
+            zoom=zoom,
+            width=width,
+            height=height,
+        )
+    except Exception as exc:
+        raise _err(exc) from exc
+    return Response(
+        content=content,
+        media_type=media_type,
+        headers={"Cache-Control": "private, max-age=600"},
+    )
 
 
 @router.get("/api/record/related")
