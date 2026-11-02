@@ -6,6 +6,7 @@ import type {
   autofillRecord,
   deleteRecords,
   fetchInputSchema,
+  fetchRecordFacets,
   searchRecords,
   upsertRecords,
 } from './record'
@@ -16,6 +17,7 @@ import type { fetchAsset, uploadAsset } from './upload'
 /** 列表、表格、表单用到的记录接口。实现由 views 注入，widget 不直接发请求。 */
 export type RecordGateway = {
   searchRecords: typeof searchRecords
+  fetchFacets: typeof fetchRecordFacets
   deleteRecords: typeof deleteRecords
   fetchTableLayout: typeof fetchTableLayout
   patchTableWidth: typeof patchTableWidth

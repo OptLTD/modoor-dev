@@ -207,7 +207,6 @@ class EngineService:
                     "size": size,
                     "count": count,
                     "using": using,
-                    "facets": None,
                     "refers": refers,
                     "totals": totals,
                     "values": values,
@@ -216,7 +215,7 @@ class EngineService:
 
         fields = list(table.get("fields") or [])
         if hasattr(adapter, "search_report"):
-            values, count, totals, facets = adapter.search_report(
+            values, count, totals = adapter.search_report(
                 session, ctx,
                 query=query,
                 order=order,
@@ -241,12 +240,6 @@ class EngineService:
                 totals=totals,
                 count=int(count),
             )
-            facets = adapter.search_facets(
-                session, ctx,
-                query=query,
-                fields=fields,
-                limit=100,
-            )
         refers = dict(table.get("refers") or {})
         refers.update(adapter.refers(session, ctx) or {})
         refers = merge_dict_key_refers(session, ctx, _schema_refer_fields(table), refers)
@@ -260,10 +253,49 @@ class EngineService:
                 "count": count,
                 "refers": refers,
                 "totals": totals,
-                "facets": facets,
                 "values": values,
             },
         )
+
+    def facets(
+        self,
+        session: Session,
+        ctx: Ctx,
+        body: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Unique filter values without loading a list page/count/totals."""
+        model = str(body.get("model") or "").strip()
+        if not model:
+            raise AppError("validation_error", "model required")
+        using = str(body.get("using") or "default")
+        scene = str(body.get("scene") or "SEARCH")
+        bundle = get_bundle(model)
+        table = project_table(
+            bundle,
+            using=using,
+            scene=scene,
+            page=1,
+            size=1,
+            query=body.get("query") if isinstance(body.get("query"), dict) else None,
+            order=None,
+        )
+        req = table["request"]
+        from modoor.engine.query import merge_search_query
+
+        query = merge_search_query(
+            dict(req.get("query") or {}),
+            body.get("query") if isinstance(body.get("query"), dict) else None,
+        )
+        adapter = get_adapter(model)
+        fields = list(table.get("fields") or [])
+        values = adapter.search_facets(
+            session,
+            ctx,
+            query=query,
+            fields=fields,
+            limit=100,
+        )
+        return {"facets": values or {}}
 
     def query(
         self,

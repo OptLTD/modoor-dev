@@ -81,6 +81,11 @@ export function useSchemaTable(
   const rows = ref<Record<string, unknown>[]>([])
   const totals = ref<Record<string, unknown>>({})
   const facets = ref<Record<string, SearchFacet>>({})
+  /** tab period → unique values; filters/order/paging reuse the cached response. */
+  const FACETS_TTL_MS = 120_000
+  const facetsCache = new Map<string, { data: Record<string, SearchFacet>; at: number }>()
+  const facetsPending = new Map<string, Promise<Record<string, SearchFacet>>>()
+  let facetsRequest = 0
   const count = ref(0)
   const page = ref(1)
   const size = ref(100)
@@ -107,6 +112,13 @@ export function useSchemaTable(
 
   const fields = computed(() => props.table.fields || [])
   const using = computed(() => props.using || props.table.using || 'default')
+
+  // A different model/view has different dropdown values; drop the old ones
+  // while the first request for the new schema is in flight.
+  watch([() => props.table.model, using], () => {
+    facets.value = {}
+    facetsRequest += 1
+  })
 
   /** 聚合表：others.$digest 存在时，度量列不筛、排序本地做 */
   const digestMeta = computed(() => {
@@ -848,6 +860,72 @@ export function useSchemaTable(
     return [...list].sort((ra, rb) => compareSortVal(pickFieldValue(ra, f), pickFieldValue(rb, f), numeric) * dir)
   })
 
+  const FACET_PERIOD_KEYS = ['basic.utime', 'basic.uterm']
+
+  /** Facets only depend on the tab period, not on other active filters. */
+  function facetsPeriodQuery(): Record<string, unknown> | undefined {
+    const q = buildQuery() || {}
+    const out: Record<string, unknown> = {}
+    for (const key of Object.keys(q)) {
+      if (
+        FACET_PERIOD_KEYS.some(
+          (prefix) => key === prefix || key.startsWith(`${prefix}:`),
+        )
+      ) {
+        out[key] = q[key]
+      }
+    }
+    return Object.keys(out).length ? out : undefined
+  }
+
+  function facetsKey(): string {
+    const q = facetsPeriodQuery() || {}
+    const stable = Object.keys(q)
+      .sort()
+      .map((key) => [key, q[key]])
+    return JSON.stringify({ model: props.table.model, using: using.value, query: stable })
+  }
+
+  function rememberFacets(key: string, data: Record<string, SearchFacet>) {
+    facetsCache.set(key, { data, at: Date.now() })
+    if (facetsCache.size > 30) {
+      const oldest = facetsCache.keys().next().value
+      if (oldest) facetsCache.delete(oldest)
+    }
+  }
+
+  /** Filter options are optional; never block the list on this request. */
+  async function loadFacets() {
+    if (props.hideBody) return
+    const key = facetsKey()
+    const seq = ++facetsRequest
+    const cached = facetsCache.get(key)
+    if (cached && Date.now() - cached.at < FACETS_TTL_MS) {
+      facets.value = cached.data
+      return
+    }
+    let pending = facetsPending.get(key)
+    if (!pending) {
+      pending = gateway
+        .fetchFacets(props.table.model, using.value, { query: facetsPeriodQuery() })
+        .then((res) => {
+          const data = (res?.facets || {}) as Record<string, SearchFacet>
+          rememberFacets(key, data)
+          return data
+        })
+        .finally(() => {
+          facetsPending.delete(key)
+        })
+      facetsPending.set(key, pending)
+    }
+    try {
+      const data = await pending
+      if (seq === facetsRequest) facets.value = data
+    } catch {
+      // Keep the previous options; the list itself is already usable.
+    }
+  }
+
   async function reload() {
     emitRequestChange()
     if (props.hideBody) {
@@ -868,7 +946,6 @@ export function useSchemaTable(
       })
       rows.value = res.values || []
       totals.value = (res.totals || {}) as Record<string, unknown>
-      facets.value = (res.facets || {}) as Record<string, SearchFacet>
       count.value = res.count ?? rows.value.length
       theRefers.value = mergeRefers(
         normalizeRefer(props.table.refers as ReferDict),
@@ -883,6 +960,7 @@ export function useSchemaTable(
     } finally {
       loading.value = false
     }
+    void loadFacets()
   }
 
   function goto(p: number) {
@@ -944,6 +1022,7 @@ export function useSchemaTable(
       value2: applied?.value2 || '',
     }
     filterOpen.value = filterOpen.value === fk ? null : fk
+    if (filterOpen.value) void loadFacets()
   }
 
   function closeFilter() {
@@ -1024,6 +1103,7 @@ export function useSchemaTable(
 
   function togglePanelFilter() {
     panelFilterOpen.value = !panelFilterOpen.value
+    if (panelFilterOpen.value) void loadFacets()
   }
 
   const activeFilterCount = computed(

@@ -5,6 +5,7 @@ import {
   autofillRecord,
   deleteRecords,
   fetchInputSchema,
+  fetchRecordFacets,
   fetchTableColumns,
   fetchTableLayout,
   loadDropdownRefers,
@@ -20,6 +21,7 @@ import {
 
 const gateway: RecordGateway = {
   searchRecords,
+  fetchFacets: fetchRecordFacets,
   deleteRecords,
   fetchTableColumns,
   fetchTableLayout,

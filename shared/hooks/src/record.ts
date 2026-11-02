@@ -84,8 +84,6 @@ export type SearchResult = {
   count?: number
   refers?: Record<string, unknown>
   totals?: Record<string, unknown> | null
-  /** 表头筛选：字段 unique；overflow 时前端回退原 UI */
-  facets?: Record<string, SearchFacet> | null
 }
 
 export async function fetchSchema(model: string, using = 'default', scene = 'SEARCH') {
@@ -116,7 +114,10 @@ export async function searchRecords(
   using = 'default',
   page = 1,
   size = 50,
-  opts: { query?: Record<string, unknown>; order?: { field: string; order: string } } = {},
+  opts: {
+    query?: Record<string, unknown>
+    order?: { field: string; order: string }
+  } = {},
 ) {
   return post<SearchResult>('/api/record/search', {
     model,
@@ -126,6 +127,24 @@ export async function searchRecords(
     size,
     query: opts.query,
     order: opts.order,
+  })
+}
+
+export type FacetsResult = {
+  facets?: Record<string, SearchFacet> | null
+}
+
+/** Filter dropdown values only — no list page, count, or totals. */
+export async function fetchRecordFacets(
+  model: string,
+  using = 'default',
+  opts: { query?: Record<string, unknown> } = {},
+) {
+  return post<FacetsResult>('/api/record/facets', {
+    model,
+    using,
+    scene: 'SEARCH',
+    query: opts.query,
   })
 }
 

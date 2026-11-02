@@ -162,7 +162,7 @@
             <tr>
               <th
                 class="sticky-col sticky-check"
-                :class="api.layout.stickyEdgeOnCheck() ? 'sticky-edge' : ''"
+                :class="checkEdge ? 'sticky-edge' : ''"
                 :style="{
                   left: '0px',
                   width: api.layout.CHECK_W + 'px',
@@ -178,9 +178,9 @@
                 />
               </th>
             <th
-              v-if="api.toolbar.actionClicks.length > 0"
+              v-if="hasActions"
               class="sticky-col sticky-action"
-              :class="api.layout.stickyEdgeOnAction() ? 'sticky-edge' : ''"
+              :class="actionEdge ? 'sticky-edge' : ''"
               :style="{
                 left: api.layout.CHECK_W + 'px',
                 width: api.layout.actionWidth + 'px',
@@ -364,13 +364,13 @@
             <td :colspan="api.layout.displayFields.length + 3" class="empty">{{ t('widget.empty') }}</td>
           </tr>
           <tr
-            v-for="(row, i) in api.list.displayRows"
-            :key="api.selection.rowKey(row) || 'r-' + i"
+            v-for="rv in rowViews"
+            :key="rv.key"
             class="data-row"
           >
             <td
               class="sticky-col sticky-check"
-              :class="api.layout.stickyEdgeOnCheck() ? 'sticky-edge' : ''"
+              :class="checkEdge ? 'sticky-edge' : ''"
               :style="{
                 left: '0px',
                 width: api.layout.CHECK_W + 'px',
@@ -380,15 +380,15 @@
             >
               <input
                 type="checkbox"
-                :checked="api.selection.isRowSelected(row)"
+                :checked="api.selection.isRowSelected(rv.row)"
                 @click.stop
-                @change="api.selection.toggleOne(api.selection.rowKey(row), $event)"
+                @change="api.selection.toggleOne(rv.key, $event)"
               />
             </td>
             <td
-              v-if="api.toolbar.actionClicks.length > 0"
+              v-if="hasActions"
               class="sticky-col sticky-action"
-              :class="api.layout.stickyEdgeOnAction() ? 'sticky-edge' : ''"
+              :class="actionEdge ? 'sticky-edge' : ''"
               :style="{
                 left: api.layout.CHECK_W + 'px',
                 width: api.layout.actionWidth + 'px',
@@ -420,7 +420,7 @@
                       type="button"
                       class="dropdown-item"
                       role="menuitem"
-                      @click="onActionClick(c, row)"
+                      @click="onActionClick(c, rv.row)"
                     >
                       {{ c.label || c.uukey }}
                     </button>
@@ -429,59 +429,59 @@
                     v-else
                     type="button"
                     class="link"
-                    @click="onActionClick(cluster.clicks[0], row)"
+                    @click="onActionClick(cluster.clicks[0], rv.row)"
                   >
                     {{ cluster.clicks[0].label || cluster.clicks[0].uukey }}
                   </button>
                 </template>
-                <slot name="row-actions" :row="row" />
+                <slot name="row-actions" :row="rv.row" />
               </div>
             </td>
             <td
-              v-for="f in api.layout.displayFields"
-              :key="f.uukey"
+              v-for="cell in rv.cells"
+              :key="cell.field.uukey"
               class="truncate"
               :class="[
-                api.layout.isLastStickyField(f) ? 'sticky-edge' : '',
-                api.layout.isStickyField(f) ? 'sticky-col sticky-field' : '',
-                api.layout.isNumericCol(f) ? 'num' : '',
-                isNavigableField(f) ? 'cell-nav' : '',
-                cellTags(row, f).length ? 'tags-cell' : '',
+                cell.stickyEdge ? 'sticky-edge' : '',
+                cell.sticky ? 'sticky-col sticky-field' : '',
+                cell.numeric ? 'num' : '',
+                cell.nav ? 'cell-nav' : '',
+                cell.hasTags ? 'tags-cell' : '',
               ]"
               :style="{
-                width: api.layout.fieldWidth(f) + 'px',
-                minWidth: api.layout.fieldWidth(f) + 'px',
-                maxWidth: api.layout.fieldWidth(f) + 'px',
-                left: api.layout.isStickyField(f) ? api.layout.stickyLeft(f) + 'px' : undefined,
+                width: cell.width + 'px',
+                minWidth: cell.width + 'px',
+                maxWidth: cell.width + 'px',
+                left: cell.left !== undefined ? cell.left + 'px' : undefined,
               }"
-              :title="cellTitle(row, f)"
-              @click="isNavigableField(f) ? onCellNavigate(row, f) : undefined"
+              :title="cell.title"
+              @click="cell.nav ? onCellNavigate(rv.row, cell.field) : undefined"
             >
-              <span v-if="cellTags(row, f).length" class="cell-tags">
+              <span v-if="cell.hasTags" class="cell-tags">
                 <span
-                  v-for="tag in cellTags(row, f)"
+                  v-for="tag in cell.tags"
                   :key="tag.value"
                   class="cell-tag"
                   :title="tag.label"
                 >{{ tag.short }}</span>
               </span>
               <button
-                v-else-if="isNavigableField(f) && String(api.cell.displayCell(row, f) ?? '').trim()"
+                v-else-if="cell.showLink"
                 type="button"
                 class="cell-link"
-                @click.stop="onCellNavigate(row, f)"
+                @click.stop="onCellNavigate(rv.row, cell.field)"
               >
-                {{ api.cell.displayCell(row, f) }}
+                {{ cell.text }}
               </button>
               <button
-                v-else-if="uploadIds(row, f).length"
+                v-else-if="cell.hasFiles"
                 type="button"
                 class="cell-link"
-                @click.stop="openFiles(row, f)"
+                @click.stop="openFiles(rv.row, cell.field)"
               >
-                {{ t('widget.viewFiles', { n: uploadIds(row, f).length }) }}
+                {{ t('widget.viewFiles', { n: cell.files.length }) }}
               </button>
-              <template v-else>{{ api.cell.displayCell(row, f) }}</template>
+              <template v-else>{{ cell.text }}</template>
             </td>
             <td class="list-fill" aria-hidden="true" />
           </tr>
@@ -495,7 +495,7 @@
             <tr>
               <td
                 class="sticky-col sticky-check muted"
-                :class="api.layout.stickyEdgeOnCheck() ? 'sticky-edge' : ''"
+                :class="checkEdge ? 'sticky-edge' : ''"
                 :style="{
                   left: '0px',
                   width: api.layout.CHECK_W + 'px',
@@ -506,9 +506,9 @@
                 {{ t('widget.sum') }}
               </td>
               <td
-                v-if="api.toolbar.actionClicks.length > 0"
+                v-if="hasActions"
                 class="sticky-col sticky-action"
-                :class="api.layout.stickyEdgeOnAction() ? 'sticky-edge' : ''"
+                :class="actionEdge ? 'sticky-edge' : ''"
                 :style="{
                   left: api.layout.CHECK_W + 'px',
                   width: api.layout.actionWidth + 'px',
@@ -517,23 +517,23 @@
                 }"
               />
               <td
-                v-for="f in api.layout.displayFields"
-                :key="'total-' + f.uukey"
+                v-for="total in totalViews"
+                :key="'total-' + total.field.uukey"
                 class="truncate"
                 :class="[
-                  api.layout.isLastStickyField(f) ? 'sticky-edge' : '',
-                  api.layout.isStickyField(f) ? 'sticky-col sticky-field' : '',
-                  api.layout.isNumericCol(f) ? 'num' : '',
+                  total.stickyEdge ? 'sticky-edge' : '',
+                  total.sticky ? 'sticky-col sticky-field' : '',
+                  total.numeric ? 'num' : '',
                 ]"
                 :style="{
-                  width: api.layout.fieldWidth(f) + 'px',
-                  minWidth: api.layout.fieldWidth(f) + 'px',
-                  maxWidth: api.layout.fieldWidth(f) + 'px',
-                  left: api.layout.isStickyField(f) ? api.layout.stickyLeft(f) + 'px' : undefined,
+                  width: total.width + 'px',
+                  minWidth: total.width + 'px',
+                  maxWidth: total.width + 'px',
+                  left: total.left !== undefined ? total.left + 'px' : undefined,
                 }"
-                :title="api.cell.formatTotalCell(f)"
+                :title="total.text"
               >
-                {{ api.cell.formatTotalCell(f) }}
+                {{ total.text }}
               </td>
               <td class="list-fill" aria-hidden="true" />
             </tr>
@@ -556,7 +556,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, onUnmounted } from 'vue'
+import { computed, onMounted, onUnmounted } from 'vue'
 import { nextTick, ref, watch } from 'vue'
 import { useSchemaTable } from './useSchemaTable'
 import ChoiceList from '../SelectBox/ChoiceList.vue'
@@ -617,6 +617,107 @@ const fileItems = ref<ViewerItem[]>([])
 const api = useSchemaTable(props, {
   onRequestChange: (req) => emit('request-change', req),
 })
+
+type CellView = {
+  field: SchemaField
+  text: string
+  title: string
+  tags: ReturnType<typeof tagChips>
+  nav: boolean
+  hasTags: boolean
+  hasFiles: boolean
+  showLink: boolean
+  files: string[]
+  width: number
+  left: number | undefined
+  sticky: boolean
+  stickyEdge: boolean
+  numeric: boolean
+}
+type RowView = {
+  row: Record<string, unknown>
+  key: string
+  cells: CellView[]
+}
+
+const NO_FILES: string[] = []
+
+/**
+ * Resolve every visible cell once per rows/refers change. The template used to
+ * call cellTags/displayCell/uploadIds several times per cell on each render.
+ */
+const rowViews = computed<RowView[]>(() => {
+  const fields = api.layout.displayFields
+  return api.list.displayRows.map((row, index) => {
+    const cells = fields.map((field) => {
+      const tags = tagChips(row, field)
+      const files = ftypeNav(field) === 'UPLOADS' ? uploadIds(row, field) : NO_FILES
+      const hasTags = tags.length > 0
+      const hasFiles = files.length > 0
+      const text =
+        hasTags || hasFiles
+          ? ''
+          : String(api.cell.displayCell(row, field) ?? '')
+      const title = hasTags
+        ? tags.map((tag) => tag.label).join('、')
+        : hasFiles
+          ? ''
+          : text
+      const nav = isNavigableField(field)
+      const sticky = api.layout.isStickyField(field)
+      return {
+        field,
+        text,
+        title,
+        tags,
+        nav,
+        hasTags,
+        hasFiles,
+        showLink: nav && text.trim().length > 0,
+        files,
+        width: api.layout.fieldWidth(field),
+        left: sticky ? api.layout.stickyLeft(field) : undefined,
+        sticky,
+        stickyEdge: api.layout.isLastStickyField(field),
+        numeric: api.layout.isNumericCol(field),
+      }
+    })
+    return {
+      row,
+      key: api.selection.rowKey(row) || `r-${index}`,
+      cells,
+    }
+  })
+})
+
+type TotalView = {
+  field: SchemaField
+  text: string
+  width: number
+  left: number | undefined
+  sticky: boolean
+  stickyEdge: boolean
+  numeric: boolean
+}
+
+const hasActions = computed(() => api.toolbar.actionClicks.length > 0)
+const checkEdge = computed(() => api.layout.stickyEdgeOnCheck())
+const actionEdge = computed(() => api.layout.stickyEdgeOnAction())
+
+const totalViews = computed<TotalView[]>(() =>
+  api.layout.displayFields.map((field) => {
+    const sticky = api.layout.isStickyField(field)
+    return {
+      field,
+      text: api.cell.formatTotalCell(field),
+      width: api.layout.fieldWidth(field),
+      left: sticky ? api.layout.stickyLeft(field) : undefined,
+      sticky,
+      stickyEdge: api.layout.isLastStickyField(field),
+      numeric: api.layout.isNumericCol(field),
+    }
+  }),
+)
 
 const checkAllRef = ref<HTMLInputElement | null>(null)
 const qfTrack = ref<HTMLElement | null>(null)
@@ -707,17 +808,6 @@ function clickLabel(c: SchemaClick | undefined) {
 
 function ftypeNav(f: SchemaField) {
   return String(f.ftype || '').toUpperCase()
-}
-
-function cellTags(row: Record<string, unknown>, f: SchemaField) {
-  return tagChips(row, f)
-}
-
-function cellTitle(row: Record<string, unknown>, f: SchemaField) {
-  const chips = cellTags(row, f)
-  if (chips.length) return chips.map((tag) => tag.label).join('、')
-  if (ftypeNav(f) === 'UPLOADS') return ''
-  return String(api.cell.displayCell(row, f) ?? '')
 }
 
 function uploadIds(row: Record<string, unknown>, f: SchemaField): string[] {

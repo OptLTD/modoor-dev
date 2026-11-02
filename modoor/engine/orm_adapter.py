@@ -495,13 +495,9 @@ class ColsOrmAdapter(ModelAdapter):
             return out
 
         base_where: list[Any] = [cls.tenant == ctx.tenant]
-        # Soft-delete: same as search/_scoped_select — hide deleted unless query filters state
-        if hasattr(cls, "state") and not any(
-            t.field in ("basic.state", "basic.enable") for t in terms
-        ):
-            from modoor.core.state import STATE_ON
-
-            base_where.append(cls.state == STATE_ON)
+        alive = self._alive_where()
+        if alive is not None:
+            base_where.append(alive)
         grouped = select(*g_exprs, *a_exprs).where(*base_where).group_by(*g_exprs)
         grouped = self._apply_terms(grouped, terms)
 
@@ -542,16 +538,21 @@ class ColsOrmAdapter(ModelAdapter):
 
         return values, group_count, totals
 
+    def _alive_where(self) -> Any | None:
+        """Soft-delete columns are never readable: only state=1 is live."""
+        cls = self.entity_cls
+        if not hasattr(cls, "state"):
+            return None
+        from modoor.core.state import STATE_ON
+
+        return cls.state == STATE_ON
+
     def _scoped_select(self, ctx: Ctx, terms: list[QueryTerm]) -> Any:
         cls = self.entity_cls
         stmt = select(cls).where(cls.tenant == ctx.tenant)
-        # Soft-delete: hide deleted rows unless query explicitly filters basic.state
-        if hasattr(cls, "state") and not any(
-            t.field in ("basic.state", "basic.enable") for t in terms
-        ):
-            from modoor.core.state import STATE_ON
-
-            stmt = stmt.where(cls.state == STATE_ON)
+        alive = self._alive_where()
+        if alive is not None:
+            stmt = stmt.where(alive)
         return self._apply_terms(stmt, terms)
 
     def search(
@@ -652,6 +653,9 @@ class ColsOrmAdapter(ModelAdapter):
             if expr is None:
                 continue
             stmt = select(func.count(func.distinct(expr))).where(cls.tenant == ctx.tenant)
+            alive = self._alive_where()
+            if alive is not None:
+                stmt = stmt.where(alive)
             if not self._index_time(sk):
                 stmt = stmt.where(expr.is_not(None))
             if not as_date and not as_month:
@@ -695,6 +699,9 @@ class ColsOrmAdapter(ModelAdapter):
             if expr is None:
                 continue
             stmt = select(expr).where(cls.tenant == ctx.tenant).distinct().limit(lim + 1)
+            alive = self._alive_where()
+            if alive is not None:
+                stmt = stmt.where(alive)
             if not self._index_time(sk):
                 stmt = stmt.where(expr.is_not(None))
             if not as_date and not as_month:
@@ -774,6 +781,9 @@ class ColsOrmAdapter(ModelAdapter):
 
         if aggs:
             stmt = select(*aggs).where(cls.tenant == ctx.tenant)
+            alive = self._alive_where()
+            if alive is not None:
+                stmt = stmt.where(alive)
             stmt = self._apply_terms(stmt, terms)
             row = session.execute(stmt).one()
             for i, sk in enumerate(used_keys):
@@ -796,55 +806,34 @@ class ColsOrmAdapter(ModelAdapter):
         size: int,
         field_keys: list[str],
         fields: list[dict[str, Any]],
-    ) -> tuple[list[dict[str, Any]], int, dict[str, Any] | None, dict[str, Any] | None]:
-        """一次取出本页、条数、合计和筛选项。条件相同的统计共用一次扫描。"""
+    ) -> tuple[list[dict[str, Any]], int, dict[str, Any] | None]:
+        """一次取出本页、条数、合计。"""
         page = max(int(page or 1), 1)
         size = clamp_page_size(size)
         terms = parse_query(query)
-        lim = 100
         stat_fields = self._stat_fields(fields)
-        groups: dict[tuple, list[dict[str, Any]]] = {}
-        for spec in stat_fields:
-            if not spec["facet"]:
-                continue
-            scoped = [t for t in terms if t.field != spec["sk"]]
-            spec["scoped"] = scoped
-            groups.setdefault(self._term_signature(scoped), []).append(spec)
 
-        full_sig = self._term_signature(terms)
-        same_where = groups.pop(full_sig, [])
-        pending = groups
-        scan_terms = list(terms)
-        narrow_terms: list[QueryTerm] = []
-
-        columns: list[Any] = [self._count_agg(narrow_terms).label("n")]
+        columns: list[Any] = [self._count_agg([]).label("n")]
         sum_keys: list[str] = []
         distinct_keys: list[str] = []
-        facet_slots: list[dict[str, Any]] = []
         for sk in field_keys:
             if sk not in self.NUM_KEYS or sk not in self.COLS:
                 continue
             expr = self._value_expr(sk)
             if expr is None:
                 continue
-            columns.append(self._sum_agg(expr, narrow_terms).label(f"sum_{len(sum_keys)}"))
+            columns.append(self._sum_agg(expr, []).label(f"sum_{len(sum_keys)}"))
             sum_keys.append(sk)
         for spec in stat_fields:
             if not spec["unique"]:
                 continue
-            agg = self._distinct_count_agg(spec, narrow_terms)
+            agg = self._distinct_count_agg(spec, [])
             if agg is None:
                 continue
             columns.append(agg.label(f"unq_{len(distinct_keys)}"))
             distinct_keys.append(spec["sk"])
-        for spec in same_where:
-            agg = self._facet_agg(spec, narrow_terms)
-            if agg is None:
-                continue
-            columns.append(agg.label(f"fac_{len(facet_slots)}"))
-            facet_slots.append(spec)
 
-        where = self._scoped_select(ctx, scan_terms).whereclause
+        where = self._scoped_select(ctx, terms).whereclause
         row = session.execute(select(*columns).where(where)).one()
         count = int(row[0] or 0)
         cursor = 1
@@ -863,31 +852,6 @@ class ColsOrmAdapter(ModelAdapter):
             for sk in distinct_keys:
                 totals[sk] = int(row[cursor] or 0)
                 cursor += 1
-        else:
-            cursor += len(sum_keys) + len(distinct_keys)
-
-        facets: dict[str, Any] = {}
-        for spec in facet_slots:
-            facets[spec["sk"]] = self._facet_payload(row[cursor], spec, lim)
-            cursor += 1
-
-        for specs in pending.values():
-            scoped = specs[0]["scoped"]
-            extra_cols: list[Any] = []
-            extra_specs: list[dict[str, Any]] = []
-            for spec in specs:
-                agg = self._facet_agg(spec, [])
-                if agg is None:
-                    continue
-                extra_cols.append(agg.label(f"x_{len(extra_specs)}"))
-                extra_specs.append(spec)
-            if not extra_cols:
-                continue
-            extra = session.execute(
-                select(*extra_cols).where(self._scoped_select(ctx, scoped).whereclause)
-            ).one()
-            for index, spec in enumerate(extra_specs):
-                facets[spec["sk"]] = self._facet_payload(extra[index], spec, lim)
 
         rows = session.scalars(
             self._scoped_select(ctx, terms)
@@ -896,7 +860,7 @@ class ColsOrmAdapter(ModelAdapter):
             .limit(size)
         ).all()
         values = [self._to_values(item, field_keys) for item in rows]
-        return values, count, totals or None, facets or None
+        return values, count, totals or None
 
     def _stat_fields(self, fields: list[dict[str, Any]]) -> list[dict[str, Any]]:
         specs: list[dict[str, Any]] = []
@@ -914,16 +878,9 @@ class ColsOrmAdapter(ModelAdapter):
                     "as_month": as_month,
                     "as_date": ftype == "DATETIME" and not as_month,
                     "unique": ftype in UNIQUE_TOTAL_TYPES and not self._row_key(sk),
-                    "facet": ftype in FACET_TYPES and not self._index_time(sk) and not self._row_key(sk),
                 }
             )
         return specs
-
-    def _term_id(self, term: QueryTerm) -> tuple:
-        return (term.field, term.op, str(term.group or ""), repr(term.value))
-
-    def _term_signature(self, terms: list[QueryTerm]) -> tuple:
-        return tuple(self._term_id(term) for term in terms)
 
     def _count_agg(self, scope_terms: list[QueryTerm]) -> Any:
         agg = func.count()

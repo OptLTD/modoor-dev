@@ -156,10 +156,8 @@ class SystemUserAdapter(ModelAdapter):
             select(SystemUser)
             .options(selectinload(SystemUser.login))
             .join(SystemLogin, SystemUser.base_id == SystemLogin.id)
-            .where(SystemUser.tenant == ctx.tenant)
+            .where(SystemUser.tenant == ctx.tenant, SystemUser.state == STATE_ON)
         )
-        if not any(t.field in ("basic.state", "basic.active", "basic.enable") for t in terms):
-            base = base.where(SystemUser.state == STATE_ON)
         base = self._apply_terms(base, terms)
 
         count = session.scalar(select(func.count()).select_from(base.subquery())) or 0
@@ -191,7 +189,7 @@ class SystemUserAdapter(ModelAdapter):
         stmt = (
             select(SystemUser)
             .options(selectinload(SystemUser.login))
-            .where(SystemUser.tenant == ctx.tenant)
+            .where(SystemUser.tenant == ctx.tenant, SystemUser.state == STATE_ON)
         )
         row = session.scalar(stmt.where(SystemUser.code == uukey))
         if row is None and uukey.isdigit():

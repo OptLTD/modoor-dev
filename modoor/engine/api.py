@@ -404,6 +404,19 @@ def api_search(request: Request, body: dict[str, Any] = Body(default_factory=dic
         raise _err(exc) from exc
 
 
+@router.post("/api/record/facets")
+def api_record_facets(
+    request: Request, body: dict[str, Any] = Body(default_factory=dict)
+) -> Any:
+    """Filter dropdown values, loaded on demand instead of on every search."""
+    user = _require_user(request)
+    try:
+        with session_scope() as session:
+            return get_engine().facets(session, _ctx(user), body)
+    except Exception as exc:  # noqa: BLE001
+        raise _err(exc) from exc
+
+
 class MapSettingsBody(BaseModel):
     provider: str
     # None = keep the stored token; "" = clear it.
