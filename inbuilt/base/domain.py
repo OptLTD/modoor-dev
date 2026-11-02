@@ -2633,9 +2633,11 @@ def parse_dict_key(dict_key: str) -> tuple[str, str] | None:
     return mod, typ
 
 
-# Register base_serial / base_tbl on Base.metadata (create_all).
+# Register base_tbl on Base.metadata (create_all).
 from inbuilt.base.tbl import BaseTbl as BaseTbl  # noqa: E402, F401
-from inbuilt.base.serial import (  # noqa: E402
+
+# 兼容旧代码：编号逻辑已迁到 modoor.engine.serial（平台引擎能力）。
+from modoor.engine.serial import (  # noqa: E402
     BaseSerial as BaseSerial,
     alloc_serial as alloc_serial,
     ensure_serial_at_least as ensure_serial_at_least,

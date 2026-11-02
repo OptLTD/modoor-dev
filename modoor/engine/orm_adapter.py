@@ -1184,7 +1184,7 @@ class ColsOrmAdapter(ModelAdapter):
                         raise AppError("validation_error", f"{req} is required")
                 biz = code or self._alloc_uukey(session, ctx)
                 if code:
-                    from inbuilt.base.serial import claim_serial
+                    from modoor.engine.serial import claim_serial
 
                     claim_serial(session, tenant=ctx.tenant, model=self.model, code=biz)
                 entity = cls(
@@ -1302,7 +1302,7 @@ class ColsOrmAdapter(ModelAdapter):
         ):
             return [""] * n
         prefix, width = self._serial_meta()
-        from inbuilt.base.serial import preview_serials
+        from modoor.engine.serial import preview_serials
 
         return preview_serials(
             session,
