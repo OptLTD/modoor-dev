@@ -162,6 +162,9 @@
               <span class="role-label">{{ roleName }}</span>
             </button>
             <div v-if="openMenu === 'role'" class="systray-menu" role="menu">
+              <div class="systray-menu-header">
+                <div class="name">{{ t('shell.role') }}</div>
+              </div>
               <button
                 v-for="role in switchRoles"
                 :key="role.code"

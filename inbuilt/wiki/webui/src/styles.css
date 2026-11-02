@@ -269,6 +269,7 @@ a {
 }
 
 .systray-menu-header {
+  margin-top: -0.35rem;
   padding: 0.65rem 0.9rem 0.55rem;
   border-bottom: 1px solid var(--line);
 }

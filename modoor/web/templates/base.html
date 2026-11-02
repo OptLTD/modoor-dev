@@ -337,6 +337,7 @@
     }
 
     .systray-menu-header {
+      margin-top: -0.35rem;
       padding: 0.65rem 0.9rem 0.55rem;
       border-bottom: 1px solid var(--line);
     }
@@ -1026,6 +1027,9 @@
           <span class="role-label"{% if not acting_role_name %} data-i18n="switchRole"{% endif %}>{{ acting_role_name or '切换角色' }}</span>
         </button>
         <div class="systray-menu" role="menu">
+          <div class="systray-menu-header">
+            <div class="name" data-i18n="role">角色</div>
+          </div>
           {% for role in switch_roles %}
           <button type="button" class="menu-link js-switch-role {% if role.code == acting_role %}active{% endif %}"
             data-role-code="{{ role.code }}" data-user-id="{{ current_user.id }}" role="menuitem">{{ role.name }}</button>
