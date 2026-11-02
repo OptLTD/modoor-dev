@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any
 
 import yaml
-from sqlalchemy import Boolean, DateTime, Integer, String, Text, UniqueConstraint, select
+from sqlalchemy import Boolean, DateTime, Index, Integer, String, Text, UniqueConstraint, select
 from sqlalchemy.orm import Mapped, Session, mapped_column
 
 from modoor.core.ctx import Ctx
@@ -29,6 +29,7 @@ class SkillItem(Base):
         UniqueConstraint(
             "tenant", "module", "skill_key", name="uq_skill_item_tenant_module_key"
         ),
+        Index("ix_skill_item_tenant_module", "tenant", "module"),
     )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)

@@ -269,9 +269,13 @@ class SystemRole(Base):
     users: Mapped[list] = mapped_column(JSON, default=list)
     nodes: Mapped[list] = mapped_column(JSON, default=list)
     # Soft-delete: STATE_ON alive, STATE_OFF deleted
-    state: Mapped[int] = mapped_column(SmallInteger, default=STATE_ON)
+    state: Mapped[int] = mapped_column(
+        SmallInteger, default=STATE_ON, server_default="1"
+    )
     # Business enable/disable (启停); independent of soft-delete ``state``
-    enable: Mapped[int] = mapped_column(SmallInteger, default=STATE_ON)
+    enable: Mapped[int] = mapped_column(
+        SmallInteger, default=STATE_ON, server_default="1"
+    )
     created_by: Mapped[int] = mapped_column(Integer)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
@@ -302,7 +306,9 @@ class SystemOplog(Base):
     id: Mapped[str] = mapped_column(String(40), primary_key=True)
     tenant: Mapped[int] = mapped_column(Integer, index=True)
     # Business model (duolali BizSysOpLog.model → modoor target, e.g. fleet.driver)
-    model: Mapped[str] = mapped_column(String(64), default="", index=True)
+    model: Mapped[str] = mapped_column(
+        String(64), default="", server_default="", index=True
+    )
     # Source subject / serial (duolali basic.uukey → code)
     code: Mapped[str] = mapped_column(String(64), default="")
     utime: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
