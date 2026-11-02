@@ -80,6 +80,11 @@ set -a
 # shellcheck disable=SC1091
 source .env
 set +a
+# Local dev defaults: no job worker (nothing to run) and no auto-reload.
+# Set MODOOR_JOBS_INPROCESS=true / MODOOR_AUTO_RELOAD=1 in .env when needed.
+: "${MODOOR_JOBS_INPROCESS:=false}"
+: "${MODOOR_AUTO_RELOAD:=0}"
+export MODOOR_JOBS_INPROCESS MODOOR_AUTO_RELOAD
 modoor_load_webui_url
 
 # Same root as modoor.core.settings.modoor_modules_root (MODOOR_MODULE_ROOT).

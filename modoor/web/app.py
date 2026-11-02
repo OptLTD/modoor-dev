@@ -677,11 +677,16 @@ def main() -> None:
     import uvicorn
 
     settings = get_settings()
+    reload_dirs: list[str] | None = None
+    if settings.modoor_auto_reload:
+        roots = [Path.cwd(), settings.modoor_modules_root]
+        reload_dirs = [str(p.resolve()) for p in dict.fromkeys(roots) if p.is_dir()]
     uvicorn.run(
         "modoor.web.app:app",
         host=settings.modoor_web_host,
         port=settings.modoor_web_port,
-        reload=True,
+        reload=settings.modoor_auto_reload,
+        reload_dirs=reload_dirs,
     )
 
 

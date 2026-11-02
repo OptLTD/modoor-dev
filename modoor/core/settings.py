@@ -199,6 +199,9 @@ class Settings(BaseSettings):
     )
     modoor_jobs_inprocess: bool = Field(default=True, alias="MODOOR_JOBS_INPROCESS")
     modoor_jobs_poll_seconds: float = Field(default=0.5, alias="MODOOR_JOBS_POLL_SECONDS")
+    # Local dev only (`python -m modoor.web.app`). Watch both the platform repo
+    # and the mounted MODOOR_MODULE_ROOT so addon edits reload too.
+    modoor_auto_reload: bool = Field(default=False, alias="MODOOR_AUTO_RELOAD")
     # Tests: load every on-disk module domain (ignore yaml enabled).
     modoor_load_all_modules: bool = Field(default=False, alias="MODOOR_LOAD_ALL_MODULES")
     # 地图地址搜索兜底配置（全局设置优先）。天地图：token1=浏览器 Key，token2=服务端 Key。
