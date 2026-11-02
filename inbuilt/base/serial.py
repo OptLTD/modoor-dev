@@ -7,6 +7,7 @@ business table's max uukey so legacy rows stay contiguous.
 
 from __future__ import annotations
 
+import re
 import uuid
 from datetime import datetime, timezone
 
@@ -143,6 +144,115 @@ def reserve_serials(
         return [f"{head}{start + i:0{w}d}" for i in range(n)]
 
     raise RuntimeError(f"base_serial allocate failed: tenant={tenant} model={mid} head={head}")
+
+
+def _lock_serial_row(
+    session: Session,
+    *,
+    tenant: int,
+    model: str,
+    head: str,
+    seed_cls: type | None = None,
+) -> BaseSerial | None:
+    row = session.scalar(
+        select(BaseSerial)
+        .where(
+            BaseSerial.tenant == tenant,
+            BaseSerial.model == model,
+            BaseSerial.head == head,
+        )
+        .with_for_update()
+    )
+    if row is not None:
+        return row
+    seed = _max_from_cls(session, seed_cls, tenant, head) if seed_cls is not None else 0
+    try:
+        with session.begin_nested():
+            session.add(
+                BaseSerial(
+                    id=str(uuid.uuid4()),
+                    tenant=tenant,
+                    model=model,
+                    head=head,
+                    value=int(seed),
+                    updated_at=_utcnow(),
+                )
+            )
+            session.flush()
+    except IntegrityError:
+        pass
+    return session.scalar(
+        select(BaseSerial)
+        .where(
+            BaseSerial.tenant == tenant,
+            BaseSerial.model == model,
+            BaseSerial.head == head,
+        )
+        .with_for_update()
+    )
+
+
+def preview_serials(
+    session: Session,
+    *,
+    tenant: int,
+    model: str,
+    prefix: str,
+    width: int = 5,
+    datetime_mode: str | None = None,
+    when: datetime | None = None,
+    count: int = 1,
+    seed_cls: type | None = None,
+) -> list[str]:
+    """Pre-generate codes without advancing base_serial.
+
+    Saving the record with one of these codes advances the counter in the same
+    transaction. A failed save rolls back, so the code is not consumed.
+    """
+    n = max(0, int(count or 0))
+    if n <= 0:
+        return []
+    p = (prefix or "X").strip().upper() or "X"
+    w = max(1, int(width or 5))
+    mid = str(model or "").strip() or "_"
+    head = f"{p}{serial_date_stamp(datetime_mode, when)}"
+    row = _lock_serial_row(session, tenant=tenant, model=mid, head=head, seed_cls=seed_cls)
+    if row is None:
+        raise RuntimeError(f"base_serial preview failed: tenant={tenant} model={mid} head={head}")
+    if seed_cls is not None:
+        # 只追平已有编号，不占用新号；防止手工/历史数据造成重复预览。
+        max_used = _max_from_cls(session, seed_cls, tenant, head)
+        if max_used > int(row.value):
+            row.value = max_used
+            row.updated_at = _utcnow()
+            session.flush()
+    start = int(row.value) + 1
+    return [f"{head}{start + i:0{w}d}" for i in range(n)]
+
+
+def claim_serial(
+    session: Session,
+    *,
+    tenant: int,
+    model: str,
+    code: str,
+) -> bool:
+    """Advance the counter to a successfully saved explicit code."""
+    text = str(code or "").strip()
+    matched = re.match(r"^(.*?)(\d+)$", text)
+    if not matched:
+        return False
+    head = matched.group(1)
+    serial = int(matched.group(2))
+    mid = str(model or "").strip() or "_"
+    row = _lock_serial_row(session, tenant=tenant, model=mid, head=head)
+    if row is None:
+        return False
+    if serial > int(row.value):
+        row.value = serial
+        row.updated_at = _utcnow()
+    session.flush()
+    return True
 
 
 def ensure_serial_at_least(

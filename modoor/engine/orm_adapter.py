@@ -1180,6 +1180,10 @@ class ColsOrmAdapter(ModelAdapter):
                     if not str(flatten_pick(row, req) or "").strip():
                         raise AppError("validation_error", f"{req} is required")
                 biz = code or self._alloc_uukey(session, ctx)
+                if code:
+                    from inbuilt.base.serial import claim_serial
+
+                    claim_serial(session, tenant=ctx.tenant, model=self.model, code=biz)
                 entity = cls(
                     id=str(uuid.uuid4()),
                     tenant=ctx.tenant,

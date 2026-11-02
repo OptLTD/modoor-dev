@@ -1,5 +1,6 @@
 import { computed, reactive, ref, watch } from 'vue'
 import {
+  allocSerials,
   appToast,
   autofillRecord,
   buildDependsTriggers,
@@ -153,6 +154,26 @@ export function useRecordDialog(props: RecordDialogProps, emit: RecordDialogEmit
         }
         return row
       })
+    }
+  }
+
+  let prefillSeq = 0
+
+  /** 新增表单先显示编号；真正占用发生在保存成功后。 */
+  async function prefillSerialCode() {
+    if (!props.open || props.mode !== 'create' || !props.model.startsWith('fleet.')) return
+    const serialField = formFields.value.find((f) => isSerialField(f))
+    if (!serialField) return
+    const fk = fieldKey(serialField)
+    if (String(form[fk] ?? '').trim()) return
+    const seq = ++prefillSeq
+    try {
+      const res = await allocSerials(props.model, 1)
+      const code = String(res.codes?.[0] || '').trim()
+      if (seq !== prefillSeq || !props.open) return
+      if (code && !String(form[fk] ?? '').trim()) form[fk] = code
+    } catch {
+      /* 预生成失败就保持空号，保存时由后端分配 */
     }
   }
 
@@ -320,12 +341,14 @@ export function useRecordDialog(props: RecordDialogProps, emit: RecordDialogEmit
     () => [props.open, props.mode, props.model, props.using, rowUUKey(props.row)] as const,
     async ([open]) => {
       if (!open) {
+        prefillSeq += 1
         formWatchReady = false
         return
       }
       await loadInputFields()
       resetForm()
       formWatchReady = false
+      void prefillSerialCode()
     },
     { immediate: true },
   )
