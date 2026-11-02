@@ -152,15 +152,21 @@ def _mount_proxy(app: FastAPI, prefix: str, upstream: str) -> None:
         if query:
             url = f"{url}?{query}"
 
-        await websocket.accept()
         try:
             import websockets
         except ImportError:
             await websocket.close(code=1011)
             return
 
+        # Vite's HMR server only accepts the `vite-hmr` subprotocol (and
+        # ignores the upgrade otherwise), so pass the client's requested
+        # subprotocols through and echo the negotiated one back.
+        subprotocols = list(websocket.scope.get("subprotocols") or [])
         try:
-            async with websockets.connect(url) as upstream_ws:
+            async with websockets.connect(
+                url, subprotocols=subprotocols or None
+            ) as upstream_ws:
+                await websocket.accept(subprotocol=upstream_ws.subprotocol)
 
                 async def client_to_upstream() -> None:
                     try:
