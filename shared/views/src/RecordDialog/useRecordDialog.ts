@@ -161,7 +161,7 @@ export function useRecordDialog(props: RecordDialogProps, emit: RecordDialogEmit
 
   /** 新增表单先显示编号；真正占用发生在保存成功后。 */
   async function prefillSerialCode() {
-    if (!props.open || props.mode !== 'create' || !props.model.startsWith('fleet.')) return
+    if (!props.open || props.mode !== 'create') return
     const serialField = formFields.value.find((f) => isSerialField(f))
     if (!serialField) return
     const fk = fieldKey(serialField)

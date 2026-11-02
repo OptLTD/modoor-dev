@@ -137,6 +137,9 @@ class ColsOrmAdapter(ModelAdapter):
     def _serial_meta(self) -> tuple[str, int]:
         return ("X", 5)
 
+    def _serial_datetime_mode(self) -> str:
+        return "HIDDEN"
+
     def _alloc_uukey(self, session: Session, ctx: Ctx) -> str:
         """Reserve next business serial. Subclasses should override."""
         prefix, width = self._serial_meta()
@@ -1292,12 +1295,22 @@ class ColsOrmAdapter(ModelAdapter):
         n = max(0, min(int(count or 0), 5000))
         if n <= 0:
             return []
+        # 没有实现编号的模型返回空串，交给前端显示空白编号。
+        if (
+            type(self)._serial_meta is OrmAdapter._serial_meta
+            and type(self)._alloc_uukey is OrmAdapter._alloc_uukey
+        ):
+            return [""] * n
         prefix, width = self._serial_meta()
-        first = self._alloc_uukey(session, ctx)
-        p = (prefix or "X").strip().upper() or "X"
-        w = max(1, int(width or 5))
-        try:
-            start = int(str(first)[len(p) :])
-        except ValueError:
-            return [first] + [""] * (n - 1)
-        return [f"{p}{start + i:0{w}d}" for i in range(n)]
+        from inbuilt.base.serial import preview_serials
+
+        return preview_serials(
+            session,
+            tenant=ctx.tenant,
+            model=self.model,
+            prefix=prefix,
+            width=width,
+            datetime_mode=self._serial_datetime_mode(),
+            count=n,
+            seed_cls=self.entity_cls,
+        )
