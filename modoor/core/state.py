@@ -3,7 +3,8 @@
 ``STATE_ON`` = row is alive; ``STATE_OFF`` = soft-deleted.
 Business enable/disable uses separate fields (e.g. fleet ``status``), not ``state``.
 
-Sale order uses its own draft/confirmed constants below (not soft-delete).
+Sale order business status uses the draft/confirmed constants below in its
+``status`` column; its ``state`` column is still soft-delete.
 """
 
 from __future__ import annotations
@@ -12,7 +13,7 @@ from __future__ import annotations
 STATE_OFF = 0
 STATE_ON = 1
 
-# Sale order (business lifecycle — not soft-delete)
+# Sale order business status (stored in `status`; `state` is soft-delete)
 SALE_DRAFT = 0
 SALE_CONFIRMED = 1
 

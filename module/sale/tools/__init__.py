@@ -93,7 +93,7 @@ def confirm_order(
                 "order_id": order["id"],
                 "partner": order["partner"],
                 "amount_total": order["amount_total"],
-                "state": order["state"],
+                "order_status": order["order_status"],
             },
             args={"order_id": order_id},
         )

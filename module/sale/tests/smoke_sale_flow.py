@@ -52,7 +52,7 @@ def main() -> None:
             result_status="ok",
         )
         order_id = created["id"]
-        assert created["state"] == "draft", created
+        assert created["order_status"] == "draft", created
 
         token, expires_at = issue_confirmation_token(
             secret=settings.modoor_confirm_secret,
@@ -78,7 +78,7 @@ def main() -> None:
             token=token,
         )
         confirmed = sale_domain.confirm_order(session, ctx, order_id)
-        assert confirmed["state"] == "confirmed", confirmed
+        assert confirmed["order_status"] == "confirmed", confirmed
         write_audit(
             session,
             ctx=ctx,
@@ -87,7 +87,7 @@ def main() -> None:
             result_status="ok",
         )
 
-    print(json.dumps({"ok": True, "order_id": order_id, "state": "confirmed"}, indent=2))
+    print(json.dumps({"ok": True, "order_id": order_id, "order_status": "confirmed"}, indent=2))
 
 
 if __name__ == "__main__":

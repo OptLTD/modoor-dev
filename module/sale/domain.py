@@ -11,7 +11,7 @@ from sqlalchemy.orm import Mapped, Session, mapped_column, relationship
 from modoor.core.ctx import Ctx
 from modoor.core.db import Base
 from modoor.core.errors import AppError
-from modoor.core.state import SALE_CONFIRMED, SALE_DRAFT, sale_label
+from modoor.core.state import SALE_CONFIRMED, SALE_DRAFT, STATE_ON, sale_label
 
 
 class SaleOrder(Base):
@@ -22,7 +22,8 @@ class SaleOrder(Base):
     team_id: Mapped[int] = mapped_column(Integer, index=True)
     created_by: Mapped[int] = mapped_column(Integer)
     partner: Mapped[str] = mapped_column(String(256))
-    state: Mapped[int] = mapped_column(SmallInteger, default=SALE_DRAFT)
+    status: Mapped[int] = mapped_column(SmallInteger, default=SALE_DRAFT)
+    state: Mapped[int] = mapped_column(SmallInteger, default=STATE_ON)
     note: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
@@ -66,7 +67,7 @@ def _order_to_dict(order: SaleOrder) -> dict[str, Any]:
         "team_id": order.team_id,
         "created_by": order.created_by,
         "partner": order.partner,
-        "state": sale_label(order.state),
+        "order_status": sale_label(order.status),
         "note": order.note,
         "created_at": order.created_at.isoformat() if order.created_at else None,
         "confirmed_at": order.confirmed_at.isoformat() if order.confirmed_at else None,
@@ -77,7 +78,7 @@ def _order_to_dict(order: SaleOrder) -> dict[str, Any]:
 
 def _get_order(session: Session, ctx: Ctx, order_id: str) -> SaleOrder:
     order = session.get(SaleOrder, order_id)
-    if order is None or order.tenant != ctx.tenant:
+    if order is None or order.tenant != ctx.tenant or order.state != STATE_ON:
         raise AppError("not_found", f"Order not found: {order_id}")
     return order
 
@@ -101,7 +102,8 @@ def create_order(
         team_id=ctx.team_id,
         created_by=ctx.user_id,
         partner=partner.strip(),
-        state=SALE_DRAFT,
+        status=SALE_DRAFT,
+        state=STATE_ON,
         note=note,
     )
     for raw in lines:
@@ -134,11 +136,11 @@ def get_order(session: Session, ctx: Ctx, order_id: str) -> dict[str, Any]:
 
 def confirm_order(session: Session, ctx: Ctx, order_id: str) -> dict[str, Any]:
     order = _get_order(session, ctx, order_id)
-    if int(order.state or 0) == SALE_CONFIRMED:
+    if int(order.status or 0) == SALE_CONFIRMED:
         raise AppError("conflict", "Order already confirmed", details={"order_id": order_id})
-    if int(order.state or 0) != SALE_DRAFT:
-        raise AppError("conflict", f"Cannot confirm order in state={sale_label(order.state)}")
-    order.state = SALE_CONFIRMED
+    if int(order.status or 0) != SALE_DRAFT:
+        raise AppError("conflict", f"Cannot confirm order in status={sale_label(order.status)}")
+    order.status = SALE_CONFIRMED
     order.confirmed_at = datetime.now(timezone.utc)
     session.flush()
     return _order_to_dict(order)
@@ -197,7 +199,9 @@ def seed_demo_orders(session: Session, ctx: Ctx, *, force: bool = False) -> int:
     """Insert demo sale orders. Skips when tenant already has rows unless force=True."""
     if not force:
         existing = session.scalar(
-            select(func.count()).select_from(SaleOrder).where(SaleOrder.tenant == ctx.tenant)
+            select(func.count())
+            .select_from(SaleOrder)
+            .where(SaleOrder.tenant == ctx.tenant, SaleOrder.state == STATE_ON)
         )
         if existing:
             return 0

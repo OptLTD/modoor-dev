@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session, selectinload
 
 from modoor.core.ctx import Ctx
 from modoor.core.errors import AppError
-from modoor.core.state import sale_code, sale_label
+from modoor.core.state import STATE_ON, sale_code, sale_label
 from modoor.engine.adapters import (
     ModelAdapter,
     flatten_pick,
@@ -33,7 +33,7 @@ class SaleOrderAdapter(ModelAdapter):
     COLS: dict[str, str] = {
         "basic.uukey": "id",
         "basic.utime": "created_at",
-        "basic.status": "state",
+        "basic.status": "status",
         "basic.partner": "partner",
         "basic.note": "note",
     }
@@ -43,7 +43,7 @@ class SaleOrderAdapter(ModelAdapter):
         raw = {
             "basic.uukey": order.id,
             "basic.utime": order.created_at.isoformat() if order.created_at else None,
-            "basic.status": sale_label(order.state),
+            "basic.status": sale_label(order.status),
             "basic.partner": order.partner,
             "basic.note": order.note,
             "amount.total": float(total),
@@ -106,7 +106,9 @@ class SaleOrderAdapter(ModelAdapter):
         page = max(int(page or 1), 1)
         size = clamp_page_size(size)
         terms = parse_query(query)
-        base = select(SaleOrder).where(SaleOrder.tenant == ctx.tenant)
+        base = select(SaleOrder).where(
+            SaleOrder.tenant == ctx.tenant, SaleOrder.state == STATE_ON
+        )
         base = self._apply_terms(base, terms)
 
         count = session.scalar(select(func.count()).select_from(base.subquery())) or 0
@@ -133,7 +135,7 @@ class SaleOrderAdapter(ModelAdapter):
         from module.sale.domain import SaleOrder
 
         order = session.get(SaleOrder, uukey)
-        if order is None or order.tenant != ctx.tenant:
+        if order is None or order.tenant != ctx.tenant or order.state != STATE_ON:
             return None
         return self._to_values(order)
 
@@ -155,12 +157,12 @@ class SaleOrderAdapter(ModelAdapter):
             note = flatten_pick(row, "basic.note")
 
             existing = session.get(SaleOrder, uukey) if uukey else None
-            if existing and existing.tenant == ctx.tenant:
+            if existing and existing.tenant == ctx.tenant and existing.state == STATE_ON:
                 before = self._to_values(existing)
                 if partner:
                     existing.partner = partner
                 if status not in (None, ""):
-                    existing.state = sale_code(status)
+                    existing.status = sale_code(status)
                 if note is not None:
                     existing.note = str(note) if note != "" else None
                 session.flush()
@@ -189,7 +191,7 @@ class SaleOrderAdapter(ModelAdapter):
                         "storage": {"basic": {
                             "uukey": existing.id,
                             "partner": existing.partner,
-                            "status": sale_label(existing.state),
+                            "status": sale_label(existing.status),
                             "note": existing.note,
                         }},
                         "changed": bool(changes),
@@ -213,7 +215,7 @@ class SaleOrderAdapter(ModelAdapter):
             entity = session.get(SaleOrder, created["id"])
             assert entity is not None
             if status not in (None, "") and sale_code(status) != sale_code("draft"):
-                entity.state = sale_code(status)
+                entity.status = sale_code(status)
                 session.flush()
             current = self._to_values(entity)
             changes = diff_row_values(None, current)
@@ -239,7 +241,7 @@ class SaleOrderAdapter(ModelAdapter):
                     "storage": {"basic": {
                         "uukey": entity.id,
                         "partner": entity.partner,
-                        "status": sale_label(entity.state),
+                        "status": sale_label(entity.status),
                         "note": entity.note,
                     }},
                     "changed": True,

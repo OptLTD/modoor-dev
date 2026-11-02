@@ -47,7 +47,7 @@ def test_create_get_confirm_flow():
 
     second = json.loads(confirm_order(order_id=order_id, confirmation_token=token))
     assert second["status"] == "ok"
-    assert second["result"]["state"] == "confirmed"
+    assert second["result"]["order_status"] == "confirmed"
 
 
 def test_confirm_token_args_mismatch():
