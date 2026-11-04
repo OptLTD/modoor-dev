@@ -1,4 +1,4 @@
-import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef } from 'react'
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef } from 'react'
 import {
   BlockNoteSchema,
   defaultBlockSpecs,
@@ -18,6 +18,7 @@ import {
 import { Extension, InputRule } from '@tiptap/core'
 import type { Block } from '@blocknote/core'
 import { WikiSlashMenu } from './WikiSlashMenu'
+import { uploadWikiFile } from '../api/wiki'
 import { useI18n } from '../useI18n'
 import '@blocknote/core/fonts/inter.css'
 import '@blocknote/mantine/style.css'
@@ -60,7 +61,7 @@ const schema = BlockNoteSchema.create({
   },
 })
 
-const HIDDEN_SLASH_TITLES = new Set(['视频', '音频', '文件', '表情', 'Video', 'Audio', 'File', 'Emoji'])
+const HIDDEN_SLASH_TITLES = new Set(['视频', '音频', '表情', 'Video', 'Audio', 'Emoji'])
 
 function DividerIcon() {
   return (
@@ -257,10 +258,19 @@ export const BlockEditor = forwardRef<BlockEditorHandle, Props>(function BlockEd
   const initial = useMemo(() => parseBlocks(initialBody), [pageId]) // eslint-disable-line react-hooks/exhaustive-deps
   const editorRef = useRef<BlockNoteEditor<typeof schema.blockSchema> | null>(null)
 
+  const uploadFile = useCallback(
+    async (file: File) => {
+      const res = await uploadWikiFile(file, { pageId })
+      return res.url
+    },
+    [pageId],
+  )
+
   const editor = useCreateBlockNote({
     schema,
     dictionary,
     initialContent: initial,
+    uploadFile,
     _tiptapOptions: {
       extensions: [createDividerShortcut(() => editorRef.current)],
     },

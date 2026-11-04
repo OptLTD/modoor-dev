@@ -317,7 +317,7 @@ export function useSchemaSheet(props: ToRefs<SchemaSheetProps>) {
     grid.syncGridLayout()
   }
 
-  /** 按表头（label / uukey / field）导入行，并分配序列号 */
+  /** 按表头（uukey / field / label / alias）导入行，并分配序列号 */
   async function importMappedRows(headers: string[], dataRows: string[][]) {
     if (mode.value === 'modify') {
       await appAlert('批量编辑不支持导入')
@@ -325,24 +325,51 @@ export function useSchemaSheet(props: ToRefs<SchemaSheetProps>) {
     }
     if (!dataRows.length) return
     const fields = editableFields.value
+    const normalizeHeader = (value: unknown) =>
+      String(value ?? '')
+        .trim()
+        .toLowerCase()
+        .replace(/\s+/g, '')
     const mapCol = (h: string) => {
-      const key = h.trim().toLowerCase()
+      const key = normalizeHeader(h)
+      if (!key) return undefined
       return fields.find(
         (f) =>
           f.uukey.toLowerCase() === key ||
           f.field.toLowerCase() === key ||
-          String(f.label || '')
-            .toLowerCase()
-            .replace(/\s+/g, '') === key.replace(/\s+/g, ''),
+          normalizeHeader(f.label) === key ||
+          (f.alias || []).some((alias) => normalizeHeader(alias) === key),
       )
     }
     const colFields = headers.map(mapCol)
+    const mapping = headers.map((header, index) => ({
+      header,
+      uukey: colFields[index]?.uukey || '',
+      label: colFields[index]?.label || '',
+    }))
+    const unmapped = mapping
+      .filter((item) => item.header.trim() && !item.uukey)
+      .map((item) => item.header)
+    console.info('[sheet-import] 表头映射', mapping)
+    if (unmapped.length) {
+      console.warn('[sheet-import] 未识别的表头', unmapped)
+      console.info(
+        '[sheet-import] 可匹配字段',
+        fields.map((f) => ({ uukey: f.uukey, label: f.label, alias: f.alias || [] })),
+      )
+    }
     const take = Math.min(dataRows.length, SHEET_ROWS_MAX)
     if (dataRows.length > SHEET_ROWS_MAX) {
       appToast(`Excel 共 ${dataRows.length} 行，单次最多导入 ${SHEET_ROWS_MAX} 行`, 'error')
     }
     await addRows(take)
     const all = readSheetRows()
+    const stats = new Map<string, { header: string; filled: number; empty: number }>()
+    headers.forEach((header, index) => {
+      const f = colFields[index]
+      if (!f || isSerial(f)) return
+      stats.set(f.uukey, { header, filled: 0, empty: 0 })
+    })
     for (let i = 0; i < Math.min(take, all.length); i++) {
       const row = all[i]
       if (!row) continue
@@ -352,15 +379,22 @@ export function useSchemaSheet(props: ToRefs<SchemaSheetProps>) {
         let value = String(cell ?? '').trim()
         if (isDropdownField(f)) value = normalizeDropdownCellValue(f, value, referCache.value)
         row[fieldKey(f)] = value
+        const stat = stats.get(f.uukey)
+        if (stat) {
+          if (value) stat.filled += 1
+          else stat.empty += 1
+        }
       })
     }
+    console.info('[sheet-import] 列取值统计', [...stats.values()])
+    console.info('[sheet-import] 首行解析结果', all[0])
     const matrix = rowsToMatrix(all, fields)
     await grid.mountGrid(matrix, all)
     dirty.resetSheetState(Array.from({ length: all.length }, () => ({})))
     await nextTick()
     dirty.syncAllDirtyClasses()
-    // 与粘贴相同：写入后按依赖列批量 autofill（如车牌带出能源类型）
-    recalc.schedulePasteBurstEnd()
+    // 导入后立即按依赖列批量 autofill，等计算列（小计/合计等）写回表格再允许保存。
+    await recalc.recalcAllNow()
     appToast(`已导入 ${Math.min(take, all.length)} 行`)
   }
 
@@ -501,7 +535,12 @@ export function useSchemaSheet(props: ToRefs<SchemaSheetProps>) {
         syncRowUUKey(row, editableFields.value)
         return rowToUpsertPayload(row, editableFields.value)
       })
-      await gateway.upsertRecords(table.value.model, batch, table.value.using || 'default')
+      await gateway.upsertRecords(
+        table.value.model,
+        batch,
+        table.value.using || 'default',
+        mode.value === 'import' ? 'INSERT' : 'UPDATE',
+      )
       const savedN = batch.length
       await reload()
       appToast(mode.value === 'import' ? `已导入 ${savedN} 行` : `已保存 ${savedN} 行`)

@@ -127,6 +127,36 @@ export function useSheetRecalc(deps: SheetRecalcDeps) {
     }
   }
 
+  /** 立即对所有行跑一次 autofill 并写回表格（导入后等待结果再保存）。 */
+  async function recalcAllNow() {
+    if (recalcFlushTimer != null) {
+      clearTimeout(recalcFlushTimer)
+      recalcFlushTimer = null
+    }
+    if (pasteBurstTimer != null) {
+      clearTimeout(pasteBurstTimer)
+      pasteBurstTimer = null
+    }
+    pasteBurstActive = false
+    recalcPendingByCell.clear()
+    const triggers = deps.getDependsTriggers()
+    const worksheet = deps.getWorksheet()
+    if (!triggers.length || !worksheet) return
+    const fields = deps.getFields()
+    let anchorCol = -1
+    for (let c = 0; c < fields.length; c++) {
+      if (triggers.includes(fieldKey(fields[c]))) {
+        anchorCol = c
+        break
+      }
+    }
+    if (anchorCol < 0) return
+    const rows = deps.readSheetRows()
+    const triggerUukey = fieldKey(fields[anchorCol])
+    await flushBulkRecalc(rows.map((_, row) => ({ row, triggerUukey })))
+    deps.syncAllDirtyClasses()
+  }
+
   async function flushBulkRecalc(items: { row: number; triggerUukey: string }[]) {
     if (!items.length) return
     const rows = deps.readSheetRows()
@@ -212,6 +242,7 @@ export function useSheetRecalc(deps: SheetRecalcDeps) {
   return {
     scheduleRecalc,
     schedulePasteBurstEnd,
+    recalcAllNow,
     isPasteBurstActive,
     isRecalcApplying,
     dispose,

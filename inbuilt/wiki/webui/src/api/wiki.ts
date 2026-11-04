@@ -111,6 +111,32 @@ export function deletePage(id: string) {
   return apiSend<{ ok: boolean }>(`/api/wiki/pages/${id}`, 'DELETE')
 }
 
+export type WikiUpload = {
+  ok: boolean
+  asset: {
+    id: string
+    title: string
+    filename: string
+    mime_type: string
+    size_bytes: number
+  }
+  url: string
+  download_url: string
+}
+
+export async function uploadWikiFile(file: File, opts?: { pageId?: string; projectId?: string }) {
+  const body = new FormData()
+  body.append('file', file)
+  if (opts?.pageId) body.append('page_id', opts.pageId)
+  if (opts?.projectId) body.append('project_id', opts.projectId)
+  const res = await fetch('/api/wiki/uploads', {
+    method: 'POST',
+    credentials: 'include',
+    body,
+  })
+  return parse<WikiUpload>(res)
+}
+
 export async function fetchProfile() {
   return apiGet<{ user: { id: number | string; username: string; realname?: string; tenant?: number | string } }>(
     '/api/auth/profile',

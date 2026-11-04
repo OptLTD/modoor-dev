@@ -676,10 +676,10 @@ class ColsOrmAdapter(ModelAdapter):
         *,
         query: dict[str, Any] | None,
         fields: list[dict[str, Any]],
-        limit: int = 100,
+        limit: int = 240,
     ) -> dict[str, Any] | None:
         """按当前 query 取普通字段 unique（≤limit 供表头下拉，否则 overflow）。"""
-        lim = max(1, min(int(limit or 100), 500))
+        lim = max(1, min(limit, 500))
         terms = parse_query(query)
         cls = self.entity_cls
         out: dict[str, Any] = {}
@@ -1143,7 +1143,16 @@ class ColsOrmAdapter(ModelAdapter):
                 if code:
                     from modoor.engine.serial import claim_serial
 
-                    claim_serial(session, tenant=ctx.tenant, model=self.model, code=biz)
+                    prefix, width = self._serial_meta()
+                    claim_serial(
+                        session,
+                        tenant=ctx.tenant,
+                        model=self.model,
+                        code=biz,
+                        prefix=prefix,
+                        datetime_mode=self._serial_datetime_mode(),
+                        width=width,
+                    )
                 entity = cls(
                     id=str(uuid.uuid4()),
                     tenant=ctx.tenant,

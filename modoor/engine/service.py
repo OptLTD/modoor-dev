@@ -293,7 +293,7 @@ class EngineService:
             ctx,
             query=query,
             fields=fields,
-            limit=100,
+            limit=240,
         )
         return {"facets": values or {}}
 

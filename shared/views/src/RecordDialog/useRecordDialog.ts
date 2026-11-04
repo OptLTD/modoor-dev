@@ -4,6 +4,7 @@ import {
   appToast,
   autofillRecord,
   buildDependsTriggers,
+  extraHasFormula,
   fetchInputSchema,
   loadDropdownRefers,
   rowToUpsertPayload,
@@ -279,7 +280,10 @@ export function useRecordDialog(props: RecordDialogProps, emit: RecordDialogEmit
         const fk = fieldKey(f)
         const raw = form[fk] ?? (isMultiple(f) ? [] : '')
         if (!canEdit(f)) {
-          if (props.mode === 'modify') assignFieldPayload(payload, f, raw)
+          // 公式列不允许手工编辑，但接口可写；空值也提交，便于清空已有结果。
+          if (props.mode === 'modify' || extraHasFormula(f.extra)) {
+            assignFieldPayload(payload, f, raw)
+          }
           continue
         }
         assignFieldPayload(payload, f, raw)
@@ -327,7 +331,12 @@ export function useRecordDialog(props: RecordDialogProps, emit: RecordDialogEmit
         return
       }
 
-      await upsertRecords(props.model, [payload], using.value)
+      await upsertRecords(
+        props.model,
+        [payload],
+        using.value,
+        props.mode === 'create' ? 'INSERT' : 'UPDATE',
+      )
       emit('saved')
       emit('close')
     } catch (e: unknown) {

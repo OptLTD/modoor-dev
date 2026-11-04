@@ -4,11 +4,13 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, File, Form, Request, UploadFile
 from pydantic import BaseModel
 
 from modoor.core.db import session_scope
+from modoor.core.errors import AppError
 from modoor.web.api_util import ctx_of, http_error, require_user
+from inbuilt.doc import domain as doc_domain
 from inbuilt.wiki import domain as wiki_domain
 
 router = APIRouter(prefix="/api/wiki", tags=["wiki"])
@@ -192,6 +194,46 @@ def api_delete_page(request: Request, page_id: str) -> dict[str, Any]:
         with session_scope() as session:
             result = wiki_domain.delete_page(session, ctx_of(user), page_id=page_id)
         return {"ok": True, **result}
+    except Exception as exc:  # noqa: BLE001
+        raise http_error(exc) from exc
+
+
+@router.post("/uploads")
+async def api_upload_file(
+    request: Request,
+    file: UploadFile = File(...),
+    page_id: str = Form(default=""),
+    project_id: str = Form(default=""),
+) -> dict[str, Any]:
+    """Store wiki attachments in the doc asset warehouse and return a content URL."""
+    user = require_user(request)
+    try:
+        if not page_id and not project_id:
+            raise AppError("validation_error", "page_id or project_id is required")
+        raw = await file.read()
+        ctx = ctx_of(user)
+        with session_scope() as session:
+            if page_id:
+                wiki_domain.get_page(session, ctx, page_id=page_id)
+            else:
+                wiki_domain.get_project(session, ctx, project_id=project_id)
+            asset = doc_domain.create_asset(
+                session,
+                ctx,
+                filename=file.filename or "file",
+                data=raw,
+                mime_type=file.content_type,
+                model="wiki.page" if page_id else "wiki.project",
+                uukey=page_id or project_id,
+                field="image" if (file.content_type or "").startswith("image/") else "file",
+            )
+        asset_id = asset["id"]
+        return {
+            "ok": True,
+            "asset": asset,
+            "url": f"/api/doc/assets/{asset_id}/content",
+            "download_url": f"/api/doc/assets/{asset_id}/content?download=1",
+        }
     except Exception as exc:  # noqa: BLE001
         raise http_error(exc) from exc
 

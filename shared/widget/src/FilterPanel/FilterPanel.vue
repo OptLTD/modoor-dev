@@ -279,6 +279,7 @@ defineExpose({ resetAll, apply, activeCount, dirty })
               :boundary="bodyEl || undefined"
               :options="filterOps(f)"
               :clearable="false"
+              :searchable="true"
               placeholder=""
             />
           </div>
@@ -286,11 +287,12 @@ defineExpose({ resetAll, apply, activeCount, dirty })
         <div v-if="showValue(ensure(f).op)" class="filter-value">
           <div v-if="isChoiceField(f)" class="grow">
             <SelectBox
-              :boundary="bodyEl || undefined"
-              :model-value="multiValue(f)"
-              :options="valueOptions(f)"
               :multiple="true"
-              placeholder="请选择"
+              :searchable="true"
+              :placeholder="'请选择'"
+              :boundary="bodyEl || undefined"
+              :options="valueOptions(f)"
+              :model-value="multiValue(f)"
               @update:model-value="(v) => onMultiValue(f, v)"
             />
           </div>

@@ -1,7 +1,7 @@
 id: wiki
 version: 0.2.0
 actived: false
-depends: []
+depends: [doc]
 summary: Wiki projects with hierarchical pages and block editor
 tags: [content]
 

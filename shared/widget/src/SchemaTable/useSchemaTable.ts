@@ -565,7 +565,7 @@ export function useSchemaTable(
     const hit = facets.value[fk] || facets.value[f.uukey]
     if (!hit || hit.overflow) return null
     const opts = hit.options || []
-    if (!opts.length || opts.length > 100) return null
+    if (!opts.length || opts.length > 240) return null
     const ft = ftypeOf(f)
     if (ft === 'RELATION' || ft === 'OPTIONAL') {
       return opts.map((o) => {

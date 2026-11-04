@@ -414,7 +414,7 @@ handle 收到三份行数据，够覆盖表头按钮、行内按钮和单元格�
 | `EQ` | LOGIC_EQUALSTO | 等于 | 标量 |
 | `NE` | LOGIC_NOTEQUAL | 不等于 | 标量 |
 | `IN` | LOGIC_INCLUDES | 包含任一 | 数组 |
-| `LIKE` | LOGIC_STR_LIKE | 模糊 | 字符串 |
+| `LIKE` | LOGIC_STR_LIKE | 模糊匹配 | 字符串 |
 | `HAS` | LOGIC_CONTAINS | 包含（字符串） | 标量 |
 | `LT` / `LE` | LOGIC_LESTHAN / LESS_EQ | 小于 / 小于等于 | 标量 |
 | `GT` / `GE` | LOGIC_GREATER / GRAT_EQ | 大于 / 大于等于 | 标量 |

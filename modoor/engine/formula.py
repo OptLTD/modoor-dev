@@ -6,6 +6,7 @@ import ast
 import math
 import re
 from datetime import datetime
+from decimal import ROUND_CEILING, ROUND_FLOOR, Decimal
 from typing import Any
 
 _IDENT_RE = re.compile(r"\b([A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)+)\b")
@@ -17,6 +18,12 @@ _ALLOWED_FUNCS = frozenset(
         "abs",
         "ROUND",
         "round",
+        "FLOOR",
+        "floor",
+        "CEIL",
+        "ceil",
+        "CEILING",
+        "ceiling",
         "MIN",
         "min",
         "MAX",
@@ -533,6 +540,21 @@ class _SafeEval(ast.NodeVisitor):
         if key == "ROUND":
             nd = int(args[1]) if len(args) > 1 else 0
             return round(float(args[0] or 0), nd)
+        if key in ("FLOOR", "CEIL", "CEILING"):
+            if not args:
+                raise ValueError(f"{name} expects 1 or 2 args")
+            try:
+                value = Decimal(str(args[0] or 0))
+            except (ArithmeticError, ValueError):
+                value = Decimal(0)
+            try:
+                step = Decimal(str(args[1])) if len(args) > 1 else Decimal(1)
+            except (ArithmeticError, ValueError):
+                step = Decimal(1)
+            if step == 0:
+                return 0.0
+            rounding = ROUND_FLOOR if key == "FLOOR" else ROUND_CEILING
+            return float((value / step).to_integral_value(rounding=rounding) * step)
         if key == "MIN":
             return min(float(a or 0) for a in args)
         if key == "MAX":

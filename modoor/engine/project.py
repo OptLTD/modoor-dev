@@ -48,6 +48,17 @@ def normalize_field(key: str, raw: dict[str, Any], *, group_meta: dict[str, Any]
     }
     if data.get("remark"):
         out["remark"] = data["remark"]
+    alias = data.get("alias")
+    if isinstance(alias, str):
+        alias = [alias]
+    if isinstance(alias, list):
+        aliases: list[str] = []
+        for item in alias:
+            text = str(item or "").strip()
+            if text and text not in aliases:
+                aliases.append(text)
+        if aliases:
+            out["alias"] = aliases
     if data.get("seqno") is not None:
         out["seqno"] = data["seqno"]
     if data.get("width") is not None:

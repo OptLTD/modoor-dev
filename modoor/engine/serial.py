@@ -55,6 +55,50 @@ def serial_date_stamp(mode: str | None, when: datetime | None = None) -> str:
     return ""
 
 
+def serial_spec(
+    model: str,
+    *,
+    default_prefix: str = "X",
+    default_width: int = 5,
+    default_datetime: str = "HIDDEN",
+) -> tuple[str, int, str]:
+    """Read SERIALNO config ``(prefix, width, datetime mode)`` for a model.
+
+    Values come from the ``basic.uukey`` / ``basic.code`` field's ``extra``
+    (``constant`` / ``counting`` / ``datetime``), then the model's ``extra``.
+    Falls back to the supplied defaults when the bundle or keys are missing.
+    """
+    prefix = str(default_prefix or "X").strip().upper() or "X"
+    width = int(default_width or 5)
+    datetime_mode = str(default_datetime or "HIDDEN").strip().upper() or "HIDDEN"
+    try:
+        from modoor.engine.registry import get_bundle
+
+        bundle = get_bundle(model)
+    except KeyError:
+        return prefix, width, datetime_mode
+    field = bundle.fields.get("basic.uukey") or bundle.fields.get("basic.code") or {}
+    extra = dict(field.get("extra") or {})
+    model_extra = dict(bundle.model.get("extra") or {})
+    raw_prefix = extra.get("constant") or model_extra.get("constant")
+    if str(raw_prefix or "").strip():
+        prefix = str(raw_prefix).strip().upper()
+    raw_width = extra.get("counting")
+    if raw_width is None:
+        raw_width = model_extra.get("counting")
+    if raw_width is not None:
+        try:
+            parsed = int(raw_width)
+        except (TypeError, ValueError):
+            parsed = 0
+        if parsed > 0:
+            width = parsed
+    raw_mode = extra.get("datetime") or model_extra.get("datetime")
+    if str(raw_mode or "").strip():
+        datetime_mode = str(raw_mode).strip().upper()
+    return prefix, width, datetime_mode
+
+
 def _max_from_cls(session: Session, cls: type, tenant: int, head: str) -> int:
     if not hasattr(cls, "uukey"):
         return 0
@@ -230,21 +274,85 @@ def preview_serials(
     return [f"{head}{start + i:0{w}d}" for i in range(n)]
 
 
+def _split_serial_code(
+    session: Session,
+    *,
+    tenant: int,
+    model: str,
+    code: str,
+    prefix: str | None = None,
+    datetime_mode: str | None = None,
+    width: int | None = None,
+) -> tuple[str, int] | None:
+    """Split a business code into ``(head, sequence)``.
+
+    Heads may carry a date segment (``WB20261103``), so ``WB20261103001`` must
+    not be split as head ``WB`` + sequence ``20261103001``. Prefer the longest
+    head already stored for this model, then split structurally from the
+    configured prefix + date segment, then fall back to the sequence width.
+    """
+    text = str(code or "").strip()
+    if not text:
+        return None
+    known = session.scalars(
+        select(BaseSerial.head).where(
+            BaseSerial.tenant == tenant,
+            BaseSerial.model == model,
+        )
+    ).all()
+    best: tuple[str, int] | None = None
+    for raw_head in known:
+        head = str(raw_head or "")
+        if not head or not text.startswith(head):
+            continue
+        tail = text[len(head) :]
+        if not tail.isdigit():
+            continue
+        if best is None or len(head) > len(best[0]):
+            best = (head, int(tail))
+    if best is not None:
+        return best
+    p = str(prefix or "").strip()
+    if p and text.startswith(p):
+        stamp_len = len(serial_date_stamp(datetime_mode))
+        cut = len(p) + stamp_len
+        if len(text) > cut and text[cut:].isdigit():
+            return text[:cut], int(text[cut:])
+        if not stamp_len and len(text) > len(p) and text[len(p) :].isdigit():
+            return p, int(text[len(p) :])
+    w = int(width or 0)
+    if w > 0 and len(text) > w and text[-w:].isdigit():
+        return text[:-w], int(text[-w:])
+    matched = re.match(r"^(.*?)(\d+)$", text)
+    if not matched:
+        return None
+    return matched.group(1), int(matched.group(2))
+
+
 def claim_serial(
     session: Session,
     *,
     tenant: int,
     model: str,
     code: str,
+    prefix: str | None = None,
+    datetime_mode: str | None = None,
+    width: int | None = None,
 ) -> bool:
     """Advance the counter to a successfully saved explicit code."""
-    text = str(code or "").strip()
-    matched = re.match(r"^(.*?)(\d+)$", text)
-    if not matched:
-        return False
-    head = matched.group(1)
-    serial = int(matched.group(2))
     mid = str(model or "").strip() or "_"
+    split = _split_serial_code(
+        session,
+        tenant=tenant,
+        model=mid,
+        code=code,
+        prefix=prefix,
+        datetime_mode=datetime_mode,
+        width=width,
+    )
+    if split is None:
+        return False
+    head, serial = split
     row = _lock_serial_row(session, tenant=tenant, model=mid, head=head)
     if row is None:
         return False

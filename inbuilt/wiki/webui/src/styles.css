@@ -1022,6 +1022,11 @@ a {
   padding-inline: 0 !important;
 }
 
+/* Image block */
+.editor-body [data-content-type="image"] .bn-visual-media {
+  box-shadow: 0 0 0 1px #e7e5e4;
+}
+
 /* Divider block */
 .wiki-divider {
   width: 100%;

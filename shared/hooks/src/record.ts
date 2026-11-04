@@ -14,6 +14,8 @@ export type SchemaField = {
   uukey: string
   field: string
   label: string
+  /** 导入识别用的额外表头别名 */
+  alias?: string[]
   /** 表头悬停说明 */
   remark?: string
   ftype: string
@@ -255,11 +257,12 @@ export async function upsertRecords(
   model: string,
   batch: Record<string, unknown>[],
   using = 'default',
+  scene: 'INSERT' | 'UPDATE' = 'UPDATE',
 ) {
   return post<{ records: unknown[] }>('/api/record/upsert', {
     model,
     using,
-    scene: 'UPDATE',
+    scene,
     batch,
   })
 }

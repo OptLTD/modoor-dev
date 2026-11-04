@@ -8,15 +8,21 @@ export type { FilterDraft } from './recordPayload'
 export function filterOps(f: SchemaField): { value: string; label: string }[] {
   const t = String(f.ftype || '').toUpperCase()
   const ALL = { value: 'ALL', label: '全部' }
+  const LIKE = { value: 'LIKE', label: '模糊匹配' }
   if (t === 'OPTIONAL' || t === 'RELATION') {
-    return [
-      ALL,
+    const key = f.extra?.dataKey || 'basic.uukey'
+    const isStr = key == '' || key !== 'basic.uukey'
+    const ops = [
       { value: 'IN', label: '包含任一' },
       { value: 'EQ', label: '等于' },
       { value: 'NE', label: '不等于' },
       { value: 'NIL', label: '为空' },
       { value: 'NNL', label: '不为空' },
     ]
+    if (isStr) {
+      ops.unshift(LIKE)
+    }
+    return [ALL, ...ops]
   }
   if (t === 'NUMERIC' || t === 'EXPENSE' || t === 'INTEGER') {
     return [
@@ -45,9 +51,9 @@ export function filterOps(f: SchemaField): { value: string; label: string }[] {
     ]
   }
   return [
-    ALL,
+    ALL, 
+    { value: 'LIKE', label: '模糊匹配' },
     { value: 'IN', label: '包含任一' },
-    { value: 'LIKE', label: '包含' },
     { value: 'EQ', label: '等于' },
     { value: 'NE', label: '不等于' },
     { value: 'NIL', label: '为空' },
