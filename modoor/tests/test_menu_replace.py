@@ -70,7 +70,7 @@ def test_freight_module_replace_rewrites_settings_group():
     assert norm["fleet.report"]["path"] == "/freight/report"
     assert norm["fleet.report"]["items"] == []
     setting_ids = [item["id"] for item in norm["fleet.setting"]["items"]]
-    assert setting_ids == ["fleet.setting.main", "fleet.computed", "freight.waybill.setup"]
+    assert setting_ids == ["fleet.setting.main", "fleet.fields", "freight.waybill.setup"]
 
 
 def test_catalog_merge_applies_replace_before_industry_filter():
@@ -147,4 +147,31 @@ def test_catalog_merge_applies_replace_before_industry_filter():
     fuel_ids = [item["id"] for item in fuel]
     assert "freight.order" not in fuel_ids
     fuel_setting = next(item for item in fuel if item["id"] == "fleet.setting")
-    assert [item["id"] for item in fuel_setting["items"]] == ["fleet.setting.main", "fleet.computed"]
+    assert [item["id"] for item in fuel_setting["items"]] == ["fleet.setting.main", "fleet.fields"]
+
+
+def test_blended_guest_inherits_host_permission(monkeypatch):
+    """A role that may open the host also keeps the blended guest in the shell."""
+    from inbuilt.base import domain as base_domain
+
+    monkeypatch.setattr(
+        base_domain,
+        "list_user_abilities",
+        lambda *args, **kwargs: {
+            "unrestricted": False,
+            "abilities": ["fleet.home.list"],
+        },
+    )
+    monkeypatch.setattr(
+        "modoor.platform.module_state.blend_guest_map",
+        lambda *args, **kwargs: {"freight": "fleet"},
+    )
+
+    visible = base_domain.allowed_modules_for_user(
+        None,
+        None,
+        user_id=1,
+        enabled={"fleet", "freight", "doc"},
+    )
+
+    assert visible == {"fleet", "freight"}

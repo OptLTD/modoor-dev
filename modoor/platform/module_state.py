@@ -134,6 +134,20 @@ def discover_manifests(settings: Settings | None = None) -> list[dict[str, Any]]
     return items
 
 
+def blend_guest_map(settings: Settings | None = None) -> dict[str, str]:
+    """Enabled-shape hints: ``guest module id -> host module id`` for ``blend`` manifests.
+
+    A guest rides on the host shell, so permission visibility follows the host.
+    """
+    out: dict[str, str] = {}
+    for meta in discover_manifests(settings):
+        guest = text(meta.get("id"), strip=True)
+        host = text(meta.get("blend"), strip=True)
+        if guest and host:
+            out[guest] = host
+    return out
+
+
 def yaml_actived_module_ids(settings: Settings | None = None) -> set[str]:
     return {m["id"] for m in discover_manifests(settings) if m.get("actived")}
 
@@ -388,8 +402,17 @@ def enabled_module_ids(session: Session, tenant: int) -> set[str]:
     )
     if not rows:
         # Pre-sync: honor yaml actived defaults only (missing = false).
-        return yaml_actived_module_ids()
-    return {r.module_id for r in rows if r.enabled}
+        enabled = yaml_actived_module_ids()
+    else:
+        enabled = {r.module_id for r in rows if r.enabled}
+    # A blended guest has no shell of its own: bring the host in with it so the
+    # pair renders as one app, even when the host row was left disabled.
+    guests = blend_guest_map()
+    while True:
+        hosts = {host for guest, host in guests.items() if guest in enabled} - enabled
+        if not hosts:
+            return enabled
+        enabled |= hosts
 
 
 def set_module_enabled(

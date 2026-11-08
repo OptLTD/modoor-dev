@@ -1847,7 +1847,15 @@ def allowed_modules_for_user(
     candidates = set(enabled) | {"base"}
     if extra_module_ids:
         candidates |= set(extra_module_ids)
-    return {mid for mid in candidates if module_allowed_by_abilities(mid, abilities)}
+    visible = {mid for mid in candidates if module_allowed_by_abilities(mid, abilities)}
+    # A blended module is an overlay of its host: when the host shell is
+    # visible, keep the guest too so its menus can graft onto the host tree.
+    from modoor.platform.module_state import blend_guest_map
+
+    for guest, host in blend_guest_map().items():
+        if guest in candidates and host in visible:
+            visible.add(guest)
+    return visible
 
 
 def _perm_menu_item(node: dict[str, Any], abilities: list[str] | None = None) -> dict[str, Any]:

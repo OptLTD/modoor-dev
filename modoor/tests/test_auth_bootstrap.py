@@ -6,7 +6,12 @@ from modoor.platform.bootstrap import bootstrap
 from modoor.core.ctx import Ctx
 from modoor.core.db import session_scope
 from modoor.core.errors import AppError
-from modoor.platform.module_state import list_modules, set_module_enabled, sync_discovered_modules
+from modoor.platform.module_state import (
+    enabled_module_ids,
+    list_modules,
+    set_module_enabled,
+    sync_discovered_modules,
+)
 from modoor.core.settings import get_settings
 from inbuilt.base import domain as base_domain
 from inbuilt.wiki import domain as wiki_domain
@@ -159,3 +164,23 @@ def test_bootstrap_tenant_id_pipe_and_skip_existing(monkeypatch):
     assert second["created"]["tenant"] is False
     assert second["created"]["root_team"] is False
     assert second["created"]["admin_user"] is False
+
+
+def test_blended_guest_keeps_host_enabled(monkeypatch):
+    """Disabling the host row must not strand an enabled blended guest."""
+    from modoor.platform.module_state import discover_manifests
+
+    ids = {m["id"] for m in discover_manifests()}
+    if not {"fleet", "freight"} <= ids:
+        pytest.skip("fleet/freight manifests are not mounted")
+
+    result = bootstrap(get_settings())
+    with session_scope() as session:
+        tenant_id = result["tenant_id"]
+        sync_discovered_modules(session, tenant_id)
+        set_module_enabled(session, tenant_id, "fleet", False)
+        set_module_enabled(session, tenant_id, "freight", True)
+
+        enabled = enabled_module_ids(session, tenant_id)
+        assert "freight" in enabled
+        assert "fleet" in enabled

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 from functools import lru_cache
 from typing import Any
 
@@ -13,7 +14,7 @@ from modoor.core.log import log, log_delete, log_upsert
 from modoor.engine.adapters import get_adapter
 from modoor.engine.formula import apply_formulas, ensure_fields_depends
 from modoor.engine.project import build_source, merge_dict_key_refers, project_input, project_table
-from modoor.engine.query import clamp_page_size
+from modoor.engine.query import BUSINESS_TZ, clamp_page_size
 from modoor.engine.registry import clear_bundle_cache, get_bundle, login_tabs
 
 
@@ -75,6 +76,49 @@ class EngineService:
             payload["tabs"] = tabs
         return adapter.hook(session, ctx, payload)
 
+    @staticmethod
+    def _input_defaults(
+        session: Session,
+        ctx: Ctx,
+        inp: dict[str, Any],
+        adapter: Any,
+    ) -> dict[str, Any]:
+        """Prefill create-form values the engine can know: business time and next serial.
+
+        The serial is a preview only; saving the record claims it. A caller-supplied
+        preset always wins, and the form may keep both fields editable.
+        """
+        values = dict(inp.get("values") or {})
+        fields = [f for f in (inp.get("fields") or []) if isinstance(f, dict)]
+        for field in fields:
+            key = str(field.get("uukey") or "").strip()
+            if not key or str(values.get(key) or "").strip():
+                continue
+            if str(field.get("ftype") or "").upper() == "DATETIME" and (
+                key == "basic.utime" or field.get("field") == "utime"
+            ):
+                values[key] = datetime.now(BUSINESS_TZ).replace(microsecond=0).isoformat()
+        serial = next(
+            (
+                f
+                for f in fields
+                if str(f.get("ftype") or "").upper() == "SERIALNO"
+                or f.get("field") == "uukey"
+            ),
+            None,
+        )
+        if serial is not None:
+            key = str(serial.get("uukey") or "basic.uukey")
+            if not str(values.get(key) or "").strip():
+                try:
+                    codes = adapter.alloc_serials(session, ctx, 1)
+                except Exception:  # noqa: BLE001 — preview failure keeps the field blank
+                    codes = []
+                code = str(codes[0] if codes else "").strip()
+                if code:
+                    values[key] = code
+        return values
+
     def input_schema(
         self,
         session: Session,
@@ -91,6 +135,8 @@ class EngineService:
         inp = project_input(bundle, using=using, scene=scene, uukey=uukey)
         inp["fields"] = ensure_fields_depends(list(inp.get("fields") or []))
         adapter = get_adapter(model)
+        if not uukey and scene.upper() != "DETAIL":
+            inp["values"] = self._input_defaults(session, ctx, inp, adapter)
         refers = dict(inp.get("refers") or {})
         refers.update(adapter.refers(session, ctx) or {})
         refers = merge_dict_key_refers(session, ctx, list(inp.get("fields") or []), refers)
