@@ -152,8 +152,6 @@
       </div>
     </div>
 
-    <div v-if="api.list.error" class="error">{{ api.list.error }}</div>
-
     <div v-if="!hideBody" class="table-body">
       <div v-if="!hideBody" class="scroller" :class="{ loading: api.list.loading }">
         <div class="list-frame" :class="{ 'has-totals': api.list.hasTotals }">

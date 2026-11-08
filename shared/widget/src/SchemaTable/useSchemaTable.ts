@@ -1,5 +1,6 @@
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import {
+  appToast,
   useRecordGateway,
   type SchemaClick,
   type SchemaField,
@@ -953,7 +954,7 @@ export function useSchemaTable(
       )
       selectedKeys.value = []
     } catch (e) {
-      error.value = e instanceof Error ? e.message : String(e)
+      appToast(e instanceof Error ? e.message : String(e), 'error')
       totals.value = {}
       facets.value = {}
       count.value = 0
@@ -1052,7 +1053,7 @@ export function useSchemaTable(
   function applyFilter(f: SchemaField) {
     const d = ensureDraft(f)
     if (needsValue2(d.op) && (!d.value || !d.value2)) {
-      error.value = t('widget.fillRange')
+      appToast(t('widget.fillRange'), 'error')
       return
     }
     if (d.op === 'ALL' && String(d.value ?? '').trim()) {
@@ -1139,7 +1140,7 @@ export function useSchemaTable(
   async function deleteSelected() {
     const keys = [...selectedKeys.value].map(String).filter((k) => k.trim())
     if (!keys.length) {
-      error.value = t('widget.pickDeleteRows')
+      appToast(t('widget.pickDeleteRows'), 'error')
       return
     }
     if (!confirm(t('widget.confirmDeleteRows', { n: keys.length }))) return
@@ -1149,7 +1150,7 @@ export function useSchemaTable(
       selectedKeys.value = []
       await reload()
     } catch (e) {
-      error.value = e instanceof Error ? e.message : String(e)
+      appToast(e instanceof Error ? e.message : String(e), 'error')
     }
   }
 
@@ -1175,7 +1176,7 @@ export function useSchemaTable(
         pageNo += 1
       }
       if (!all.length) {
-        error.value = t('widget.noExportData')
+        appToast(t('widget.noExportData'), 'error')
         return
       }
       if (total > maxRows && !confirm(t('widget.exportTruncated', { total, max: maxRows }))) return
@@ -1186,14 +1187,14 @@ export function useSchemaTable(
         refers: theRefers.value,
       })
     } catch (e) {
-      error.value = e instanceof Error ? e.message : String(e)
+      appToast(e instanceof Error ? e.message : String(e), 'error')
     }
   }
 
   async function exportSelected() {
     const selected = getSelectedRows()
     if (!selected.length) {
-      error.value = t('widget.pickExportRows')
+      appToast(t('widget.pickExportRows'), 'error')
       return
     }
     try {
@@ -1204,7 +1205,7 @@ export function useSchemaTable(
         refers: theRefers.value,
       })
     } catch (e) {
-      error.value = e instanceof Error ? e.message : String(e)
+      appToast(e instanceof Error ? e.message : String(e), 'error')
     }
   }
 
