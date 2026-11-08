@@ -8,43 +8,6 @@ importers:
 
   .: {}
 
-  module/sale/webui:
-    dependencies:
-      '@modoor/hooks':
-        specifier: workspace:*
-        version: link:../../../shared/hooks
-      '@modoor/views':
-        specifier: workspace:*
-        version: link:../../../shared/views
-      '@modoor/widget':
-        specifier: workspace:*
-        version: link:../../../shared/widget
-      jspreadsheet-ce:
-        specifier: ^5.0.4
-        version: 5.0.4
-      jsuites:
-        specifier: ^6.4.3
-        version: 6.5.0
-      vue:
-        specifier: ^3.5.0
-        version: 3.5.43(typescript@5.9.3)
-      vue-router:
-        specifier: ^4.5.0
-        version: 4.6.4(vue@3.5.43(typescript@5.9.3))
-    devDependencies:
-      '@vitejs/plugin-vue':
-        specifier: ^5.1.0
-        version: 5.2.4(vite@6.4.4)(vue@3.5.43(typescript@5.9.3))
-      typescript:
-        specifier: ^5.6.0
-        version: 5.9.3
-      vite:
-        specifier: ^6.0.0
-        version: 6.4.4
-      vue-tsc:
-        specifier: ^2.1.0
-        version: 2.2.12(typescript@5.9.3)
-
   inbuilt/base/webui:
     dependencies:
       '@modoor/hooks':
@@ -251,11 +214,51 @@ importers:
         specifier: ^6.0.0
         version: 6.4.4
 
+  module/sale/webui:
+    dependencies:
+      '@modoor/hooks':
+        specifier: workspace:*
+        version: link:../../../shared/hooks
+      '@modoor/views':
+        specifier: workspace:*
+        version: link:../../../shared/views
+      '@modoor/widget':
+        specifier: workspace:*
+        version: link:../../../shared/widget
+      jspreadsheet-ce:
+        specifier: ^5.0.4
+        version: 5.0.4
+      jsuites:
+        specifier: ^6.4.3
+        version: 6.5.0
+      vue:
+        specifier: ^3.5.0
+        version: 3.5.43(typescript@5.9.3)
+      vue-router:
+        specifier: ^4.5.0
+        version: 4.6.4(vue@3.5.43(typescript@5.9.3))
+    devDependencies:
+      '@vitejs/plugin-vue':
+        specifier: ^5.1.0
+        version: 5.2.4(vite@6.4.4)(vue@3.5.43(typescript@5.9.3))
+      typescript:
+        specifier: ^5.6.0
+        version: 5.9.3
+      vite:
+        specifier: ^6.0.0
+        version: 6.4.4
+      vue-tsc:
+        specifier: ^2.1.0
+        version: 2.2.12(typescript@5.9.3)
+
   shared/hooks:
     dependencies:
       vue:
         specifier: ^3.5.0
         version: 3.5.43(typescript@5.9.3)
+      xlsx:
+        specifier: ^0.18.5
+        version: 0.18.5
 
   shared/views:
     dependencies:

@@ -117,7 +117,7 @@ watch(
                 :aria-selected="activePanel === 'detail'"
                 @click="activePanel = 'detail'"
               >
-                {{ t('widget.detail') }}
+                {{ t('widget.dataDetail') }}
               </button>
               <span class="rd-tab-sep" aria-hidden="true">·</span>
               <button

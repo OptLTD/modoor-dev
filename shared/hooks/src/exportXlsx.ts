@@ -15,12 +15,13 @@ export function safeExportBasename(title: string): string {
   return base || '导出'
 }
 
-function csvEscape(v: string): string {
-  if (/[",\n\r]/.test(v)) return `"${v.replace(/"/g, '""')}"`
-  return v
+function columnWidth(label: string): number {
+  let width = 8
+  for (const ch of label) width += ch.charCodeAt(0) > 255 ? 2 : 1
+  return Math.min(40, width)
 }
 
-/** 浏览器下载 CSV（无 xlsx 依赖；后续可换 Excel） */
+/** 浏览器下载 xlsx。列表和 Sheet 导出共用，按当前表头顺序和显示值生成。 */
 export async function exportRows(opts: {
   title: string
   fields: SchemaField[]
@@ -30,20 +31,24 @@ export async function exportRows(opts: {
   // 调用方传入的就是当前表头（含列设置后的顺序和显隐）。schema 的 shown 只是默认列，不能再滤一次。
   const cols = opts.fields.filter((f) => f.field)
   const header = cols.map((f) => f.label || f.field)
-  const lines = [
-    header.map(csvEscape).join(','),
-    ...opts.rows.map((row) =>
-      cols
-        .map((f) => csvEscape(displayFieldValue(row, f, { refers: opts.refers })))
-        .join(','),
-    ),
-  ]
-  const bom = '\uFEFF'
-  const blob = new Blob([bom + lines.join('\n')], { type: 'text/csv;charset=utf-8' })
+  const body = opts.rows.map((row) =>
+    cols.map((f) => displayFieldValue(row, f, { refers: opts.refers })),
+  )
+
+  const XLSX = await import('xlsx')
+  const sheet = XLSX.utils.aoa_to_sheet([header, ...body])
+  sheet['!cols'] = cols.map((f) => ({ wch: columnWidth(String(f.label || f.field)) }))
+  const book = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(book, sheet, '数据')
+  const data = XLSX.write(book, { bookType: 'xlsx', type: 'array' }) as ArrayBuffer
+
+  const blob = new Blob([data], {
+    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
-  a.download = `${safeExportBasename(opts.title)}-${stamp()}.csv`
+  a.download = `${safeExportBasename(opts.title)}-${stamp()}.xlsx`
   a.click()
   URL.revokeObjectURL(url)
   return true

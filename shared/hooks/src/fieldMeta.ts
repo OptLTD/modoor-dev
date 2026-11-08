@@ -310,7 +310,8 @@ function pinUtime(list: SchemaField[]) {
     rest.splice(afterKey + 1, 0, ...utime)
     return rest
   }
-  return [...utime, ...rest]
+  // 表单没有编号列时保留 inputs.json 的字段顺序。
+  return list
 }
 
 /** 表单可见字段：shown≠false，非隐式、非内嵌；utime 靠前，长文本排后 */

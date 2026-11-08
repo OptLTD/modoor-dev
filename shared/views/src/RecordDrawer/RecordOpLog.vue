@@ -210,7 +210,9 @@ watch(
   <div class="record-oplog">
     <p v-if="loading" class="muted pad">{{ t('widget.loading') }}</p>
     <p v-else-if="error" class="error pad">{{ error }}</p>
-    <p v-else-if="!sorted.length" class="muted pad empty">{{ t('widget.noChangelog') }}</p>
+    <p v-else-if="!sorted.length" class="muted pad empty">
+      {{ t('widget.noChangelog') }}
+    </p>
     <ol v-else class="timeline">
       <li v-for="item in sorted" :key="item.id" class="tl-item">
         <div class="tl-dot" aria-hidden="true" />

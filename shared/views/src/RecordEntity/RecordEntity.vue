@@ -19,6 +19,7 @@ import {
   type SchemaField,
   type ReferDict,
 } from '@modoor/hooks'
+import Dropdown from '@modoor/widget/Dropdown'
 import RecordDialog from '../RecordDialog/RecordDialog.vue'
 import RecordFields from '../RecordDrawer/RecordFields.vue'
 import RecordMap from './RecordMap.vue'
@@ -34,7 +35,15 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   close: []
-  action: [payload: { id: string; action?: string; model: string; uukey: string }]
+  action: [
+    payload: {
+      id: string
+      action?: string
+      model: string
+      uukey: string
+      record?: Record<string, unknown>
+    },
+  ]
 }>()
 
 const { t } = useI18n()
@@ -174,6 +183,33 @@ const mapValue = computed(() => {
 
 const footActions = computed(() => props.config.actions || [])
 
+type FootActionGroup = {
+  key: string
+  label: string
+  grouped: boolean
+  actions: typeof footActions.value
+}
+
+const footActionGroups = computed((): FootActionGroup[] => {
+  const out: FootActionGroup[] = []
+  const byGroup = new Map<string, FootActionGroup>()
+  for (const act of footActions.value) {
+    const group = String(act.group || '').trim()
+    if (!group) {
+      out.push({ key: `act:${act.id}`, label: '', grouped: false, actions: [act] })
+      continue
+    }
+    let bucket = byGroup.get(group)
+    if (!bucket) {
+      bucket = { key: `group:${group}`, label: group, grouped: true, actions: [] }
+      byGroup.set(group, bucket)
+      out.push(bucket)
+    }
+    bucket.actions.push(act)
+  }
+  return out
+})
+
 async function loadRelated(tab: RecordEntityTab) {
   relatedLoading.value = true
   relatedError.value = ''
@@ -292,6 +328,7 @@ async function onAction(act: RecordEntityAction) {
     action: act.action,
     model: props.model,
     uukey: resolvedKey.value,
+    record: values.value || undefined,
   })
 }
 
@@ -397,18 +434,43 @@ function onFormSaved() {
 
       <footer v-if="footActions.length || $slots.foot" class="ec-foot">
         <slot name="foot" :actions="footActions" :on-action="onAction">
-          <button
-            v-for="act in footActions"
-            :key="act.id"
-            type="button"
-            class="btn"
-            :class="act.variant || ''"
-            :disabled="!!act.disabled"
-            :title="act.disabled ? act.hint || t('widget.cardDraftHint') : act.hint || ''"
-            @click="onAction(act)"
-          >
-            {{ act.label }}
-          </button>
+          <template v-for="group in footActionGroups" :key="group.key">
+            <Dropdown
+              v-if="group.grouped"
+              :label="group.label"
+              align="end"
+              :min-width="140"
+            >
+              <template #default="{ close }">
+                <button
+                  v-for="act in group.actions"
+                  :key="act.id"
+                  type="button"
+                  class="dropdown-item"
+                  :class="{ danger: act.variant === 'danger' }"
+                  :disabled="!!act.disabled"
+                  :title="act.disabled ? act.hint || t('widget.cardDraftHint') : act.hint || ''"
+                  @click="close(); onAction(act)"
+                >
+                  {{ act.label }}
+                </button>
+              </template>
+            </Dropdown>
+            <template v-else>
+              <button
+                v-for="act in group.actions"
+                :key="act.id"
+                type="button"
+                class="btn"
+                :class="act.variant || ''"
+                :disabled="!!act.disabled"
+                :title="act.disabled ? act.hint || t('widget.cardDraftHint') : act.hint || ''"
+                @click="onAction(act)"
+              >
+                {{ act.label }}
+              </button>
+            </template>
+          </template>
         </slot>
       </footer>
     </template>

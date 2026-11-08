@@ -159,6 +159,7 @@
         :lookup="drawerLookup"
         :title="drawerTitle"
         @close="closeDrawer"
+        @action="onRecordEntityAction"
       />
     </RecordDrawer>
 
@@ -1078,6 +1079,33 @@ function onActionClick(payload: {
       key: payload.key,
       record: payload.record,
     }),
+    viewApi,
+  )
+}
+
+async function onRecordEntityAction(payload: {
+  id: string
+  action?: string
+  model: string
+  uukey: string
+  record?: Record<string, unknown>
+}) {
+  const action = String(payload.action || '').trim()
+  if (!action || action === 'record.edit') return
+  const row = payload.record
+  // 先关详情抽屉，动作表单才能显示在抽屉之上。
+  closeDrawer()
+  await invokeRecordHandles(
+    action,
+    {
+      model: payload.model,
+      using: activeUsing.value,
+      uukey: payload.uukey,
+      records: row ? [row] : [],
+      selected: row ? [row] : [],
+      current: row,
+      click: { uukey: payload.id, action, label: '' },
+    },
     viewApi,
   )
 }

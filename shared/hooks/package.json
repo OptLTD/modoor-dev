@@ -10,5 +10,8 @@
   },
   "peerDependencies": {
     "vue": "^3.5.0"
+  },
+  "dependencies": {
+    "xlsx": "^0.18.5"
   }
 }

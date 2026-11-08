@@ -224,6 +224,8 @@ export type RecordEntityAction = {
   variant?: 'primary' | 'danger' | 'ghost'
   disabled?: boolean
   hint?: string
+  /** 同一 group 的操作收进下拉按钮，group 作为按钮文案 */
+  group?: string
 }
 
 /** Props/config for RecordEntity component (frontend only). */
