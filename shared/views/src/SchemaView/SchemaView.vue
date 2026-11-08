@@ -361,13 +361,15 @@ let actionApply: ((payload: Record<string, unknown>) => void | Promise<void>) | 
 const recordFormOpen = ref(false)
 const recordFormMode = ref<'create' | 'modify'>('create')
 const recordFormRow = ref<Record<string, unknown> | null>(null)
+/** Create click's input view (e.g. capacity general/engineering, freight ltl/ftl). */
+const recordFormUsing = ref('')
 
 const formOpen = computed(() => actionOpen.value || recordFormOpen.value)
 const formModel = computed(() =>
   actionOpen.value ? actionModel.value || activeModel.value : activeModel.value,
 )
 const formUsing = computed(() =>
-  actionOpen.value ? actionUsing.value : activeUsing.value,
+  actionOpen.value ? actionUsing.value : recordFormUsing.value || activeUsing.value,
 )
 const formTitle = computed(() => (actionOpen.value ? actionTitle.value : ''))
 const formMode = computed((): 'create' | 'modify' =>
@@ -754,6 +756,7 @@ function closeRecordForm() {
   recordFormOpen.value = false
   recordFormMode.value = 'create'
   recordFormRow.value = null
+  recordFormUsing.value = ''
 }
 
 function closeForm() {
@@ -885,9 +888,10 @@ function openDigestDrill(row: Record<string, unknown>) {
   drillOpen.value = true
 }
 
-function openCreateForm() {
+function openCreateForm(using = '') {
   const defaults = (table.value as SchemaTableData & { createDefaults?: Record<string, unknown> })
     ?.createDefaults
+  recordFormUsing.value = using
   recordFormMode.value = 'create'
   recordFormRow.value =
     defaults && Object.keys(defaults).length ? { ...defaults } : null
@@ -895,6 +899,7 @@ function openCreateForm() {
 }
 
 function openEditForm(row: Record<string, unknown>) {
+  recordFormUsing.value = ''
   recordFormMode.value = 'modify'
   recordFormRow.value = row
   recordFormOpen.value = true
@@ -1030,7 +1035,7 @@ async function onButtonClick(payload: {
     ) {
       return
     }
-    openCreateForm()
+    openCreateForm(using)
     return
   }
   if (isDeleteClick(payload.click)) {

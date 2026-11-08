@@ -46,12 +46,24 @@ export function isNumericFormField(f: SchemaField) {
   return isNumericField(f)
 }
 
+function extraBool(f: SchemaField, key: string) {
+  const v = f.extra?.[key]
+  return v === true || v === 1 || String(v).toLowerCase() === 'true'
+}
+
+function extraFalse(f: SchemaField, key: string) {
+  const v = f.extra?.[key]
+  return v === false || v === 0 || String(v).toLowerCase() === 'false'
+}
+
 export function isTextareaField(f: SchemaField) {
+  if (extraFalse(f, 'textarea')) return false
   return isLongTextField(f) || f.field === 'remark' || f.field === 'note'
 }
 
 export function isFullRowField(f: SchemaField) {
-  return isTextareaField(f)
+  if (extraFalse(f, 'fullRow')) return false
+  return extraBool(f, 'fullRow') || isTextareaField(f)
 }
 
 /** Select 选项：优先 refers，回退 field.options；可按 parentField 过滤 */
