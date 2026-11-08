@@ -64,13 +64,32 @@ def test_industry_filter_keeps_untagged_and_drops_empty_groups():
 def test_freight_module_replace_rewrites_settings_group():
     data = yaml.safe_load(FREIGHT_YAML.read_text(encoding="utf-8"))
     norm = _normalize_replace(data.get("replace"), mid="freight")
-    assert set(norm) == {"fleet.home", "fleet.report", "fleet.haulage", "fleet.setting"}
+    assert set(norm) == {
+        "fleet.home",
+        "fleet.report",
+        "fleet.haulage",
+        "fleet.master",
+        "fleet.setting",
+    }
     assert norm["fleet.haulage"] is None
     assert norm["fleet.home"]["path"] == "/freight/home"
     assert norm["fleet.report"]["path"] == "/freight/report"
     assert norm["fleet.report"]["items"] == []
     setting_ids = [item["id"] for item in norm["fleet.setting"]["items"]]
     assert setting_ids == ["fleet.setting.main", "fleet.fields", "freight.waybill.setup"]
+    master_ids = [item["id"] for item in norm["fleet.master"]["items"]]
+    assert master_ids == [
+        "fleet.vehicle",
+        "fleet.trailer",
+        "fleet.driver",
+        "fleet.address",
+        "freight.route",
+    ]
+    mounted = _mount_replace(norm, join_web_mount)
+    route_item = next(
+        item for item in mounted["fleet.master"]["items"] if item["id"] == "freight.route"
+    )
+    assert route_item["path"] == "/mod/freight/route"
 
 
 def test_catalog_merge_applies_replace_before_industry_filter():
