@@ -17,6 +17,7 @@
     "./FilterPanel": "./src/FilterPanel/index.ts",
     "./FieldPanel": "./src/FieldPanel/index.ts",
     "./SideDrawer": "./src/SideDrawer/index.ts",
+    "./Tooltip": "./src/Tooltip/index.ts",
     "./ChartGrid": "./src/ChartGrid/index.ts",
     "./styles.css": "./src/styles.css"
   },
